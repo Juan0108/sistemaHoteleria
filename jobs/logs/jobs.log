@@ -1,0 +1,2 @@
+2025-01-23 21:42:59 - Error en Job: Error HTTP: Código 500, Respuesta: {"status":500,"succes":false,"message":"[\"The \\\"URL_INVALIDA\\\" instance does not exist\"]"}
+2025-01-23 21:44:09 - Error en Job: Error HTTP: Código 500, Respuesta: {"status":500,"succes":false,"message":"[\"The \\\"URL_INVALIDA\\\" instance does not exist\"]"}

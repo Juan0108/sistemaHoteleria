@@ -1,0 +1,145 @@
+.disabled-tab {
+  pointer-events: none;
+  opacity: 0.5; /* Opcional: para dar un efecto visual de deshabilitado */
+}
+
+
+.button {
+    display: inline-block;
+    text-align: center;
+    vertical-align: middle;
+    padding: 3px 9px;
+    border: 0px solid #aa0305;
+    border-radius: 100px;
+    background: #ff060a;
+    background: -webkit-gradient(linear, left top, left bottom, from(#ff060a), to(#aa0305));
+    background: -moz-linear-gradient(top, #ff060a, #aa0305);
+    background: linear-gradient(to bottom, #ff060a, #aa0305);
+    -webkit-box-shadow: #ff070c 0px 0px 6px 0px;
+    -moz-box-shadow: #ff070c 0px 0px 6px 0px;
+    box-shadow: #ff070c 0px 0px 6px 0px;
+    text-shadow: #640203 1px 1px 1px;
+    font: normal normal bold 12px courier new;
+    color: #ffffff;
+    text-decoration: none;
+}
+
+.buttonActivo {
+    display: inline-block;
+    text-align: center;
+    vertical-align: middle;
+    padding: 3px 12px;
+    border: 0px solid #2f8e2d;
+    border-radius: 100px;
+    background: #4de749;
+    background: -webkit-gradient(linear, left top, left bottom, from(#4de749), to(#2f8e2d));
+    background: -moz-linear-gradient(top, #4de749, #2f8e2d);
+    background: linear-gradient(to bottom, #4de749, #2f8e2d);
+    -webkit-box-shadow: #47d643 0px 0px 6px 0px;
+    -moz-box-shadow: #47d643 0px 0px 6px 0px;
+    box-shadow: #47d643 0px 0px 6px 0px;
+    text-shadow: #1e591c 1px 1px 1px;
+    font: normal normal bold 12px courier new;
+    color: #ffffff;
+    text-decoration: none;
+}
+
+.buttonPeriodo {
+    display: inline-block;
+    text-align: center;
+    vertical-align: middle;
+    padding: 3px 12px;
+    border: 0px solid #ac730b;
+    border-radius: 100px;
+    background: #ffbd12;
+    background: -webkit-gradient(linear, left top, left bottom, from(#ffbd12), to(#ac730b));
+    background: -moz-linear-gradient(top, #ffbd12, #ac730b);
+    background: linear-gradient(to bottom, #ffbd12, #ac730b);
+    -webkit-box-shadow: #ffc513 0px 0px 6px 0px;
+    -moz-box-shadow: #ffc513 0px 0px 6px 0px;
+    box-shadow: #ffc513 0px 0px 6px 0px;
+    text-shadow: #7b5208 1px 1px 1px;
+    font: normal normal bold 12px arial;
+    color: #ffffff;
+    text-decoration: none;
+}
+  
+  img{
+    display: block;
+    margin: auto;
+    width: 100%;
+    height: auto;
+  }
+  
+  #login-button{
+    cursor: pointer;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 50px;
+    margin: auto;
+    width: 400px;
+    height: 250px;
+    border-radius: 50%;
+    background: rgba(3,3,3,.8);
+    overflow: hidden;
+    opacity: 1.4;
+    box-shadow: 10px 10px 30px #000;
+}
+  
+  /* Login container */
+  #container{
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    margin: auto;
+    width: 260px;
+    height: 260px;
+    border-radius: 5px;
+    background: rgba(3,3,3,0.25);
+    box-shadow: 1px 1px 50px #000;
+    display: none;
+  }
+ 
+  /* Inputs */
+  .inputLogin {
+    font-family: 'Open Sans Condensed', sans-serif;
+    text-decoration: none;
+    position: relative;
+    width: 80%;
+    display: block;
+    margin: 9px auto;
+    font-size: 17px;
+    color: #fff;
+    padding: 8px;
+    border-radius: 6px;
+    border: none;
+    background: rgba(3,3,3,.1);
+    -webkit-transition: all 2s ease-in-out;
+    -moz-transition: all 2s ease-in-out;
+    -o-transition: all 2s ease-in-out;
+    transition: all 0.2s ease-in-out;
+  }
+  
+  input:focus{
+    outline: none;
+    box-shadow: 3px 3px 10px #333;
+    background: rgba(3,3,3,.18);
+  }
+  
+  /* Placeholders */
+  ::-webkit-input-placeholder {
+     color: #ddd;  }
+  :-moz-placeholder { /* Firefox 18- */
+     color: red;  }
+  ::-moz-placeholder {  /* Firefox 19+ */
+     color: red;  }
+  :-ms-input-placeholder {  
+     color: #333;  }
+
+    
+
