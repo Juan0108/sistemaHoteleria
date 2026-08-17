@@ -11,7 +11,7 @@ class ComboMunicipios
 	public function mostrarComboMunicipios(){
 
 	   $valor = $this->id;
-	   $Consulta = ModeloNegocios::MdlJsonObtenerMunicipios($valor);
+	   $Consulta = ModeloHoteles::MdlJsonObtenerMunicipios($valor);
 	   echo ($Consulta); 
        
 	}

@@ -7,9 +7,9 @@ require_once "../models/negocios.modelo.php";
 class ComboEstados
 {
 
-	public function mostrarEstados(){
+	public function mostrarComboEstados(){
 
-	   $Consulta = ControladorNegocios::crtJsonObtenerEstados();
+	   $Consulta = ControladorHoteles::crtJsonObtenerEstados();
 	   echo ($Consulta);
        
 	}
@@ -17,4 +17,4 @@ class ComboEstados
 
 
 $Mostar = new ComboEstados();
-$Mostar -> mostrarEstados();
+$Mostar -> mostrarComboEstados();

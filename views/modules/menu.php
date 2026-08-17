@@ -17,15 +17,15 @@ if ($currentPage !== "reset"): ?>
             <?php
             if ($_SESSION["Perfil"] == "Soporte Tecnico") {
                 echo '<li>
-                        <a href="negocios">
+                        <a href="hoteles">
                             <i class="fa fa-handshake-o"></i>
-                            <span>Negocios</span>
+                            <span>Hoteles</span>
                         </a>
                     </li>
                     <li>
                         <a href="usuarios">
                             <i class="fa fa-user"></i>
-                            <span>Usuarios</span>
+                            <span>Personal</span>
                         </a>
                     </li>
                     <li>
@@ -89,9 +89,9 @@ if ($currentPage !== "reset"): ?>
 
             if ($_SESSION["Perfil"] == "Vendedor") {
                 echo '<li>
-                        <a href="negocios">
+                        <a href="hoteles">
                             <i class="fa fa-handshake-o"></i>
-                            <span>Negocios</span>
+                            <span>Hoteles</span>
                         </a>
                     </li>
                     <li>
@@ -103,7 +103,7 @@ if ($currentPage !== "reset"): ?>
                     <li>
                         <a href="usuarios">
                             <i class="fa fa-user"></i>
-                            <span>Usuarios</span>
+                            <span>Personal</span>
                         </a>
                     </li>';
             }

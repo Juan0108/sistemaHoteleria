@@ -1,6 +1,18 @@
 <?php
 
 session_start();
+require_once dirname(__DIR__) . "/models/usuarios.modelo.php";
+
+if (isset($_SESSION["IniciarSesion"]) && $_SESSION["IniciarSesion"] == "ok" && isset($_SESSION["IdUsuario"])) {
+  $usuarioSesion = ModeloUsuarios::MdlObtenerUsuario($_SESSION["IdUsuario"]);
+
+  if ($usuarioSesion && isset($usuarioSesion["id_estatus"]) && $usuarioSesion["id_estatus"] == 2) {
+    session_unset();
+    session_destroy();
+    echo '<script>window.location = "index.php";</script>';
+    exit;
+  }
+}
 
 ?>
 
@@ -108,7 +120,7 @@ session_start();
 
 <!-- Cuerpo Documento -->
 <body <?php echo '
-class="hold-transition skin-purple sidebar-collapse sidebar-mini login-page"'?>>
+class="hold-transition skin-red sidebar-collapse sidebar-mini login-page"'?>>
 
 <?php
 
@@ -125,7 +137,7 @@ if(isset($_SESSION["IniciarSesion"]) && $_SESSION["IniciarSesion"] == "ok")
 
       if($_GET["ruta"] == "inicio" ||
          $_GET["ruta"] == "reset" ||
-         $_GET["ruta"] == "negocios" ||
+         $_GET["ruta"] == "hoteles" ||
          $_GET["ruta"] == "usuarios" ||
          $_GET["ruta"] == "categorias" ||
          $_GET["ruta"] == "marcas" ||
@@ -164,7 +176,7 @@ if(isset($_SESSION["IniciarSesion"]) && $_SESSION["IniciarSesion"] == "ok")
 ?>
 <script src="views/js/plantilla.js"></script>
 <script src="views/js/conector.js"></script>
-<script src="views/js/usuarios.js"></script>
+<script src="views/js/usuarios.js?v=<?php echo @filemtime(__DIR__ . "/js/usuarios.js"); ?>"></script>
 <script src="views/js/categorias.js"></script>
 <script src="views/js/marcas.js"></script>
 <script src="views/js/submarcas.js"></script>

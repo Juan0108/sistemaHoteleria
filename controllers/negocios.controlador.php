@@ -3,131 +3,161 @@
 /**
  * 
  */
-class ControladorNegocios{
+class ControladorHoteles{
 	
 
-static public function ctrInsertarNegocio()
+static public function ctrInsertarHotel()
 {
+	if(isset($_POST["nuevoRazonsocial"])){
 
-		if(isset($_POST["nuevoRazonsocial"])){
+		if(preg_match('/^[a-zA-Z0-9ñÑáéíóúÁÉÍÓÚ ]+$/', $_POST["nuevoRazonsocial"])){
 
-			if(preg_match('/^[a-zA-Z0-9ñÑáéíóúÁÉÍÓÚ ]+$/', $_POST["nuevoRazonsocial"])){
+			$Contrato = $_FILES["nuevoContrato"]["tmp_name"];
 
-				$CartaResponsiva = $_FILES["nuevaCartaResponsiva"]["tmp_name"];
+			if($Contrato != ""){
 
-				if($CartaResponsiva != ""){
+				$NombreImagen = $_FILES["nuevoContrato"]["name"];
+				$dirPath = "views/img/Contrato_Hoteles/";
+				if (!is_dir($dirPath)) {
+					mkdir($dirPath, 0755, true);
+				}
+				$directorio = $dirPath . $NombreImagen;
 
-				$NombreImagen = $_FILES["nuevaCartaResponsiva"]["name"];
-			   	$directorio = "views/img/CartaResponsiva_Negocios/".$NombreImagen;
-
-			   	$negocio = new negocio(0,
-			   							$_POST["nuevoRazonsocial"],
-			   							$_POST["nuevoResponsable"],
-			   							$_POST["telefono"],
-			   							$_POST["NuevoCorreo"],
-			   							$_POST["NuevoGiro"],
-			   							$_POST["Calle"],
-			   							$_POST["NuevoEstado"],
-			   							$_POST["NuevoMunicipio"],
-			   							$_POST["NuevaColonia"],
-			   							$_POST["NuevoTipoPago"],
-			   							0,
-			   							0,
-			   							$_POST["NuevoEstatus"],
-			   							0,
-			   							0
-			   							);
-
-			   		$respuesta = ModeloNegocios::MdlInsertarNegocio($negocio);
-
-				   	    if($respuesta[0][0] == "1"){
-
-				   	    move_uploaded_file($CartaResponsiva, $directorio);
-
-						echo'<script>
-
+$IdEstatus = isset($_POST["NuevoEstatus"]) ? intval($_POST["NuevoEstatus"]) : 0;
+				if ($IdEstatus < 1 || $IdEstatus > 7) {
+					echo '<script>
 						Swal.fire({
-							  icon: "success",
-							  title : "Sistema PosDit",
-							  text: "El Negocio ha sido guardado correctamente",
-							  showConfirmButton: true,
-							  confirmButtonText: "Cerrar"
-							  }).then(function(result){
-										if (result.value) {
+							icon: "error",
+							title: "Sistema PosDit",
+							text: "¡Seleccione un estatus válido antes de guardar!",
+							confirmButtonText: "Cerrar"
+						});
+					</script>';
+					return;
+				}
 
-										window.location = "negocios";
+				$hotel = new hotel(0,
+							$_POST["nuevoRazonsocial"],
+							$_POST["nuevoResponsable"],
+							$_POST["telefono"],
+							$_POST["NuevoCorreo"],
+							$_POST["NuevoGiro"],
+							$_POST["Calle"],
+							$_POST["NuevoEstado"],
+							$_POST["NuevoMunicipio"],
+							$_POST["NuevaColonia"],
+							$_POST["NuevoTipoPago"],
+							0,
+							0,
+							$IdEstatus,
+									0,
+									0
+								);
 
-										}
-									})
+				$respuesta = ModeloHoteles::MdlInsertarHotel($hotel);
 
-						</script>';
-
-					}else{
+				if (is_array($respuesta) && isset($respuesta['error']) && $respuesta['error'] === true) {
+					$errorMessage = isset($respuesta['message']) ? $respuesta['message'] : "¡Error interno al registrar el hotel, favor de intentar de nuevo!";
 					echo'<script>
-
 						Swal.fire({
-							  icon: "error",
-							  title : "Sistema PosDit",
-							  text: "¡El Negocio ya existe, favor de validar!",
-							  showConfirmButton: true,
-							  confirmButtonText: "Cerrar"
-							  }).then(function(result){
-										if (result.value) {
-
-										window.location = "negocios";
-
-										}
-									})
-
-						</script>';
-					}
-
-				}else{
-
-			   	echo '<script>
-					 Swal.fire({
-						title : "Sistema PosDit",
-		      			text: "¡Favor de cargar la carta responsiva!",
-		      			icon: "error",
-		      			confirmButtonText: "¡Cerrar!"
-		    		});
-				
-				</script>';
-					
-			   	}			
-
-			}else{
-
-				echo'<script>
-
-					Swal.fire({
-						  icon: "error",
-						  title : "Sistema PosDit",
-						  text: "¡La categoría no puede ir vacía o llevar caracteres especiales!",
-						  showConfirmButton: true,
-						  confirmButtonText: "Cerrar"
-						  }).then(function(result){
+							icon: "error",
+							title : "Sistema PosDit",
+							text: "' . addslashes($errorMessage) . '",
+							showConfirmButton: true,
+							confirmButtonText: "Cerrar"
+						}).then(function(result){
 							if (result.value) {
-
-							window.location = "negocios";
-
+								window.location = "hoteles";
 							}
-						})
+						});
+					</script>';
+				} elseif (is_array($respuesta) && isset($respuesta["validar"]) && intval($respuesta["validar"]) === 0) {
+					$moved = @move_uploaded_file($Contrato, $directorio);
 
-			  	</script>';
+					echo'<script>
+						Swal.fire({
+							icon: "success",
+							title : "Sistema PosDit",
+							text: "El Hotel ha sido guardado correctamente",
+							showConfirmButton: true,
+							confirmButtonText: "Cerrar"
+						}).then(function(result){
+							if (result.value) {
+								window.location = "hoteles";
+							}
+						});
+					</script>';
+				} elseif (is_array($respuesta) && isset($respuesta["validar"]) && intval($respuesta["validar"]) === 1) {
+					echo'<script>
+						Swal.fire({
+							icon: "error",
+							title : "Sistema PosDit",
+							text: "¡El Hotel ya existe, no se puede registrar duplicado!",
+							showConfirmButton: true,
+							confirmButtonText: "Cerrar"
+						}).then(function(result){
+							if (result.value) {
+								window.location = "hoteles";
+							}
+						});
+					</script>';
+				} else {
+					echo'<script>
+						Swal.fire({
+							icon: "error",
+							title : "Sistema PosDit",
+							text: "¡El Hotel ya existe o hubo un problema al registrar, favor de validar!",
+							showConfirmButton: true,
+							confirmButtonText: "Cerrar"
+						}).then(function(result){
+							if (result.value) {
+								window.location = "hoteles";
+							}
+						});
+					</script>';
+				}
 
-			}
+			} else {
+
+				echo '<script>
+					Swal.fire({
+						title : "Sistema PosDit",
+						text: "¡Favor de cargar el Contrato !",
+						icon: "error",
+						confirmButtonText: "¡Cerrar!"
+					});
+				</script>';
+
+			}			
+
+		} else {
+
+			echo'<script>
+				Swal.fire({
+					icon: "error",
+					title : "Sistema PosDit",
+					text: "¡La categoría no puede ir vacía o llevar caracteres especiales!",
+					showConfirmButton: true,
+					confirmButtonText: "Cerrar"
+				}).then(function(result){
+					if (result.value) {
+						window.location = "hoteles";
+					}
+				});
+			</script>';
+
 		}
+	}
 }
 
-static public function ctrActualizarNegocio()
+static public function ctrActualizarHotel()
 {
 
 		if(isset($_POST["editarRazonsocial"])){
 
 			if(preg_match('/^[a-zA-Z0-9ñÑáéíóúÁÉÍÓÚ ]+$/', $_POST["editarRazonsocial"])){
 
-			   	$negocio = new negocio($_POST["editarIdNegocio"],
+			   	$hotel = new hotel($_POST["editarIdHotel"],
 			   							$_POST["editarRazonsocial"],
 			   							$_POST["editarResponsable"],
 			   							$_POST["editarTelefono"],
@@ -142,10 +172,10 @@ static public function ctrActualizarNegocio()
 			   							0,
 			   							$_POST["editarEstatus"],
 			   							$_POST["editarSAire"],
-			   							$_POST["editarSServicios"],
+			   							$_POST["editarSServicios"]
 			   							);
 
-			   	$respuesta = ModeloNegocios::MdlActualizarNegocio($negocio);
+			   	$respuesta = ModeloHoteles::MdlActualizarHotel($hotel);
 
 				if($respuesta == "1"){
 
@@ -154,9 +184,9 @@ static public function ctrActualizarNegocio()
 					Swal.fire({
 						icon: "success",
 						title : "Sistema PosDit",
-						text: "El Negocio ha sido modificado correctamente",
+						text: "El Hotel ha sido modificado correctamente",
 					  }).then((result) => {
-						window.location = "negocios";
+						window.location = "hoteles";
 					  })
 
 						</script>';
@@ -173,7 +203,7 @@ static public function ctrActualizarNegocio()
 							  }).then(function(result){
 										if (result.value) {
 
-										window.location = "negocios";
+										window.location = "hoteles";
 
 										}
 									})
@@ -194,7 +224,7 @@ static public function ctrActualizarNegocio()
 						  }).then(function(result){
 							if (result.value) {
 
-							window.location = "negocios";
+							window.location = "hoteles";
 
 							}
 						})
@@ -206,16 +236,27 @@ static public function ctrActualizarNegocio()
 }
 
 
-static public function crtObtenerNegocios(){
+static public function crtObtenerHoteles(){
 
-	$respuesta = ModeloNegocios::MdlObtenerNegocios();
+	$respuesta = ModeloHoteles::MdlObtenerHoteles();
 	return $respuesta;
 
  }
 
+static public function ctrEliminarHotel()
+{
+	if(isset($_POST["idEliminarHotel"])){
+
+		$idHotel = intval($_POST["idEliminarHotel"]);
+		$respuesta = ModeloHoteles::MdlEliminarHotel($idHotel);
+		return $respuesta;
+
+	}
+}
+
 static public function crtJsonObtenerTipoPago(){
 
-	$respuesta = ModeloNegocios::MdlJsonObtenerTipoPago();
+	$respuesta = ModeloHoteles::MdlJsonObtenerTipoPago();
 	return $respuesta;
 
  }
@@ -223,43 +264,57 @@ static public function crtJsonObtenerTipoPago(){
 
 static public function crtJsonObtenerGiro(){
 
-	$respuesta = ModeloNegocios::MdlJsonObtenerGiro();
+	$respuesta = ModeloHoteles::MdlJsonObtenerGiro();
 	return $respuesta;
 
  }
 
 
- static public function crtJsonObtenerNegocios(){
+ static public function crtJsonObtenerHoteles(){
 
-	$respuesta = ModeloNegocios::MdlJsonObtenerNegocios();
+	$respuesta = ModeloHoteles::MdlJsonObtenerHoteles();
+	return $respuesta;
+
+ }
+
+ static public function crtJsonObtenerNegocioSesion($idNegocio){
+
+	$respuesta = ModeloHoteles::MdlJsonObtenerNegocioSesion($idNegocio);
 	return $respuesta;
 
  }
 
  static public function crtJsonObtenerEstatus(){
 
-	$respuesta = ModeloNegocios::MdlJsonObtenerEstatus();
+	$respuesta = ModeloHoteles::MdlJsonObtenerEstatus();
 	return $respuesta;
 
  }
 
  static public function crtJsonObtenerEstados(){
 
-	$respuesta = ModeloNegocios::MdlJsonObtenerEstados();
+	$respuesta = ModeloHoteles::MdlJsonObtenerEstados();
 	return $respuesta;
 
  }
 
-static public function crtObtenerNegocioUsuario($valor){
+static public function crtObtenerHotelUsuario($valor){
 
-	$respuesta = ModeloNegocios::MdlObtenerNegocioUsuario($valor);
+	$respuesta = ModeloHoteles::MdlObtenerHotelUsuario($valor);
 	return $respuesta;
 
  }
  
- static public function crtObtenerNegocioUsuarioReporte($valor){
+ static public function crtObtenerHotelUsuarioReporte($valor){
 
-	$respuesta = ModeloNegocios::MdlObtenerNegocioUsuarioReporte($valor);
+	$respuesta = ModeloHoteles::MdlObtenerHotelUsuarioReporte($valor);
+	return $respuesta;
+
+ }
+
+ static public function crtObtenerNegocioUsuarioReporte($idUsuario){
+
+	$respuesta = ModeloHoteles::MdlObtenerNegocioUsuarioReporte($idUsuario);
 	return $respuesta;
 
  }

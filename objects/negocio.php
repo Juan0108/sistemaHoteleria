@@ -1,9 +1,9 @@
 <?php
 
 
-class negocio {
+class hotel {
 
-  private  $id_negocio;
+  private  $id_hotel;
   private  $Razon_social;
   private  $Responsable;
   private  $Telefono;
@@ -20,10 +20,10 @@ class negocio {
   private  $SAire;
   private  $SServicios;
 
-  function __construct($id_negocio, $Razon_social,  $Responsable, $Telefono,  $Correo,  $Id_giro, $Calle, $Id_estado, $Id_municipio,  $id_colonia,  $id_tipopago, $Fecha_alta,  $Fecha_baja,  $id_estatus, $SAire, $SServicios )
+  function __construct($id_hotel, $Razon_social,  $Responsable, $Telefono,  $Correo,  $Id_giro, $Calle, $Id_estado, $Id_municipio,  $id_colonia,  $id_tipopago, $Fecha_alta,  $Fecha_baja,  $id_estatus, $SAire, $SServicios )
 
   {
-    $this->id_negocio=$id_negocio;
+    $this->id_hotel=$id_hotel;
     $this->Razon_social=$Razon_social;
     $this->Responsable=$Responsable;
     $this->Telefono=$Telefono;

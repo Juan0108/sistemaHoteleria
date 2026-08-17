@@ -119,14 +119,37 @@ static public function MdlObtenerGraficaBalance($valor){
 Insertar Inventario
  */
 
-static public function MdlInsertarVenta($vIdVenta,$vCantidad,$vNTicket,$vIdUsuario, $vPrecioFinal, $vCliente){
+static public function MdlInsertarVenta($vIdVenta,$vCantidad,$vNTicket,$vIdUsuario, $vPrecioFinal, $vCliente, $vReservacion = 0){
 
-	$stmt = Conexion::conectar()->prepare("CALL CrearVentaDescuentos('$vIdVenta',
-		'$vCantidad',
-		'$vNTicket',
-		'$vIdUsuario',
-		'$vPrecioFinal',
-		'$vCliente')");
+	// CrearVentaDescuentos (6 parámetros) es el procedure original, usado por
+	// el resto del sistema en producción: no se toca su firma. Cuando la venta
+	// viene ligada a una habitación ocupada usamos el procedure independiente
+	// InsertarConsumoHabitacion (7 parámetros), que además liga el
+	// consumo en Tb_Consumo.
+	if (!empty($vReservacion) && $vReservacion !== '0') {
+
+		$stmt = Conexion::conectar()->prepare("CALL InsertarConsumoHabitacion(?,?,?,?,?,?,?)");
+
+		$stmt->bindValue(1, $vIdVenta, PDO::PARAM_INT);
+		$stmt->bindValue(2, $vCantidad, PDO::PARAM_INT);
+		$stmt->bindValue(3, $vNTicket, PDO::PARAM_INT);
+		$stmt->bindValue(4, $vIdUsuario, PDO::PARAM_INT);
+		$stmt->bindValue(5, $vPrecioFinal);
+		$stmt->bindValue(6, $vCliente, PDO::PARAM_INT);
+		$stmt->bindValue(7, $vReservacion, PDO::PARAM_STR);
+
+	} else {
+
+		$stmt = Conexion::conectar()->prepare("CALL CrearVentaDescuentos(?,?,?,?,?,?)");
+
+		$stmt->bindValue(1, $vIdVenta, PDO::PARAM_INT);
+		$stmt->bindValue(2, $vCantidad, PDO::PARAM_INT);
+		$stmt->bindValue(3, $vNTicket, PDO::PARAM_INT);
+		$stmt->bindValue(4, $vIdUsuario, PDO::PARAM_INT);
+		$stmt->bindValue(5, $vPrecioFinal);
+		$stmt->bindValue(6, $vCliente, PDO::PARAM_INT);
+
+	}
 
 	if($stmt->execute()){
 		return "ok";

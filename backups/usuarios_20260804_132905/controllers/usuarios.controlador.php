@@ -87,7 +87,6 @@ static public function crtObtenerUsuariosHotel(){
 			   preg_match('/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$/', $_POST["Apaterno"]) &&
 			   preg_match('/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$/', $_POST["Amaterno"]) &&
 			   preg_match('/^[a-zA-Z0-9]+$/', $_POST["nuevoUsuario"]) &&
-			   filter_var($_POST["nuevoCorreo"], FILTER_VALIDATE_EMAIL) &&
 			   preg_match('/^[a-zA-Z0-9]+$/', $_POST["Password"])) {
 
 				$foto = $_FILES["nuevaFoto"]["tmp_name"];
@@ -112,7 +111,6 @@ static public function crtObtenerUsuariosHotel(){
 									 $_POST["NuevaColonia"],
 									 $_POST["Perfil"],
 									 $_POST["nuevoUsuario"],
-									 $_POST["nuevoCorreo"],
 									 $EncriptarPass,
 									 $directorio,
 									 5);
@@ -127,7 +125,7 @@ static public function crtObtenerUsuariosHotel(){
 							Swal.fire({
 							icon: "success",
 							title : "Sistema PosDit",
-							text: "¡El personal ha sido guardado correctamente!",
+							text: "¡El usuario ha sido guardado correctamente!",
 							showConfirmButton: true,
 							confirmButtonText: "Cerrar"
 							}).then(function(result){
@@ -206,81 +204,6 @@ static public function crtObtenerUsuariosHotel(){
 		}
 	}
 
-// Variante que regresa un arreglo (status/message) en vez de imprimir HTML,
-// para poder editar por AJAX sin recargar la página completa a medias.
-static public function crtActualizarUsuarioAjax()
-	{
-		if (!isset($_POST["editarUsuario"])) {
-			return ["status" => "error", "message" => "Faltan datos para modificar el usuario"];
-		}
-
-		if (!(preg_match('/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$/', $_POST["editarNombre"]) &&
-			  preg_match('/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$/', $_POST["editarApaterno"]) &&
-			  preg_match('/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$/', $_POST["editarAmaterno"]) &&
-			  preg_match('/^[a-zA-Z0-9]+$/', $_POST["editarUsuario"]) &&
-			  filter_var($_POST["editarCorreo"], FILTER_VALIDATE_EMAIL))) {
-			return ["status" => "error", "message" => "El usuario no puede ir vacío, llevar caracteres especiales, o el correo no es válido"];
-		}
-
-		if ($_POST["editarPassword"] != "") {
-			$EncriptarPass = crypt($_POST["editarPassword"], '$2a$07$asxx54ahjppf45sd87a5a4dDDGsystemdev$');
-		} else {
-			$EncriptarPass = null;
-		}
-
-		// El negocio SIEMPRE es el de la sesión activa, nunca el que venga
-		// en el formulario, para que no se pueda reasignar un usuario
-		// a un negocio/hotel distinto al propio.
-		$Usuario = new usuario(0,
-						 $_POST["editarNombre"],
-						 $_POST["editarApaterno"],
-						 $_POST["editarAmaterno"],
-						 $_SESSION["IdNegocio"],
-						 $_POST["editarCalle"],
-						 $_POST["editarEstado"],
-						 $_POST["editarMunicipio"],
-						 $_POST["editarColonia"],
-						 $_POST["editarPerfil"],
-						 $_POST["editarUsuario"],
-						 $_POST["editarCorreo"],
-						 $EncriptarPass,
-						 null,
-						 1);
-
-		$respuesta = ModeloUsuarios::MdlActualizarUsuario($Usuario);
-
-		if ($respuesta != 1) {
-			return ["status" => "error", "message" => "¡Error desconocido, inténtelo más tarde!"];
-		}
-
-		// La foto es opcional: solo se procesa si el usuario seleccionó un archivo nuevo.
-		if (isset($_FILES["editarFoto"]) && $_FILES["editarFoto"]["tmp_name"] != "") {
-
-			$tipo = $_FILES["editarFoto"]["type"];
-			$tamaño = $_FILES["editarFoto"]["size"];
-
-			if ($tipo != "image/jpeg" && $tipo != "image/png") {
-				return ["status" => "error", "message" => "¡El usuario se modificó, pero la imagen debe estar en formato JPG o PNG!"];
-			}
-
-			if ($tamaño > 3145728) {
-				return ["status" => "error", "message" => "¡El usuario se modificó, pero la imagen no debe pesar más de 3MB!"];
-			}
-
-			$NombreImagen = basename($_FILES["editarFoto"]["name"]);
-			// Ruta web (relativa a la raíz del sitio), la que se guarda en BD y se usa como <img src>.
-			$rutaWeb = "views/img/Users/" . $NombreImagen;
-			// Ruta física absoluta: este controlador también se invoca desde ajax/actualizar-usuario.ajax.php,
-			// cuyo directorio de trabajo no es la raíz del sitio, así que una ruta relativa aquí falla.
-			$rutaFisica = dirname(__DIR__) . "/views/img/Users/" . $NombreImagen;
-
-			move_uploaded_file($_FILES["editarFoto"]["tmp_name"], $rutaFisica);
-			ModeloUsuarios::MdlActualizarFotoUsuario($_POST["editarUsuario"], $rutaWeb);
-		}
-
-		return ["status" => "success", "message" => "¡El usuario ha sido modificado correctamente!"];
-	}
-
 static public function crtActualizarUsuario()
  	{
 
@@ -288,8 +211,7 @@ static public function crtActualizarUsuario()
 			if(preg_match('/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$/', $_POST["editarNombre"]) &&
 			   preg_match('/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$/', $_POST["editarApaterno"]) &&
 			   preg_match('/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$/', $_POST["editarAmaterno"]) &&
-			   preg_match('/^[a-zA-Z0-9]+$/', $_POST["editarUsuario"]) &&
-			   filter_var($_POST["editarCorreo"], FILTER_VALIDATE_EMAIL)) {
+			   preg_match('/^[a-zA-Z0-9]+$/', $_POST["editarUsuario"])) {
 
 				if($_POST["editarPassword"] != ""){
 
@@ -315,7 +237,6 @@ static public function crtActualizarUsuario()
 									 $_POST["editarColonia"],
 									 $_POST["editarPerfil"],
 									 $_POST["editarUsuario"],
-									 $_POST["editarCorreo"],
 									 $EncriptarPass,
 									 null,
 									 1);

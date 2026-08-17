@@ -4,65 +4,57 @@
 require_once "../controllers/negocios.controlador.php";
 require_once "../models/negocios.modelo.php";
 
-class TablaNegocios
+class TablaHoteles
 {
+    public function mostrarTablaHoteles() {
 
-	public function mostrarTablaNegocios(){
 
-	   $Negocios = ControladorNegocios::crtObtenerNegocios();	   
+    $Hoteles = ControladorHoteles::crtObtenerHoteles();	   
+    $filas = array();
 
-		$datosJason = '{
-			  "data": [';
+    if (!empty($Hoteles) && is_array($Hoteles)) {
 
-			  	for ($i = 0; $i < count($Negocios); $i++){
+        foreach ($Hoteles as $hotel) {
 
-			  		$Boton =  "<div class='checkbox'><button class='btn btn btn-info btnEditarNegocio' data-id-negocio='".$Negocios[$i]["Id_Negocio"]."'data-toggle='modal' data-target='#modalEditarNegocio'><i class='fa fa-pencil'></i> </button></div>";
+            $Boton = "<div class='checkbox'>"
+                    ."<button class='btn btn-info btnEditarHotel' data-id-hotel='".$hotel["Id_Hotel"]."' data-toggle='modal' data-target='#modalEditarHotel'><i class='fa fa-pencil'></i></button> "
+                    ."<button class='btn btn-danger btnEliminarHotel' data-id-hotel='".$hotel["Id_Hotel"]."'><i class='fa fa-times'></i></button>"
+                    ."</div>";
 
-			  		if($Negocios[$i]["Estatus"] == "checked"){
+            if ($hotel["Estatus"] == "checked") {
+                $imagen = "<a class='buttonActivo'>Activo</a>";
+            } elseif ($hotel["Estatus"] == "prueba") {
+                $imagen = "<a class='buttonPeriodo'>Periodo Prueba</a>";
+            } else {
+                $imagen = "<a class='button'>In-Activo</a>";
+            }	
 
-			  			$imagen = "<a class='buttonActivo'>Activo</a>";
+            $filas[] = [
+                    $hotel["Id_Hotel"] ?? '',
+                    $hotel["Razon_Social"] ?? '',
+                    $hotel["Responsable"] ?? '',
+                    $hotel["Telefono"] ?? '',
+                    $hotel["Estado"] ?? '',
+                    $hotel["Municipio"] ?? '',
+                    $hotel["Colonia"] ?? '',
+                    $hotel["Calle"] ?? '',
+                    $hotel["Correo"] ?? '',
+                    $hotel["Giro"] ?? '',
+                    $hotel["TipoPago"] ?? '',
+                    $hotel["Fecha_Alta"] ?? '',
+                    $hotel["Fecha_Baja"] ?? '',
+                    $hotel["SAire"] ?? '',
+                    $hotel["SServicios"] ?? '',
+                    $imagen,
+                    $Boton
+                ];
+            }
+        }
 
-			  		}elseif($Negocios[$i]["Estatus"] == "prueba") {
-
-			  			$imagen = " <a class='buttonPeriodo' > Periodo Prueba</a>";
-
-			  		}elseif ($Negocios[$i]["Estatus"] == "") {
-
-			  			$imagen = " <a class='button' > In-Activo</a>";
-			  		}	
-			  		
-			  		$datosJason .= '[
-					      "'.$Negocios[$i]["Id_Negocio"].'",
-					      "'.$Negocios[$i]["Razon_Social"].'",
-					      "'.$Negocios[$i]["Responsable"].'",
-					      "'.$Negocios[$i]["Telefono"].'",
-					      "'.$Negocios[$i]["Estado"].'",
-					      "'.$Negocios[$i]["Municipio"].'",
-					      "'.$Negocios[$i]["Colonia"].'",
-					      "'.$Negocios[$i]["Calle"].'",
-					      "'.$Negocios[$i]["Correo"].'",
-					      "'.$Negocios[$i]["Giro"].'",
-					      "'.$Negocios[$i]["TipoPago"].'",
-					      "'.$Negocios[$i]["Fecha_Alta"].'",
-					      "'.$Negocios[$i]["Fecha_Baja"].'",
-					      "'.$Negocios[$i]["SAire"].'",
-					      "'.$Negocios[$i]["SServicios"].'",
-					      "'.$imagen.'",
-					      "'.$Boton.'"
-					    ],';
-			  	}
-
-			  	$datosJason = substr($datosJason, 0,-1);
-
-			  	$datosJason .= ']
-
-			  }';
-
-			  echo $datosJason;
-
-	}
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(["data" => $filas], JSON_UNESCAPED_UNICODE);
+    }
 }
 
-
-$Mostar = new TablaNegocios();
-$Mostar -> mostrarTablaNegocios();
+$Mostar = new TablaHoteles();
+$Mostar->mostrarTablaHoteles();

@@ -13,7 +13,7 @@ class AjaxCodigoPostal
 	public function ajaxCP(){
 
 		$valor = $this->id;
-		$respuesta = ModeloNegocios::MdlObtenerCodigoPostal($valor);
+		$respuesta = ModeloHoteles::MdlObtenerCodigoPostal($valor);
 		echo json_encode($respuesta);
 	}
 

@@ -12,11 +12,12 @@ class Conexion
             $link = new PDO(
                 "mysql:host=posdit.com.mx;dbname=posditcommx_postdit",
                 "posditcommx",       // Cambia esto por el nombre de usuario de tu base de datos
-                "Davidios0108*"  // Cambia esto por la contraseña de tu base de datos
+                "SistemaPostProduction*"  // Cambia esto por la contraseña de tu base de datos
             );
 
             // Configura la codificación para evitar problemas con caracteres especiales
             $link->exec("set names utf8");
+            $link->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
             return $link;
 

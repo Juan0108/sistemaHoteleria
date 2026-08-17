@@ -59,19 +59,6 @@ static public function MdlSuspenderUsuario($id_usuario){
 	$stmt = null;
 }
 
-static public function MdlActivarUsuario($id_usuario){
-	$stmt = Conexion::conectar()->prepare("UPDATE usuarios SET id_estatus = 1 WHERE id_usuario = :id_usuario");
-	$stmt->bindParam(":id_usuario", $id_usuario, PDO::PARAM_INT);
-
-	if ($stmt->execute()) {
-		return $stmt->rowCount() > 0;
-	} else {
-		return false;
-	}
-
-	$stmt = null;
-}
-
 /**
 Obtener Usuario
  */	
@@ -148,7 +135,6 @@ Insertar  Usuario
 			'$Usuario->id_colonia',
 			'$Usuario->id_perfil',
 			'$Usuario->usuario',
-			'$Usuario->correo',
 			'$Usuario->password',
 			'$Usuario->foto',
 			'$Usuario->id_estatus')");
@@ -172,8 +158,7 @@ Insertar  Usuario
 			'$Usuario->Id_municipio',
 			'$Usuario->id_colonia',
 			'$Usuario->id_perfil',
-			'$Usuario->usuario',
-			'$Usuario->correo')");
+			'$Usuario->usuario')");
 
 		}
 
@@ -190,23 +175,13 @@ Insertar  Usuario
 			'$Usuario->id_colonia',
 			'$Usuario->id_perfil',
 			'$Usuario->usuario',
-			'$Usuario->correo',
 			'$Usuario->password')");
 
 		}
 
 	 return $stmt -> execute();
 
-
-	}
-
-	static public function MdlActualizarFotoUsuario($usuario, $foto){
-
-		$stmt = Conexion::conectar()->prepare("UPDATE usuarios SET foto = :foto WHERE usuario = :usuario");
-		$stmt->bindParam(":foto", $foto, PDO::PARAM_STR);
-		$stmt->bindParam(":usuario", $usuario, PDO::PARAM_STR);
-
-		return $stmt->execute();
+     
 	}
 
 }

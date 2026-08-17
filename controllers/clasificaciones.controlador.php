@@ -28,7 +28,7 @@ static public function ctrInsertarClasificacion()
 
 				$respuesta = ModeloClasificaciones::MdlInsertarClasificacion($clasificacion);
 
-				if (is_array($respuesta) && isset($respuesta['validar']) && $respuesta['validar'] === 0){
+				if (is_array($respuesta) && isset($respuesta['validar']) && (int)$respuesta['validar'] === 0){
 
 					echo'<script>
 

@@ -9,7 +9,7 @@ class ComboTipoPago
 
 	public function mostrarComboTipoPago(){
 
-	   $Consulta = ControladorNegocios::crtJsonObtenerTipoPago();
+	   $Consulta = ControladorHoteles::crtJsonObtenerTipoPago();
 	   echo ($Consulta);	 
        
 	}

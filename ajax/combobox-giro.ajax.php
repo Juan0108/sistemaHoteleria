@@ -9,7 +9,7 @@ class ComboGiro
 
 	public function mostrarComboGiro(){
 
-	   $Consulta = ControladorNegocios::crtJsonObtenerGiro();
+	   $Consulta = ControladorHoteles::crtJsonObtenerGiro();
 	   echo ($Consulta);	 
        
 	}

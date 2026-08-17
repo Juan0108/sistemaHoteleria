@@ -23,7 +23,7 @@ class imprimirTicket {
         $Prefijo = 52;
         $Celular = $Prefijo . $this->Telefono;
 
-        $Negocio = ControladorNegocios::crtObtenerNegocioUsuarioReporte($idusuario);
+        $Negocio = ControladorHoteles::crtObtenerNegocioUsuarioReporte($idusuario);
         $ventas = ControladorVentas::crtObtenerTicket($idTicket, $idusuario);
         $Usuario = ModeloUsuarios::MdlObtenerUsuarioNombre($idusuario);
 
@@ -167,7 +167,7 @@ EOF;
 
         //Close and output PDF document
         $nombreArchivo = $idTicket . '_' . $idusuario .'.pdf';
-        $pdfFilePath = '/home/posditcommx/public_html/sistema.posdit.com.mx/tickets/' . $nombreArchivo; // Ajusta 'tu_usuario' según tu configuración de cPanel
+        $pdfFilePath = dirname(__DIR__, 3) . '/tickets/' . $nombreArchivo; // Carpeta "tickets" en la raíz del proyecto, sin importar el servidor
         $pdf->Output($pdfFilePath, 'F');
 
         $pdfUrl = "https://posdit.com.mx/sistema.posdit.com.mx/tickets/" . $nombreArchivo;  // URL del PDF en tu servidor

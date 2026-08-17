@@ -14,11 +14,12 @@ class usuario {
   private  $id_colonia;
   private  $id_perfil;
   private  $usuario;
+  private  $correo;
   private  $password;
   private  $foto;
   private  $id_estatus;
 
-  function __construct($id_usuario,$nombre,$Apaterno,$Amaterno,$id_negocio,$Calle,$Id_estado,$Id_municipio,$id_colonia,$id_perfil,$usuario,$password,$foto,$id_estatus)
+  function __construct($id_usuario,$nombre,$Apaterno,$Amaterno,$id_negocio,$Calle,$Id_estado,$Id_municipio,$id_colonia,$id_perfil,$usuario,$correo,$password,$foto,$id_estatus)
   {
     $this->id_usuario = $id_usuario;
     $this->nombre = $nombre;
@@ -31,6 +32,7 @@ class usuario {
     $this->id_colonia = $id_colonia;
     $this->id_perfil = $id_perfil;
     $this->usuario = $usuario;
+    $this->correo = $correo;
     $this->password = $password;
     $this->foto = $foto;
     $this->id_estatus = $id_estatus;

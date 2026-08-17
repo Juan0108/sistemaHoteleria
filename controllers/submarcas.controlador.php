@@ -27,7 +27,7 @@ static public function ctrInsertarSubMarca()
 
 				$respuesta = ModeloSubMarcas::MdlInsertarSubMarca($submarca);
 
-				if (is_array($respuesta) && isset($respuesta['validar']) && $respuesta['validar'] === 1){
+				if (is_array($respuesta) && isset($respuesta['validar']) && (int)$respuesta['validar'] === 0){
 
 					echo'<script>
 

@@ -123,10 +123,335 @@ $(document).ready(function(){
 
 
 /*=============================================
+MOSTRAR HUESPED DE LA HABITACION SELECCIONADA
+=============================================*/
+
+$(document).ready(function(){
+
+    /*=============================================
+    BUSCAR HABITACIÓN POR FOLIO DE RESERVACIÓN
+    =============================================*/
+
+    function coincideBusqueda(_opcion, _busqueda){
+
+        var _folioOpcion = String(_opcion.data("reservacion"));
+
+        if(_folioOpcion === _busqueda) return true;
+
+        var _nombreOpcion = String(_opcion.data("nombre-cliente") || "").toLowerCase();
+
+        if(!_nombreOpcion) return false;
+
+        var _palabrasNombre = _nombreOpcion.split(" ").filter(function(p){ return p.length > 0; });
+        var _palabrasBusqueda = _busqueda.toLowerCase().split(" ").filter(function(p){ return p.length > 0; });
+
+        if(!_palabrasBusqueda.length) return false;
+
+        // Coincide si cada palabra escrita (ej. "Diego" y "Acosta") empieza alguna
+        // palabra del nombre completo del huésped, sin importar el orden
+        return _palabrasBusqueda.every(function(_palabraBusqueda){
+            return _palabrasNombre.some(function(_palabraNombre){
+                return _palabraNombre.indexOf(_palabraBusqueda) === 0;
+            });
+        });
+
+    }
+
+    function obtenerCoincidencias(_busqueda){
+
+        return $("#habitacion option").filter(function(){
+            return coincideBusqueda($(this), _busqueda);
+        });
+
+    }
+
+    function ocultarSugerencias(){
+        $("#folioSugerencias").hide().empty();
+    }
+
+    function mostrarSugerencias(_matches){
+
+        var _cont = $("#folioSugerencias").empty();
+
+        _matches.each(function(){
+
+            var _op = $(this);
+            var _item = $('<div class="cv-folio-sugerencia"></div>').attr("data-valor", _op.val());
+
+            $('<div class="cv-folio-sugerencia-hab"><i class="fa fa-bed"></i></div>')
+                .append(document.createTextNode(" " + _op.text().trim() + " · Hab. " + _op.data("numero")))
+                .appendTo(_item);
+
+            $('<div class="cv-folio-sugerencia-detalle"></div>')
+                .text(_op.data("nombre-cliente") + " · Folio " + _op.data("reservacion"))
+                .appendTo(_item);
+
+            _cont.append(_item);
+
+        });
+
+        _cont.show();
+
+    }
+
+    // Deselecciona la habitación sin disparar la limpieza automática del campo de búsqueda
+    function limpiarSeleccionHabitacion(){
+        $("#habitacion").val("0").trigger("change", [{skipFolioCheck:true}]);
+    }
+
+    function buscarHabitacionPorFolio(mostrarErrorSiNoExiste){
+
+        var _busqueda = $("#folioReservacion").val().trim();
+
+        if(!_busqueda){
+            ocultarSugerencias();
+            return;
+        }
+
+        var _match = obtenerCoincidencias(_busqueda);
+
+        if(_match.length === 1){
+
+            ocultarSugerencias();
+            $("#habitacion").val(_match.first().val()).trigger("change", [{skipFolioCheck:true}]);
+
+        }else if(_match.length > 1){
+
+            // Más de un huésped coincide (ej. mismo nombre en distintas habitaciones):
+            // no se adivina, se deja que el usuario elija de la lista.
+            limpiarSeleccionHabitacion();
+            mostrarSugerencias(_match);
+
+            if(mostrarErrorSiNoExiste){
+                Swal.fire({
+                    icon: "info",
+                    title: "Sistema PosDit",
+                    text: "Hay " + _match.length + " huéspedes que coinciden con \"" + _busqueda + "\". Selecciona la habitación correcta de la lista.",
+                    confirmButtonText: "Entendido"
+                });
+            }
+
+        }else{
+
+            ocultarSugerencias();
+            limpiarSeleccionHabitacion();
+
+            if(mostrarErrorSiNoExiste){
+
+                Swal.fire({
+                    icon: "error",
+                    title: "Sistema PosDit",
+                    text: "No se encontró ninguna habitación ocupada con el folio de reservación o nombre de huésped: " + _busqueda,
+                    confirmButtonText: "Cerrar"
+                });
+
+            }
+
+        }
+
+    }
+
+    $("#folioReservacion").on("input", function(){
+
+        if(!$(this).val().trim()){
+            ocultarSugerencias();
+            limpiarSeleccionHabitacion();
+            return;
+        }
+
+        buscarHabitacionPorFolio(false);
+
+    });
+
+    $("#folioReservacion").on("blur", function(){
+        buscarHabitacionPorFolio(true);
+    });
+
+    $("#folioReservacion").on("keydown", function(e){
+        if(e.which === 13){
+            e.preventDefault();
+            buscarHabitacionPorFolio(true);
+        }
+    });
+
+    // mousedown (no click) + preventDefault: evita que el input pierda el foco
+    // (y dispare "blur") antes de registrar la selección de la sugerencia.
+    $("#folioSugerencias").on("mousedown", ".cv-folio-sugerencia", function(e){
+
+        e.preventDefault();
+
+        var _valor = $(this).data("valor");
+        var _op = $("#habitacion option[value='" + _valor + "']");
+
+        $("#folioReservacion").val(_op.data("nombre-cliente"));
+        $("#habitacion").val(_valor).trigger("change", [{skipFolioCheck:true}]);
+
+        ocultarSugerencias();
+
+    });
+
+    $(document).on("click", function(e){
+        if(!$(e.target).closest(".cv-campo-folio").length){
+            ocultarSugerencias();
+        }
+    });
+
+    $("#habitacion").on("change", function(e, _opts){
+
+        var _seleccionada = $(this).find("option:selected");
+        var _nombreCliente = _seleccionada.data("nombre-cliente");
+        var _numeroHabitacion = _seleccionada.data("numero");
+        var _fechaEntrada = _seleccionada.data("fecha-entrada");
+        var _fechaSalida = _seleccionada.data("fecha-salida");
+        var _idReservacion = _seleccionada.data("reservacion");
+        var _horasExtras = parseInt(_seleccionada.data("horas-extras"), 10) || 0;
+
+        // Si la habitación seleccionada no corresponde a la búsqueda (folio o nombre), se limpia el campo.
+        // Se omite cuando el cambio lo disparó la propia búsqueda (skipFolioCheck).
+        var _folioActual = $("#folioReservacion").val().trim();
+        if(!(_opts && _opts.skipFolioCheck) && _folioActual && !coincideBusqueda(_seleccionada, _folioActual)){
+            $("#folioReservacion").val("");
+            ocultarSugerencias();
+        }
+
+        // Cada cambio de habitación es una venta nueva: se limpia el carrito de la habitación anterior
+        $(".nuevoProducto").empty();
+        $("#Qbarra").val("");
+        $("#nuevoTotalVenta").val(0);
+        $("#totalVenta").val(0);
+        $("#nuevoTotalVenta").attr("total",0);
+        mostrarCambio();
+
+        if($(this).val() != "0" && _nombreCliente){
+
+            $("#huespedNombre").text(_nombreCliente);
+            $("#huespedBox").show();
+
+            $("#habitacionNumero").text(_numeroHabitacion);
+            $("#habitacionNumeroBox").show();
+
+            $("#entradaFecha").text(formatearFechaHora(_fechaEntrada));
+            $("#entradaBox").show();
+
+            $("#salidaFecha").text(formatearFechaHora(_fechaSalida));
+            $("#salidaBox").show();
+
+            if(_horasExtras > 0){
+
+                $("#tiempoExtraFecha").text(formatearFechaHora(sumarHorasAFecha(_fechaSalida, _horasExtras)));
+                $("#tiempoExtraBox").show();
+
+            }else{
+
+                $("#tiempoExtraFecha").text("");
+                $("#tiempoExtraBox").hide();
+
+            }
+
+            $("#reservacionId").text(_idReservacion);
+            $("#reservacionBox").show();
+
+            $("button.btnGuardarVenta").prop("disabled", false);
+
+        }else{
+
+            $("#huespedNombre").text("");
+            $("#huespedBox").hide();
+
+            $("#habitacionNumero").text("");
+            $("#habitacionNumeroBox").hide();
+
+            $("#entradaFecha").text("");
+            $("#entradaBox").hide();
+
+            $("#salidaFecha").text("");
+            $("#salidaBox").hide();
+
+            $("#tiempoExtraFecha").text("");
+            $("#tiempoExtraBox").hide();
+
+            $("#reservacionId").text("");
+            $("#reservacionBox").hide();
+
+            $("button.btnGuardarVenta").prop("disabled", true);
+
+        }
+
+    });
+
+});
+
+/*=============================================
+FORMATEAR FECHA/HORA PARA MOSTRAR (ej. "09 ago, 3:00 pm")
+=============================================*/
+
+function formatearFechaHora(fechaStr){
+
+    if(!fechaStr) return "";
+
+    var partes = fechaStr.split(" ");
+    var fecha = partes[0].split("-");
+    var hora = partes[1] ? partes[1].split(":") : ["00", "00"];
+
+    var meses = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+    var dia = fecha[2];
+    var mes = meses[parseInt(fecha[1], 10) - 1];
+
+    var h = parseInt(hora[0], 10);
+    var m = hora[1];
+    var ampm = h >= 12 ? "pm" : "am";
+    var h12 = h % 12;
+    if(h12 == 0) h12 = 12;
+
+    return dia + " " + mes + ", " + h12 + ":" + m + " " + ampm;
+
+}
+
+/*=============================================
+SUMAR HORAS A UNA FECHA "YYYY-MM-DD HH:MM:SS"
+=============================================*/
+
+function sumarHorasAFecha(fechaStr, horas){
+
+    if(!fechaStr) return "";
+
+    var partes = fechaStr.split(" ");
+    var fecha = partes[0].split("-");
+    var hora = partes[1] ? partes[1].split(":") : ["00", "00", "00"];
+
+    var fechaObj = new Date(fecha[0], fecha[1] - 1, fecha[2], hora[0], hora[1], hora[2] || 0);
+    fechaObj.setHours(fechaObj.getHours() + Number(horas));
+
+    var pad = function(n){ return (n < 10 ? "0" : "") + n; };
+
+    return fechaObj.getFullYear() + "-" + pad(fechaObj.getMonth() + 1) + "-" + pad(fechaObj.getDate()) +
+        " " + pad(fechaObj.getHours()) + ":" + pad(fechaObj.getMinutes()) + ":" + pad(fechaObj.getSeconds());
+
+}
+
+
+/*=============================================
 AGREGANDO PRODUCTOS
 =============================================*/
 
 function CargaProducto(){
+
+	var _habitacion = $("#habitacion").val();
+
+	if(!_habitacion || _habitacion == "0"){
+
+		Swal.fire({
+			icon: "error",
+			title : "Sistema PosDit",
+			text: "¡Favor de seleccionar una habitación primero antes de agregar un producto!",
+			showConfirmButton: true,
+			confirmButtonText: "Cerrar"
+		});
+
+		$("#Qbarra").val("");
+
+		return;
+	}
 
 AgregaProducto();
 
@@ -136,12 +461,13 @@ AgregaProducto();
 function AgregaProducto(){
 
 	var _Id = $('#Qbarra').val();
-	var _IdUsuario = $("#usuario").val(); 
+	var _IdUsuario = $("#usuario").val();
 	var _idInventario = $(".idInventario");
 	var _SubMarcaAgregada = $(".nuevosubmarca");
 	var _cantidadAgregada = $(".CantidadProducto");
 	var _PrecioAgregada = $(".nuevoPrecioProducto");
-	var _bandera = new Boolean(false);
+	var _esHorasExtra = (String(_Id).toUpperCase() === "HRSEXTRA");
+	var _esHorasAnticipadas = (String(_Id).toUpperCase() === "HRSANTICIPADA");
 
  	var datos = new FormData();
  	datos.append("id",_Id);
@@ -183,80 +509,127 @@ function AgregaProducto(){
 
           	}
 
-			 //Valida si el producto ya esta en la lista y le agrega 1 cantidad más
-			  var i = 0;
-			  while( i < _idInventario.length && _bandera == false){
+			 //Ubica si el producto ya esta en la lista para saber si hay que incrementarlo
+			  var _indiceExistente = -1;
+
+			  for(var i = 0; i < _idInventario.length; i++){
 
 				if($(_SubMarcaAgregada[i]).val() == SubMarca){
-
-					if(parseInt($(_cantidadAgregada[i]).val()) >= parseInt(stock)){
-
-						Swal.fire({
-							title : "Sistema PosDit",
-							text: "¡La cantidad supera el Stock, Sólo hay "+stock+" unidades!",
-							icon: "error",
-							confirmButtonText: "¡Cerrar!"
-						  });
-
-					}else{
-
-						$(_cantidadAgregada[i]).val(parseInt($(_cantidadAgregada[i]).val()) + 1);
-						$(_PrecioAgregada[i]).val(parseInt($(_cantidadAgregada[i]).val()) * precio);
-					}
-			  
-					_bandera = true;
+					_indiceExistente = i;
+					break;
 				}
-
-				i++	
 			  }
 
-			  if(_bandera == false){
+			  var _cantidadSolicitada = (_indiceExistente >= 0) ? (parseInt($(_cantidadAgregada[_indiceExistente]).val()) + 1) : 1;
 
-				$(".nuevoProducto").append(
+			  var _agregarOIncrementar = function(){
 
-					'<div class="row" style="padding:5px 15px">'+
-	  
-					'<!-- Descripción del producto -->'+
-					
-					'<div class="col-xs-6" style="padding-right:0px">'+
-					
-					  '<div class="input-group">'+
-						
-						'<span class="input-group-addon"><button type="button" class="btn btn-danger btn-xs quitarProducto" idProducto="'+_Id+'"><i class="fa fa-times"></i></button></span>'+
-	  
-						'<input type="text" class="form-control nuevosubmarca" idProducto="'+SubMarca+'" name="agregarProducto" value="'+SubMarca+'" readonly required>'+
-						'<input type="text" class="form-control precioVenta" precioVenta="'+precioVenta+'" name="precioVenta" value="'+precioVenta+'" readonly required>'+
-						'<input type="hidden" class="form-control idInventario " idInventario="'+idInventario+'" name="idInventario" value="'+idInventario+'" readonly required>'+
-	  
-					  '</div>'+
-	  
-					'</div>'+
-	  
-					'<!-- Cantidad del producto -->'+
-	  
-					'<div class="col-xs-3">'+
-					  
-					   '<input type="number" class="form-control CantidadProducto" name="CantidadProducto" min="1" value="1" stock="'+stock+'" nuevoStock="'+Number(stock-1)+'" required>'+
-					   '<input type="text" class="form-control stockReal" stockReal="'+StockActual+'" name="stockReal" value="'+StockActual+'" readonly required>'+
-	  
-					'</div>' +
-	  
-					'<!-- Precio del producto -->'+
-	  
-					'<div class="col-xs-3 ingresoPrecio" style="padding-left:0px">'+
-	  
-					  '<div class="input-group">'+
-	  
-						'<span class="input-group-addon"><i class="ion ion-social-usd"></i></span>'+
-						   
-						'<input type="text" class="form-control nuevoPrecioProducto" precioReal="'+precio+'" name="nuevoPrecioProducto" value="'+precio+'" readonly required>'+
-            '<input type="hidden" class="form-control precioCompra" precioCompra="'+precioCompra+'" name="precioCompra" value="'+precioCompra+'" readonly required>'+
-					  '</div>'+
-					   
-					'</div>'+
-          '<span><button type="button" class="btn btn-info btn-xs descuentos" idProducto="'+SubMarca+'"><i class="fa fa-minus-square-o" aria-hidden="true"></i> <i class="fa fa-usd"></i></button></span>'+
-          '<span class="descuento-leyenda">Sin Descuento</span>'+
-				  '</div>')
+				  if(_indiceExistente >= 0){
+
+						if(parseInt($(_cantidadAgregada[_indiceExistente]).val()) >= parseInt(stock)){
+
+							Swal.fire({
+								title : "Sistema PosDit",
+								text: "¡La cantidad supera el Stock, Sólo hay "+stock+" unidades!",
+								icon: "error",
+								confirmButtonText: "¡Cerrar!"
+							  });
+
+						}else{
+
+							$(_cantidadAgregada[_indiceExistente]).val(_cantidadSolicitada);
+							$(_cantidadAgregada[_indiceExistente]).attr("data-valor-anterior", _cantidadSolicitada);
+							$(_PrecioAgregada[_indiceExistente]).val(_cantidadSolicitada * precio);
+						}
+
+				  }else{
+
+					$(".nuevoProducto").append(
+
+						'<div class="row" style="padding:5px 15px">'+
+
+						'<!-- Descripción del producto -->'+
+
+						'<div class="col-xs-6" style="padding-right:0px">'+
+
+						  '<div class="input-group">'+
+
+							'<span class="input-group-addon"><button type="button" class="btn btn-danger btn-xs quitarProducto" idProducto="'+_Id+'"><i class="fa fa-times"></i></button></span>'+
+
+							'<input type="text" class="form-control nuevosubmarca" idProducto="'+SubMarca+'" data-horas-extra="'+(_esHorasExtra ? "1" : "0")+'" data-horas-anticipadas="'+(_esHorasAnticipadas ? "1" : "0")+'" name="agregarProducto" value="'+SubMarca+'" readonly required>'+
+							'<input type="text" class="form-control precioVenta" precioVenta="'+precioVenta+'" name="precioVenta" value="'+precioVenta+'" readonly required>'+
+							'<input type="hidden" class="form-control idInventario " idInventario="'+idInventario+'" name="idInventario" value="'+idInventario+'" readonly required>'+
+
+						  '</div>'+
+
+						'</div>'+
+
+						'<!-- Cantidad del producto -->'+
+
+						'<div class="col-xs-3">'+
+
+						   '<input type="number" class="form-control CantidadProducto" name="CantidadProducto" min="1" value="1" data-valor-anterior="1" stock="'+stock+'" nuevoStock="'+Number(stock-1)+'" required>'+
+						   '<input type="text" class="form-control stockReal"'+((_esHorasExtra || _esHorasAnticipadas) ? ' style="visibility:hidden;"' : '')+' stockReal="'+StockActual+'" name="stockReal" value="'+StockActual+'" readonly required>'+
+
+						'</div>' +
+
+						'<!-- Precio del producto -->'+
+
+						'<div class="col-xs-3 ingresoPrecio" style="padding-left:0px">'+
+
+						  '<div class="input-group">'+
+
+							'<span class="input-group-addon"><i class="ion ion-social-usd"></i></span>'+
+
+							'<input type="text" class="form-control nuevoPrecioProducto" precioReal="'+precio+'" name="nuevoPrecioProducto" value="'+precio+'" readonly required>'+
+              '<input type="hidden" class="form-control precioCompra" precioCompra="'+precioCompra+'" name="precioCompra" value="'+precioCompra+'" readonly required>'+
+						  '</div>'+
+
+						'</div>'+
+            '<span><button type="button" class="btn btn-info btn-xs descuentos" idProducto="'+SubMarca+'"><i class="fa fa-minus-square-o" aria-hidden="true"></i> <i class="fa fa-usd"></i></button></span>'+
+            '<span class="descuento-leyenda">Sin Descuento</span>'+
+					  '</div>')
+				  }
+
+			        $("#Qbarra").val("");
+			        sumarTotalPrecios();
+
+			  };
+
+			  if(_esHorasExtra){
+
+			  	validarHorasExtra($("#habitacion").val(), $("#habitacion option:selected").data("fecha-salida"), _cantidadSolicitada, function(resultado){
+
+			  		if(resultado.permitido){
+
+			  			_agregarOIncrementar();
+
+			  		}else{
+
+			  			mostrarAlertaHorasExtraNoDisponibles(resultado);
+
+			  			$("#Qbarra").val("");
+
+			  		}
+
+			  	});
+
+			  }else if(_esHorasAnticipadas){
+
+			  	// HrsAnticipada ya no se maneja en Crear Venta (ahora es responsabilidad del módulo de Recepción).
+			  	Swal.fire({
+			  		title : "Sistema PosDit",
+			  		text: "Producto Inválido",
+			  		icon: "error",
+			  		confirmButtonText: "¡Cerrar!"
+			  	});
+
+			  	$("#Qbarra").val("");
+
+			  }else{
+
+			  	_agregarOIncrementar();
+
 			  }
 
  			}else{
@@ -266,12 +639,110 @@ function AgregaProducto(){
 					icon: "error",
 					confirmButtonText: "¡Cerrar!"
 					});
+
+			    $("#Qbarra").val("");
+			    sumarTotalPrecios();
  			}
 
-	        $("#Qbarra").val("");
-	        sumarTotalPrecios();
- 		} 
+ 		}
  	})
+
+}
+
+/*=============================================
+VALIDAR HORAS EXTRA CONTRA LA SIGUIENTE RESERVACIÓN
+=============================================*/
+
+function validarHorasExtra(idHabitacion, fechaSalidaActual, cantidadHoras, callback){
+
+	var datos = new FormData();
+	datos.append("idHabitacion", idHabitacion);
+	datos.append("fechaSalidaActual", fechaSalidaActual);
+	datos.append("cantidadHoras", cantidadHoras);
+
+	$.ajax({
+
+		url: "ajax/validarHorasExtra.ajax.php",
+		method: "POST",
+		data: datos,
+		cache: false,
+		contentType: false,
+		processData: false,
+		dataType: "json",
+		success: function(respuesta){
+			callback(respuesta);
+		},
+		error: function(){
+			callback({ permitido: false, maxHoras: 0, siguienteEntrada: null });
+		}
+
+	});
+
+}
+
+function mostrarAlertaHorasExtraNoDisponibles(resultado){
+
+	Swal.fire({
+		icon: "warning",
+		title: "Horas extra no disponibles",
+		html:
+			'<p style="margin:0 0 14px;color:#3f342e;">La habitación ya tiene una próxima reservación, así que no es posible cubrir esa cantidad de horas extra.</p>' +
+			'<div style="background:#f4efe4;border:1px solid #eee3d2;border-radius:8px;padding:12px 16px;text-align:left;">' +
+				'<p style="margin:6px 0;color:#3f342e;font-size:14px;"><i class="fa fa-sign-in" style="color:#b96a37;width:20px;display:inline-block;"></i> Próxima reservación: <strong>' + formatearFechaHora(resultado.siguienteEntrada) + '</strong></p>' +
+				'<p style="margin:6px 0;color:#3f342e;font-size:14px;"><i class="fa fa-clock-o" style="color:#b96a37;width:20px;display:inline-block;"></i> Máximo de horas extra disponibles: <strong>' + resultado.maxHoras + ' hora(s)</strong></p>' +
+			'</div>',
+		confirmButtonText: "Entendido",
+		confirmButtonColor: "#81412d"
+	});
+
+}
+
+/*=============================================
+VALIDAR HORAS ANTICIPADAS CONTRA LA RESERVACIÓN ANTERIOR
+=============================================*/
+
+function validarHorasAnticipadas(idHabitacion, idReservacion, fechaEntradaActual, cantidadHoras, callback){
+
+	var datos = new FormData();
+	datos.append("idHabitacion", idHabitacion);
+	datos.append("idReservacion", idReservacion);
+	datos.append("fechaEntradaActual", fechaEntradaActual);
+	datos.append("cantidadHoras", cantidadHoras);
+
+	$.ajax({
+
+		url: "ajax/validarHorasAnticipadas.ajax.php",
+		method: "POST",
+		data: datos,
+		cache: false,
+		contentType: false,
+		processData: false,
+		dataType: "json",
+		success: function(respuesta){
+			callback(respuesta);
+		},
+		error: function(){
+			callback({ permitido: false, maxHoras: 0, salidaAnterior: null });
+		}
+
+	});
+
+}
+
+function mostrarAlertaHorasAnticipadasNoDisponibles(resultado){
+
+	Swal.fire({
+		icon: "warning",
+		title: "Horas anticipadas no disponibles",
+		html:
+			'<p style="margin:0 0 14px;color:#3f342e;">La habitación todavía tiene una reservación previa activa, así que no es posible cubrir esa cantidad de horas anticipadas.</p>' +
+			'<div style="background:#f4efe4;border:1px solid #eee3d2;border-radius:8px;padding:12px 16px;text-align:left;">' +
+				'<p style="margin:6px 0;color:#3f342e;font-size:14px;"><i class="fa fa-sign-out" style="color:#b96a37;width:20px;display:inline-block;"></i> Salida de la reservación anterior: <strong>' + formatearFechaHora(resultado.salidaAnterior) + '</strong></p>' +
+				'<p style="margin:6px 0;color:#3f342e;font-size:14px;"><i class="fa fa-clock-o" style="color:#b96a37;width:20px;display:inline-block;"></i> Máximo de horas anticipadas disponibles: <strong>' + resultado.maxHoras + ' hora(s)</strong></p>' +
+			'</div>',
+		confirmButtonText: "Entendido",
+		confirmButtonColor: "#81412d"
+	});
 
 }
 
@@ -282,31 +753,37 @@ Modificar Cantidad
 
 $(".formularioVenta").on("change", "input.CantidadProducto", function(){
 
-	var precio = $(this).parent().parent().children(".ingresoPrecio").children().children(".nuevoPrecioProducto");
+	var _input = $(this);
+	var _fila = _input.closest(".row");
+	var precio = _fila.children(".ingresoPrecio").children().children(".nuevoPrecioProducto");
+	var _esHorasExtra = _fila.find(".nuevosubmarca").attr("data-horas-extra") == "1";
+	var _esHorasAnticipadas = _fila.find(".nuevosubmarca").attr("data-horas-anticipadas") == "1";
+	var _valorAnterior = Number(_input.attr("data-valor-anterior")) || 1;
 
-	var precioFinal = $(this).val() * precio.attr("precioReal");
-	
+	var precioFinal = _input.val() * precio.attr("precioReal");
+
 	precio.val(precioFinal);
 
-	var nuevoStock = Number($(this).attr("stock")) - $(this).val();
+	var nuevoStock = Number(_input.attr("stock")) - _input.val();
 
-	$(this).attr("nuevoStock", nuevoStock);
+	_input.attr("nuevoStock", nuevoStock);
 
-	if(Number($(this).val()) > Number($(this).attr("stock"))){
+	if(Number(_input.val()) > Number(_input.attr("stock"))){
 
-		$(this).val(1);
+		_input.val(1);
 
-		var precioFinal = $(this).val() * precio.attr("precioReal");
+		var precioFinal = _input.val() * precio.attr("precioReal");
 
 		precio.val(precioFinal);
 
 		Swal.fire({
 		  title : "Sistema PosDit",
-	      text: "¡La cantidad supera el Stock, Sólo hay "+$(this).attr("stock")+" unidades!",
+	      text: "¡La cantidad supera el Stock, Sólo hay "+_input.attr("stock")+" unidades!",
 	      icon: "error",
 	      confirmButtonText: "¡Cerrar!"
 	    });
 
+	    _input.attr("data-valor-anterior", _input.val());
 	    sumarTotalPrecios();
 	    mostrarCambio();
 
@@ -314,8 +791,65 @@ $(".formularioVenta").on("change", "input.CantidadProducto", function(){
 
 	}
 
-	sumarTotalPrecios();
-	mostrarCambio();
+	if(_esHorasExtra){
+
+		var _cantidadSolicitada = Number(_input.val());
+
+		validarHorasExtra($("#habitacion").val(), $("#habitacion option:selected").data("fecha-salida"), _cantidadSolicitada, function(resultado){
+
+			if(resultado.permitido){
+
+				_input.attr("data-valor-anterior", _cantidadSolicitada);
+
+			}else{
+
+				_input.val(_valorAnterior);
+
+				var precioRevertido = _valorAnterior * precio.attr("precioReal");
+				precio.val(precioRevertido);
+
+				mostrarAlertaHorasExtraNoDisponibles(resultado);
+
+			}
+
+			sumarTotalPrecios();
+			mostrarCambio();
+
+		});
+
+	}else if(_esHorasAnticipadas){
+
+		var _cantidadSolicitada = Number(_input.val());
+
+		validarHorasAnticipadas($("#habitacion").val(), $("#habitacion option:selected").data("reservacion"), $("#habitacion option:selected").data("fecha-entrada"), _cantidadSolicitada, function(resultado){
+
+			if(resultado.permitido){
+
+				_input.attr("data-valor-anterior", _cantidadSolicitada);
+
+			}else{
+
+				_input.val(_valorAnterior);
+
+				var precioRevertido = _valorAnterior * precio.attr("precioReal");
+				precio.val(precioRevertido);
+
+				mostrarAlertaHorasAnticipadasNoDisponibles(resultado);
+
+			}
+
+			sumarTotalPrecios();
+			mostrarCambio();
+
+		});
+
+	}else{
+
+		_input.attr("data-valor-anterior", _input.val());
+		sumarTotalPrecios();
+		mostrarCambio();
+
+	}
 
 })
 
@@ -468,10 +1002,22 @@ Guardar Venta
 
 $(".formularioVenta").on("click", "button.btnGuardarVenta", function(){
 
-var Pago = $("#paga").val()	
+var Habitacion = $("#habitacion").val();
+var Pago = $("#paga").val()
 
 
-if(Pago == '' || Pago == 0){
+if(Habitacion == '0' || !Habitacion){
+
+
+	Swal.fire({
+		icon: "error",
+		title : "Sistema PosDit",
+		text: "¡Favor de seleccionar una habitación para generar la venta!",
+		showConfirmButton: true,
+		confirmButtonText: "Cerrar"
+		})
+
+}else if(Pago == '' || Pago == 0){
 
 
 	Swal.fire({
@@ -652,9 +1198,9 @@ function InsertarProductos(){
 
 	var cantidad = $(".CantidadProducto");
 
-  var cliente = $("#cliente").val();
-
-  console.log("valor", cliente);
+  var _habitacionSeleccionada = $("#habitacion option:selected");
+  var cliente = _habitacionSeleccionada.data("cliente") || 0;
+  var reservacion = _habitacionSeleccionada.data("reservacion") || 0;
 
 	var NTicket;
 
@@ -694,6 +1240,7 @@ function InsertarProductos(){
 	 			    datos.append("idUsuario",IdUsuario);
             datos.append("precioFinal",$(precioItem[i]).val());
             datos.append("cliente",cliente);
+            datos.append("reservacion",reservacion);
 
 	 				$.ajax({
 				 		url:"ajax/crearventa.ajax.php",

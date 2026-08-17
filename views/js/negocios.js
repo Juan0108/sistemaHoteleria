@@ -1,7 +1,7 @@
 /*=============================================
- Obtener Negocios
+ Obtener Hoteles
  =============================================*/
-$('.tablaNegocios').DataTable( {
+$('.tablaHoteles').DataTable( {
     "ajax": "ajax/datatable-negocios.ajax.php",
     "deferRender": true,
 	"retrieve": true,
@@ -44,7 +44,7 @@ $('.timepicker').timepicker({
 })
 
 
-$(".nuevaCartaResponsiva").change(function(){
+$(".nuevoContrato").change(function(){
 
 	var imagen = this.files[0];
 	
@@ -54,22 +54,22 @@ $(".nuevaCartaResponsiva").change(function(){
 
   	if(imagen["type"] != "application/pdf" ){
 
-  		$(".nuevaCartaResponsiva").val("");
+  		$(".nuevoContrato").val("");
 
 		  Swal.fire({
 			  title: "Sistema PosDit",
-		      text: "¡La carta responsiva debe estar en formato PDF!",
+		      text: "¡El Contrato debe estar en formato PDF!",
 		      icon: "error",
 		      confirmButtonText: "¡Cerrar!"
 		    });
 
   	}else if(imagen["size"] > 3145728){
 
-  		$(".nuevaCartaResponsiva").val("");
+  		$(".nuevoContrato").val("");
 
   		 Swal.fire({
 			  title: "Sistema PosDit",
-		      text: "¡Error al subir la carta responsiva, No debe pesar más de 3MB!",
+		      text: "¡Error al subir el Contrato, No debe pesar más de 3MB!",
 		      icon: "error",
 		      confirmButtonText: "¡Cerrar!"
 		    });
@@ -80,12 +80,12 @@ $(".nuevaCartaResponsiva").change(function(){
 /*=============================================
  Obtener Tipo de Pago  y Giro Combobox Agregar
  =============================================*/
- $(document).on("click", ".btnEditarNegocio", function(){
+ $(document).on("click", ".btnEditarHotel", function(){
 
- 	var _idNegocio = $(this).attr("data-id-negocio");
+ 	var _idHotel = $(this).attr("data-id-Hotel");
 
  	var datos = new FormData();
- 	datos.append("idNegocio", _idNegocio);
+ 	datos.append("idHotel", _idHotel);
 
  	$.ajax({
 
@@ -98,7 +98,7 @@ $(".nuevaCartaResponsiva").change(function(){
  		dataType: "json",
  		success: function(respuesta){
 
- 			$("#editarIdNegocio").val(_idNegocio);
+ 			$("#editarIdHotel").val(_idHotel);
  			$("#editarRazonSocial").val(respuesta["Razon_Social"]);
  			$("#editarResponsable").val(respuesta["Responsable"]);
  			$("#editarTelefono").val(respuesta["Telefono"]);
@@ -119,6 +119,68 @@ $(".nuevaCartaResponsiva").change(function(){
  	});
 
  });
+
+/*=============================================
+ Eliminar (dar de baja) Hotel
+ =============================================*/
+$(document).on("click", ".btnEliminarHotel", function(){
+
+	var _idHotel = $(this).attr("data-id-hotel");
+
+	Swal.fire({
+		title: "Sistema PosDit",
+		text: "¿Está seguro de dar de baja este hotel?",
+		icon: "warning",
+		showCancelButton: true,
+		confirmButtonText: "Sí, dar de baja",
+		cancelButtonText: "Cancelar"
+	}).then(function(result){
+
+		if(result.value){
+
+			var datos = new FormData();
+			datos.append("idEliminarHotel", _idHotel);
+
+			$.ajax({
+
+				url: "ajax/negocios.ajax.php",
+				method: "POST",
+				data: datos,
+				cache: false,
+				contentType: false,
+				processData: false,
+				dataType: "text",
+				success: function(respuesta){
+
+					if(respuesta.trim() == "ok"){
+
+						Swal.fire({
+							icon: "success",
+							title: "Sistema PosDit",
+							text: "El Hotel ha sido dado de baja correctamente"
+						}).then(function(){
+							$('.tablaHoteles').DataTable().ajax.reload(null, false);
+						});
+
+					}else{
+
+						Swal.fire({
+							icon: "error",
+							title: "Sistema PosDit",
+							text: "¡Error al dar de baja el Hotel, favor de intentar de nuevo!"
+						});
+
+					}
+
+				}
+
+			});
+
+		}
+
+	});
+
+});
 
 $(document).ready(function(){
 
@@ -225,8 +287,9 @@ function CargarCbTipoPago(select, seleccionar = false, valor = null){
 			var jsonData = JSON.parse(data);
 			for (var i = 0; i < jsonData.data.length; i++) {
 			    var counter = jsonData.data[i];
+			    var id = counter.Id_TipoPago ?? counter.Id_tipopago ?? counter.id_tipopago ?? counter.Id_TipoPago;
 
-			    $("#"+select).append(new Option(counter.Nombre,counter.Id_TipoPago));
+			    $("#"+select).append(new Option(counter.Nombre, id));
 			}
 
 			if(seleccionar){
@@ -251,7 +314,7 @@ function CargarCbGiro(select, seleccionar = false, valor = null){
 			for (var i = 0; i < jsonData.data.length; i++) {
 			    var counter = jsonData.data[i];
 
-			    $("#"+select).append(new Option(counter.Nombre,counter.Id_giro));
+			    $("#"+select).append(new Option(counter.Nombre,counter.Id_Giro));
 			}
 
 			if(seleccionar){
@@ -274,8 +337,9 @@ function CargarCbEstatus(select, seleccionar = false, valor = null){
 			var jsonData = JSON.parse(data);
 			for (var i = 0; i < jsonData.data.length; i++) {
 			    var counter = jsonData.data[i];
+			    var id = counter.Id_Estatus ?? counter.Id_estatus ?? counter.id_estatus ?? counter.Id_Estatus;
 
-			    $("#"+select).append(new Option(counter.Nombre,counter.Id_estatus));
+			    $("#"+select).append(new Option(counter.Nombre, id));
 			}
 
 			if(seleccionar){
@@ -297,6 +361,11 @@ function CargarCbEstados(select, seleccionar = false, valor = null){
 		dataType: "text",
 		success: function(data){
 		var jsonData = JSON.parse(data);
+
+			// Limpiamos el combo antes de llenarlo para no acumular opciones duplicadas
+			// cada vez que se abre el modal de edición.
+			$("#"+select).empty();
+
 			for (var i = 0; i < jsonData.data.length; i++) {
 			    var counter = jsonData.data[i];
 
@@ -321,8 +390,13 @@ function CargarCbMunicipio(id, select, seleccionar = false, valor = null){
       data: {'id': id}
     })
     .done(function(Municipios){
-      
+
 		var jsonData = JSON.parse(Municipios);
+
+		// Limpiamos el combo antes de llenarlo para no acumular opciones duplicadas
+		// cada vez que se abre el modal de edición.
+		$("#"+select).empty();
+
 		for (var i = 0; i < jsonData.Municipios.length; i++) {
 		    var counter = jsonData.Municipios[i];
 
@@ -348,17 +422,34 @@ function CargarCbColonia(id, select, seleccionar = false, valor = null){
     })
     .done(function(Colonias){
       
-		var jsonData = JSON.parse(Colonias);
-		for (var i = 0; i < jsonData.Colonias.length; i++) {
-		    var counter = jsonData.Colonias[i];
+		var jsonData = (typeof Colonias === 'string') ? JSON.parse(Colonias) : Colonias;
+		
+		// Verificamos si los datos vienen directamente en un array o dentro de jsonData.Colonias
+		var lista = jsonData.Colonias || jsonData.data || jsonData;
 
-		    $("#"+select).append(new Option(counter.Nombre,counter.Id_Colonia));
-		}
+		if(Array.isArray(lista) && lista.length > 0){
 
-		if(seleccionar){
-			$("#"+select).val(valor);
+			// Limpiamos el combo antes de llenarlo para no acumular opciones duplicadas
+			// cada vez que se abre el modal de edición.
+			$("#"+select).empty();
+
+			for (var i = 0; i < lista.length; i++) {
+			    var counter = lista[i];
+
+
+			    $("#"+select).append(new Option(counter.Nombre, counter.Id_Colonia));
+			}
+
+			if(seleccionar){
+				$("#"+select).val(valor);
+			}
+		} else {
+			console.warn("No se devolvieron colonias para el municipio con ID:", id);
 		}
     })
+    .fail(function(err){
+        console.error("Error en la petición AJAX de colonias:", err);
+    });
 
 }
 

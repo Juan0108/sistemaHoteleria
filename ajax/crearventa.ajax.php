@@ -14,6 +14,7 @@ class AjaxCrearVenta
 	public $Idusuario;
 	public $PrecioFinal;
 	public $Cliente;
+	public $Reservacion;
 
 	public function AjaxInsertarVenta(){
 
@@ -23,7 +24,8 @@ class AjaxCrearVenta
 		$vIdUsuario = $this->Idusuario;
 		$vPrecioFinal = $this->PrecioFinal;
 		$vCliente= $this->Cliente;
-		$respuesta = ModeloVentas::MdlInsertarVenta($vIdVenta,$vCantidad,$vNTicket,$vIdUsuario,$vPrecioFinal,$vCliente);
+		$vReservacion = $this->Reservacion;
+		$respuesta = ModeloVentas::MdlInsertarVenta($vIdVenta,$vCantidad,$vNTicket,$vIdUsuario,$vPrecioFinal,$vCliente,$vReservacion);
 		echo json_encode($respuesta);
 	}
 
@@ -38,6 +40,7 @@ if(isset($_POST["id"])){
 	$Editar -> Idusuario = $_POST["idUsuario"];
 	$Editar -> PrecioFinal = $_POST["precioFinal"];
 	$Editar -> Cliente = $_POST["cliente"];
+	$Editar -> Reservacion = $_POST["reservacion"] ?? 0;
 	$Editar -> AjaxInsertarVenta();
 
 }

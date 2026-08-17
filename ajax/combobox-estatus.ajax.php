@@ -9,7 +9,7 @@ class ComboEstatus
 
 	public function mostrarComboEstatus(){
 
-	   $Consulta = ControladorNegocios::crtJsonObtenerEstatus();
+	   $Consulta = ControladorHoteles::crtJsonObtenerEstatus();
 	   echo ($Consulta);	 
        
 	}

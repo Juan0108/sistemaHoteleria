@@ -29,7 +29,7 @@ static public function ctrInsertarCategoria()
 				
 
                 
-				if (is_array($respuesta) && isset($respuesta['validar']) && $respuesta['validar'] === 0) {
+				if (is_array($respuesta) && isset($respuesta['validar']) && (int)$respuesta['validar'] === 0) {
 					echo'<script>
 
 					Swal.fire({

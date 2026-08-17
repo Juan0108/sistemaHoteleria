@@ -11,7 +11,7 @@ class ComboColonias
 	public function mostrarComboColonias(){
 
 	   $valor = $this->id;
-	   $Consulta = ModeloNegocios::MdlJsonObtenerColonias($valor);
+	   $Consulta = ModeloHoteles::MdlJsonObtenerColonias($valor);
 	   echo ($Consulta); 
        
 	}
