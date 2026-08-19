@@ -158,7 +158,6 @@ if(isset($_SESSION["IniciarSesion"]) && $_SESSION["IniciarSesion"] == "ok")
          $_GET["ruta"] == "soporte" ||
          $_GET["ruta"] == "ganancias" ||
          $_GET["ruta"] == "recargas" ||
-         $_GET["ruta"] == "calendarios" ||
          $_GET["ruta"] == "clientes" ||
          $_GET["ruta"] == "bitacoraInventario" ||
          $_GET["ruta"] == "salir"  ){
@@ -189,15 +188,15 @@ if(isset($_SESSION["IniciarSesion"]) && $_SESSION["IniciarSesion"] == "ok")
 <script src="views/js/submarcas.js"></script>
 <script src="views/js/clasificaciones.js"></script>
 <script src="views/js/productos.js"></script>
-<script src="views/js/negocios.js"></script>
+<script src="views/js/hoteles.js"></script>
 <script src="views/js/inventarios.js"></script>
+<script src="views/js/ventas.js?v=<?php echo @filemtime(__DIR__ . "/js/ventas.js"); ?>"></script>
 <script src="views/js/habitaciones.js?v=<?php echo @filemtime(__DIR__ . "/js/habitaciones.js"); ?>"></script>
 <script src="views/js/recepcion.js?v=<?php echo @filemtime(__DIR__ . "/js/recepcion.js"); ?>"></script>
 <script src="views/js/reservas.js?v=<?php echo @filemtime(__DIR__ . "/js/reservas.js"); ?>"></script>
 <script src="views/js/ventas.js"></script>
 <script src="views/js/ganancias.js"></script>
 <script src="views/js/recargas.js"></script>
-<script src="views/js/calendarios.js"></script>
 <script src="views/js/clientes.js"></script>
 <script src="views/js/bitacora.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>

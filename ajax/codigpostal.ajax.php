@@ -1,7 +1,7 @@
 <?php
 
-require_once "../controllers/negocios.controlador.php";
-require_once "../models/negocios.modelo.php";
+require_once "../controllers/hoteles.controlador.php";
+require_once "../models/hoteles.modelo.php";
 
 class AjaxCodigoPostal 
 {

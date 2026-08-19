@@ -2,8 +2,8 @@
 
 require_once "../../../controllers/ventas.controlador.php";
 require_once "../../../models/ventas.modelo.php";
-require_once "../../../controllers/negocios.controlador.php";
-require_once "../../../models/negocios.modelo.php";
+require_once "../../../controllers/hoteles.controlador.php";
+require_once "../../../models/hoteles.modelo.php";
 require_once "../../../controllers/usuarios.controlador.php";
 require_once "../../../models/usuarios.modelo.php";
 require_once "../../../twilio-php-main/src/Twilio/autoload.php"; // Ajusta esta ruta

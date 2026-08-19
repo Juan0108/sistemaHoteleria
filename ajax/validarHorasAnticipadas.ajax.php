@@ -1,6 +1,6 @@
 <?php
 
-require_once "../models/negocios.modelo.php";
+require_once "../models/hoteles.modelo.php";
 
 class AjaxValidarHorasAnticipadas
 {

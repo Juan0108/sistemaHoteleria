@@ -31,6 +31,17 @@ static public function MdlObtenerStocksInventarios($valor){
 }
 
 /**
+Obtener Stock's de Inventario (excluye HrsExtra y HrsAnticipada)
+ */
+static public function MdlObtenerStocksInventarioHoteleria($valor){
+
+	$stmt = Conexion::conectar()->prepare("CALL InventarioHoteleria('$valor')");
+	$stmt -> execute();
+	return $stmt -> fetch();
+
+}
+
+/**
 Obtener Inventario
  */
 static public function MdlObtenerInventario($idNegocio,$valor){

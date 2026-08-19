@@ -2,8 +2,8 @@
 
 require_once "../../../controllers/inventarios.controlador.php";
 require_once "../../../models/inventarios.modelo.php";
-require_once "../../../controllers/negocios.controlador.php";
-require_once "../../../models/negocios.modelo.php";
+require_once "../../../controllers/hoteles.controlador.php";
+require_once "../../../models/hoteles.modelo.php";
 
 class imprimirReporteInventario{
 
@@ -13,7 +13,7 @@ Public function traerImpresionReporeInventario(){
 
 $idusuario = $this->CodigoUsuario;
 $Inventarios = ControladorInventarios::crtObtenerInventarios($idusuario);
-$Negocio = ControladorNegocios::crtObtenerNegocioUsuarioReporte($idusuario);
+$Negocio = ControladorHoteles::crtObtenerNegocioUsuarioReporte($idusuario);
 
 $Tienda = $Negocio[0]["Razon_Social"];
 $Estado = $Negocio[0]["Estado"];

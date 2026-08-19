@@ -19,7 +19,7 @@ GRÁFICO DE VENTAS
 		
  		<i class="fa fa-th"></i>
 
-  		<h3 class="box-title">Gráfico de Ventas Mensuales 2021</h3>
+  		<h3 class="box-title">Gráfico de Ventas Mensuales 2026</h3>
   		<input type="hidden" class="form-control" id="usuario" value="<?php echo $_SESSION["IdUsuario"]; ?>" readonly>
 
 	</div>

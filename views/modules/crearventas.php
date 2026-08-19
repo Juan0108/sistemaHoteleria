@@ -191,7 +191,61 @@
 #modalVerificar .cv-btn-salir{ background:#fff; border:1px solid var(--accent); color:var(--accent); }
 #modalRecargas .cv-btn-salir:hover,
 #modalVerificar .cv-btn-salir:hover{ background:var(--accent); color:#fff; }
+
+/* Overlay de recarga: se muestra al recargar (F5) o al salir del ticket de cargo extra */
+.cv-reload-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(255,255,255,.55);
+  z-index:99999;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transition:opacity .15s ease;
+}
+.cv-reload-overlay.cv-reload-visible{
+  opacity:1;
+  visibility:visible;
+  pointer-events:all;
+}
+.cv-reload-spinner{
+  font-size:52px;
+  color:#3f342e;
+}
 </style>
+
+<div class="cv-reload-overlay cv-reload-visible" id="cvReloadOverlay">
+  <i class="fa fa-refresh fa-spin cv-reload-spinner"></i>
+</div>
+<script>
+(function(){
+
+  // Independiente de jQuery y del resto de los scripts de la página (que se
+  // cargan al final del body) para que nunca se quede pegado si algo más falla.
+  var _oculto = false;
+
+  function ocultarOverlayRecarga(){
+    if(_oculto) return;
+    _oculto = true;
+    var _overlay = document.getElementById("cvReloadOverlay");
+    if(_overlay) _overlay.classList.remove("cv-reload-visible");
+  }
+
+  document.addEventListener("DOMContentLoaded", ocultarOverlayRecarga);
+  window.addEventListener("load", ocultarOverlayRecarga);
+  setTimeout(ocultarOverlayRecarga, 6000);
+
+  window.addEventListener("beforeunload", function(){
+    _oculto = false;
+    var _overlay = document.getElementById("cvReloadOverlay");
+    if(_overlay) _overlay.classList.add("cv-reload-visible");
+  });
+
+})();
+</script>
 
 <div class="content-wrapper crear-venta">
 
@@ -339,7 +393,7 @@
         <hr class="cv-separador">
 
         <div class="cv-pago">
-          <div class="cv-pago-item">
+          <div class="cv-pago-item" id="pagaBox">
             <span class="cv-pago-label">Paga:</span>
             <div class="input-group">
               <span class="input-group-addon"><i class="ion ion-social-usd"></i></span>
@@ -347,7 +401,7 @@
             </div>
           </div>
 
-          <div class="cv-pago-item">
+          <div class="cv-pago-item" id="cambioBox">
             <span class="cv-pago-label">Cambio:</span>
             <div class="input-group">
               <span class="input-group-addon"><i class="ion ion-social-usd"></i></span>
@@ -356,7 +410,7 @@
           </div>
 
           <div class="cv-pago-item">
-            <span class="cv-pago-label">Total</span>
+            <span class="cv-pago-label">Monto Habitacion Total Extra</span>
             <div class="input-group">
               <span class="input-group-addon"><i class="ion ion-social-usd"></i></span>
               <input type="text" class="form-control" id="nuevoTotalVenta" name="nuevoTotalVenta" total="" placeholder="00000" readonly required>
@@ -413,7 +467,7 @@
         </div>
         <!-- /Saldos Recargas oculto -->
 
-        <button type="button" class="cv-btn-guardar cv-btn-guardar-full btnGuardarVenta" disabled>Guardar venta</button>
+        <button type="button" class="cv-btn-guardar cv-btn-guardar-full btnGuardarVenta" style="display:none;" disabled>Asignar Cargo a la Habitacion</button>
         <div class="cv-clear"></div>
 
       </form>

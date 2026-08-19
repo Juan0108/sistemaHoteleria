@@ -251,7 +251,7 @@ function CargarCbNegocios(select, seleccionar = false, valor = null, nombreActua
 		// Solo trae el negocio del usuario en sesión (el backend lo determina por
 		// $_SESSION, no acepta un id por parámetro), así el combo nunca puede
 		// mostrar ni dejar elegir otro negocio/hotel.
-		url: "ajax/combobox-negocio-sesion.ajax.php",
+		url: "ajax/combobox-hotel-sesion.ajax.php",
 		dataType: "json", // Cambiado a JSON para que jQuery valide la respuesta automáticamente
 		success: function(jsonData){
 

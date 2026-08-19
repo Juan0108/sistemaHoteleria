@@ -20,6 +20,13 @@ static public function crtObtenerStocksInventarios($valor){
 
 }
 
+static public function crtObtenerStocksInventarioHoteleria($valor){
+
+	$respuesta = ModeloInventarios::MdlObtenerStocksInventarioHoteleria($valor);
+	return $respuesta;
+
+}
+
 static public function ctrInsertarUpdateInventario()
 {
 
