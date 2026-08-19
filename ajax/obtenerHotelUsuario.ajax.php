@@ -1,9 +1,9 @@
 <?php
 
-require_once "../controllers/negocios.controlador.php";
-require_once "../models/negocios.modelo.php";
+require_once "../controllers/hoteles.controlador.php";
+require_once "../models/hoteles.modelo.php";
 
-class AjaxHoteles
+class AjaxHotelUsuario
 {
 /**
  *Editar Usuario
@@ -21,7 +21,7 @@ class AjaxHoteles
 
 if(isset($_POST["idHotel"])){
 
-	$Editar = new AjaxHoteles();
+	$Editar = new AjaxHotelUsuario();
 	$Editar -> idHotel = $_POST["idHotel"];
 	$Editar -> ajaxEditarHotel();
 

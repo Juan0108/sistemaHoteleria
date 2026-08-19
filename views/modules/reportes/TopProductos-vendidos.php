@@ -47,7 +47,7 @@ $colores = array("green","blue","red","aqua","purple","black","yellow","gray","o
 
                   <?php
 
-                        $i = 1;
+                        $i = 0;
 
                         foreach ($ProductosVentas as $key => $value) {
 

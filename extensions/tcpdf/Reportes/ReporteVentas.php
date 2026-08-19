@@ -2,8 +2,8 @@
 
 require_once "../../../controllers/ventas.controlador.php";
 require_once "../../../models/ventas.modelo.php";
-require_once "../../../controllers/negocios.controlador.php";
-require_once "../../../models/negocios.modelo.php";
+require_once "../../../controllers/hoteles.controlador.php";
+require_once "../../../models/hoteles.modelo.php";
 
 class imprimirReporteVentas{
 
@@ -19,7 +19,7 @@ $ff = $this->FechaFin;
 $fiFormat=date("d-m-Y", strtotime($fi));
 $ffFormat=date("d-m-Y", strtotime($ff));
 $Inventarios = ControladorVentas::crtObtenerVentasFecha($idusuario, $fi, $ff);
-$Negocio = ControladorNegocios::crtObtenerNegocioUsuarioReporte($idusuario);
+$Negocio = ControladorHoteles::crtObtenerNegocioUsuarioReporte($idusuario);
 
 $Tienda = $Negocio[0]["Razon_Social"];
 $Estado = $Negocio[0]["Estado"];

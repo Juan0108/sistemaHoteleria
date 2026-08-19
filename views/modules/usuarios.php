@@ -50,7 +50,7 @@
 
        $Usuarios = ControladorUsuarios::crtObtenerUsuariosHotel();
 
-       if($_SESSION["Perfil"] =="Soporte Tecnico"){
+       if($_SESSION["Perfil"] =="Soporte Tecnico" || $_SESSION["Perfil"] == "Administrador"){
 
         // Agregados para las tarjetas: totales, activos y conteo dinámico por rol.
         $totalUsuarios = count($Usuarios);

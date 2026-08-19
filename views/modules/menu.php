@@ -66,7 +66,28 @@ if ($currentPage !== "reset"): ?>
                     </li>';
             }
 
-            if ($_SESSION["Perfil"] == "Administrador" || $_SESSION["Perfil"] == "Ventas") {
+            if ($_SESSION["Perfil"] == "Administrador") {
+                echo '<li>
+                        <a href="usuarios">
+                            <i class="fa fa-user"></i>
+                            <span>Personal</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="productos">
+                            <i class="fa fa-product-hunt"></i>
+                            <span>Productos</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="inventarios">
+                            <i class="fa fa-cubes"></i>
+                            <span>Inventarios</span>
+                        </a>
+                    </li>';
+            }
+
+            if ($_SESSION["Perfil"] == "Ventas") {
                 echo '<li>
                         <a href="inventarios">
                             <i class="fa fa-cubes"></i>

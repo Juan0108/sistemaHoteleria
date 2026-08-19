@@ -2,7 +2,7 @@
  Obtener Hoteles
  =============================================*/
 $('.tablaHoteles').DataTable( {
-    "ajax": "ajax/datatable-negocios.ajax.php",
+    "ajax": "ajax/datatable-hoteles.ajax.php",
     "deferRender": true,
 	"retrieve": true,
 	"processing": true,
@@ -89,7 +89,7 @@ $(".nuevoContrato").change(function(){
 
  	$.ajax({
 
- 		url:"ajax/negocios.ajax.php",
+ 		url:"ajax/hoteles.ajax.php",
  		method: "POST",
  		data: datos,
  		cache: false,
@@ -143,7 +143,7 @@ $(document).on("click", ".btnEliminarHotel", function(){
 
 			$.ajax({
 
-				url: "ajax/negocios.ajax.php",
+				url: "ajax/hoteles.ajax.php",
 				method: "POST",
 				data: datos,
 				cache: false,

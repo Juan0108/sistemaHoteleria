@@ -2,8 +2,8 @@
 
 require_once "../../../controllers/ventas.controlador.php";
 require_once "../../../models/ventas.modelo.php";
-require_once "../../../controllers/negocios.controlador.php";
-require_once "../../../models/negocios.modelo.php";
+require_once "../../../controllers/hoteles.controlador.php";
+require_once "../../../models/hoteles.modelo.php";
 require_once '../../../vendor/autoload.php';
 require_once "../../../controllers/usuarios.controlador.php";
 require_once "../../../models/usuarios.modelo.php";
@@ -27,7 +27,7 @@ class generaReporteDia
         $ValorCaja = $this->MontoCaja;
 
         // // Obtener datos de negocio y reporte
-         $Negocio = ControladorNegocios::crtObtenerNegocioUsuarioReporte($idusuario);
+         $Negocio = ControladorHoteles::crtObtenerNegocioUsuarioReporte($idusuario);
          $Reporte = ControladorVentas::crtObtenerCierreDia($idusuario);
          $Usuario = ModeloUsuarios::MdlObtenerUsuarioNombre($idusuario);
 

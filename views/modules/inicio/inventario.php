@@ -1,7 +1,7 @@
 <?php
 
 $idnegocio = $_SESSION["IdUsuario"];
-$Inventario = ControladorInventarios::crtObtenerStocksInventarios($idnegocio);
+$Inventario = ControladorInventarios::crtObtenerStocksInventarioHoteleria($idnegocio);
 
 ?>
 

@@ -20,7 +20,7 @@
 
             include "inicio/crearventa.php";
             include "inicio/inventario.php";
-            include "inicio/recargas.php";
+            // include "inicio/recargas.php"; // Oculto temporalmente
 
           }else{
 
@@ -28,8 +28,7 @@
             include "inicio/crearventa.php";
             include "inicio/inventario.php";
             include "inicio/inversion.php";
-            include "inicio/recargas.php";
-            include "inicio/calendario.php";
+            // include "inicio/recargas.php"; // Oculto temporalmente
             include "inicio/bitacoraInventario.php";
             
           }

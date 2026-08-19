@@ -321,6 +321,7 @@ $(document).ready(function(){
         $("#totalVenta").val(0);
         $("#nuevoTotalVenta").attr("total",0);
         mostrarCambio();
+        actualizarVisibilidadPagoCambio();
 
         if($(this).val() != "0" && _nombreCliente){
 
@@ -351,7 +352,7 @@ $(document).ready(function(){
             $("#reservacionId").text(_idReservacion);
             $("#reservacionBox").show();
 
-            $("button.btnGuardarVenta").prop("disabled", false);
+            $("button.btnGuardarVenta").prop("disabled", false).show();
 
         }else{
 
@@ -373,7 +374,7 @@ $(document).ready(function(){
             $("#reservacionId").text("");
             $("#reservacionBox").hide();
 
-            $("button.btnGuardarVenta").prop("disabled", true);
+            $("button.btnGuardarVenta").prop("disabled", true).hide();
 
         }
 
@@ -593,6 +594,7 @@ function AgregaProducto(){
 
 			        $("#Qbarra").val("");
 			        sumarTotalPrecios();
+			        actualizarVisibilidadPagoCambio();
 
 			  };
 
@@ -854,6 +856,26 @@ $(".formularioVenta").on("change", "input.CantidadProducto", function(){
 })
 
 /*=============================================
+MOSTRAR/OCULTAR CAJAS DE PAGA Y CAMBIO
+(se ocultan en cuanto la habitación tiene al menos un producto cargado;
+se conservan en el DOM para reactivarse más adelante)
+=============================================*/
+
+function actualizarVisibilidadPagoCambio(){
+
+	if($(".nuevoProducto").children().length > 0){
+
+		$("#pagaBox, #cambioBox").hide();
+
+	}else{
+
+		$("#pagaBox, #cambioBox").show();
+
+	}
+
+}
+
+/*=============================================
 SUMAR TODOS LOS PRECIOS
 =============================================*/
 
@@ -937,6 +959,7 @@ $(".formularioVenta").on("click", "button.quitarProducto", function(){
 	}
 
 	mostrarCambio();
+	actualizarVisibilidadPagoCambio();
 
 })
 
@@ -1003,7 +1026,6 @@ Guardar Venta
 $(".formularioVenta").on("click", "button.btnGuardarVenta", function(){
 
 var Habitacion = $("#habitacion").val();
-var Pago = $("#paga").val()
 
 
 if(Habitacion == '0' || !Habitacion){
@@ -1017,20 +1039,9 @@ if(Habitacion == '0' || !Habitacion){
 		confirmButtonText: "Cerrar"
 		})
 
-}else if(Pago == '' || Pago == 0){
-
-
-	Swal.fire({
-		icon: "error",
-		title : "Sistema PosDit",
-		text: "¡Favor de indicar monto a pagar!",
-		showConfirmButton: true,
-		confirmButtonText: "Cerrar"
-		})
-
 }else{
 
-InsertarProductos();
+TicketCargoHabitacion();
 
 }
 
@@ -1348,7 +1359,122 @@ function InsertarProductos(){
 	 				
 				}
 
-	 		} 
+	 		}
+	 	})
+
+}
+
+/*=============================================
+ASIGNAR CARGO A LA HABITACION (copia de InsertarProductos, ticket de cargo a habitación)
+=============================================*/
+
+function TicketCargoHabitacion(){
+
+	var descripcion = $(".nuevosubmarca");
+
+	var idInventario = $(".idInventario");
+
+	var cantidad = $(".CantidadProducto");
+
+  var _habitacionSeleccionada = $("#habitacion option:selected");
+  var cliente = _habitacionSeleccionada.data("cliente") || 0;
+  var reservacion = _habitacionSeleccionada.data("reservacion") || 0;
+  var nombreCliente = _habitacionSeleccionada.data("nombre-cliente");
+  var numeroHabitacion = _habitacionSeleccionada.data("numero");
+  var nombreHabitacion = _habitacionSeleccionada.text().trim();
+
+	var NTicket;
+
+	var IdUsuario = $("#usuario").val();
+
+	var pago = $("#paga").val();
+	var cambio = $("#cambio").val();
+	var venta = $("#totalVenta").val();
+
+  //Datos Promoción
+  var precioItem = $(".nuevoPrecioProducto");
+  var leyendaDescuento = $(".descuento-leyenda"); // Leyenda del descuento aplicado
+
+
+	var datosN = new FormData();
+	datosN.append("idUsuario",IdUsuario);
+
+	$.ajax({
+
+	 		url:"ajax/obtenerTicket.ajax.php",
+	 		method: "POST",
+	 		data: datosN,
+	 		cache: false,
+	 		contentType: false,
+	 		processData: false,
+	 		dataType: "json",
+	 		success: function(respuesta){
+
+	 			for(var i = 0; i < descripcion.length; i++){
+
+	 			    NTicket = respuesta["NuevoTicket"];
+
+	 				var datos = new FormData();
+	 			    datos.append("id",$(idInventario[i]).attr("idInventario"));
+	 			    datos.append("cantidad",$(cantidad[i]).val());
+	 			    datos.append("nTicket",NTicket);
+	 			    datos.append("idUsuario",IdUsuario);
+            datos.append("precioFinal",$(precioItem[i]).val());
+            datos.append("cliente",cliente);
+            datos.append("reservacion",reservacion);
+
+	 				$.ajax({
+				 		url:"ajax/crearventa.ajax.php",
+				 		method: "POST",
+				 		data: datos,
+				 		cache: false,
+				 		contentType: false,
+				 		processData: false,
+				 		dataType: "json",
+				 		success: function(respuesta){
+
+				 			if(respuesta == 'ok'){
+
+				 				Swal.fire({
+									  icon: "success",
+									  title : "Sistema PosDit",
+									  html: `<h1>Cargo Asignado</h1>
+									  <p>Habitación: <strong>`+ nombreHabitacion+ `</strong></p>
+									  <p>Huésped: <strong>`+ nombreCliente+ `</strong></p>
+									  <p>Número de habitación: <strong>`+ numeroHabitacion+ `</strong></p>
+									  <p>Monto de Compra: $<strong>`+ venta+ `</strong></p>
+									    `,
+									  showConfirmButton: true,
+									  confirmButtonText: "Cerrar"
+									  }).then(function(result){
+												if (result.value) {
+													window.location = "crearventas";
+												}
+									   })
+
+				 			}else{
+
+				 				Swal.fire({
+									  icon: "error",
+									  title : "Sistema PosDit",
+									  text: "¡Hubo un error en la venta, favor de validar con Soporte Tecnico!",
+									  showConfirmButton: true,
+									  confirmButtonText: "Cerrar"
+									  }).then(function(result){
+												if (result.value) {
+
+												window.location = "crearventas";
+
+											}
+										})
+				 			}
+				 		}
+
+				 	})
+
+				}
+
+	 		}
 	 	})
 
 }
@@ -1423,7 +1549,7 @@ const conector = new ConectorPlugin();
 
 $.ajax({
 
- 		url:"ajax/obtenerNegocioUsuario.ajax.php",
+ 		url:"ajax/obtenerHotelUsuario.ajax.php",
  		method: "POST",
  		data: datos,
  		cache: false,
