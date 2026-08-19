@@ -13,6 +13,8 @@ require_once "controllers/inventarios.controlador.php";
 require_once "controllers/calendarios.controlador.php";
 require_once "controllers/webservice.controlador.php";
 require_once "controllers/clientes.controlador.php";
+require_once "controllers/habitaciones.controlador.php";
+require_once "controllers/reservaciones.controlador.php";
 
 require_once "models/usuarios.modelo.php";
 require_once "models/categorias.modelo.php";
@@ -26,6 +28,8 @@ require_once "models/inventarios.modelo.php";
 require_once "models/calendarios.modelo.php";
 require_once "models/webservice.modelo.php";
 require_once "models/clientes.modelo.php";
+require_once "models/habitaciones.modelo.php";
+require_once "models/reservaciones.modelo.php";
 
 require_once "objects/usuario.php";
 require_once "objects/categoria.php";
@@ -36,6 +40,7 @@ require_once "objects/producto.php";
 require_once "objects/inventario.php";
 require_once "objects/negocio.php";
 require_once "objects/calendario.php";
+require_once "objects/habitaciones.php";
 
 $plantilla = new ControladorPlantilla();
 $plantilla -> ctrPlantilla();
