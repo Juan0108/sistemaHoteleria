@@ -37,8 +37,6 @@ require_once "objects/clasificacion.php";
 require_once "objects/producto.php";
 require_once "objects/inventario.php";
 require_once "objects/hotel.php";
-require_once "objects/negocio.php";
-require_once "objects/calendario.php";
 require_once "objects/habitaciones.php";
 
 $plantilla = new ControladorPlantilla();
