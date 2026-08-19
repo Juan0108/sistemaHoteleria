@@ -393,7 +393,8 @@
         <hr class="cv-separador">
 
         <div class="cv-pago">
-          <div class="cv-pago-item" id="pagaBox">
+          <!-- Oculto a petición: se conserva en el DOM para poder reactivarse después -->
+          <div class="cv-pago-item" id="pagaBox" style="display:none;">
             <span class="cv-pago-label">Paga:</span>
             <div class="input-group">
               <span class="input-group-addon"><i class="ion ion-social-usd"></i></span>
@@ -401,7 +402,8 @@
             </div>
           </div>
 
-          <div class="cv-pago-item" id="cambioBox">
+          <!-- Oculto a petición: se conserva en el DOM para poder reactivarse después -->
+          <div class="cv-pago-item" id="cambioBox" style="display:none;">
             <span class="cv-pago-label">Cambio:</span>
             <div class="input-group">
               <span class="input-group-addon"><i class="ion ion-social-usd"></i></span>

@@ -284,6 +284,22 @@ static public function crtJsonObtenerGiro(){
 
  }
 
+ // Habitaciones en estatus "Ocupado" del hotel ligado al negocio en sesión.
+ // Se usa para refrescar el combo de Crear Venta en tiempo real (sin F5).
+ static public function crtJsonObtenerHabitacionesOcupadas($idNegocio){
+
+	$hotel = ModeloHoteles::MdlObtenerHotelPorNegocio($idNegocio);
+	$idHotel = $hotel ? $hotel["Id_Hotel"] : null;
+
+	if(!$idHotel){
+		return [];
+	}
+
+	$respuesta = ModeloHoteles::MdlObtenerHabitacionesOcupadas($idHotel);
+	return $respuesta;
+
+ }
+
  static public function crtJsonObtenerEstatus(){
 
 	$respuesta = ModeloHoteles::MdlJsonObtenerEstatus();
@@ -320,3 +336,4 @@ static public function crtObtenerHotelUsuario($valor){
  }
 
 }
+

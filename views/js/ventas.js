@@ -129,6 +129,95 @@ MOSTRAR HUESPED DE LA HABITACION SELECCIONADA
 $(document).ready(function(){
 
     /*=============================================
+    REFRESCAR HABITACIONES OCUPADAS EN TIEMPO REAL
+    (evita tener que recargar la página con F5)
+    =============================================*/
+
+    var _cargandoHabitacionesOcupadas = false;
+
+    function refrescarHabitacionesOcupadas(callback){
+
+        if(_cargandoHabitacionesOcupadas){
+            return;
+        }
+
+        _cargandoHabitacionesOcupadas = true;
+
+        $.ajax({
+
+            url: "ajax/combobox-habitaciones-ocupadas.ajax.php",
+            method: "POST",
+            cache: false,
+            dataType: "json",
+            success: function(respuesta){
+
+                var _select = $("#habitacion");
+                var _valorActual = _select.val();
+
+                _select.empty().append('<option value="0">-- Selecciona --</option>');
+
+                (respuesta || []).forEach(function(_hab){
+
+                    var _nombreCompleto = ((_hab.NombreCliente || "") + " " + (_hab.ApellidoCliente || "")).trim();
+
+                    $("<option></option>")
+                        .attr("value", _hab.Id_Habitacion)
+                        .attr("data-reservacion", _hab.Id_Reservacion)
+                        .attr("data-cliente", _hab.Id_Cliente)
+                        .attr("data-nombre-cliente", _nombreCompleto)
+                        .attr("data-numero", _hab.NumeroHabitacion)
+                        .attr("data-fecha-entrada", _hab.FechaEntrada)
+                        .attr("data-fecha-salida", _hab.FechaSalida)
+                        .attr("data-horas-extras", _hab.HorasExtras)
+                        .text(_hab.TipoHabitacion)
+                        .appendTo(_select);
+
+                });
+
+                // Conserva la selección previa si la habitación sigue en la lista actualizada;
+                // si ya no está (por ejemplo, se acaba de liberar), se limpia la selección.
+                if(_valorActual && _select.find('option[value="' + _valorActual + '"]').length){
+                    _select.val(_valorActual);
+                }else{
+                    limpiarSeleccionHabitacion();
+                }
+
+                _cargandoHabitacionesOcupadas = false;
+                if(typeof callback === "function") callback();
+
+            },
+            error: function(){
+                _cargandoHabitacionesOcupadas = false;
+                if(typeof callback === "function") callback();
+            }
+
+        });
+
+    }
+
+    $("#habitacion").select2({ width: "100%" });
+
+    // Cada vez que se abre el combo se refrescan las habitaciones ocupadas
+    // contra la BD antes de mostrar la lista (evita depender de F5).
+    $("#habitacion").on("select2:opening", function(e){
+
+        var _select = $(this);
+
+        if(_select.data("recienActualizado")){
+            _select.data("recienActualizado", false);
+            return; // Ya se refrescó justo antes: deja abrir con los datos frescos
+        }
+
+        e.preventDefault();
+
+        refrescarHabitacionesOcupadas(function(){
+            _select.data("recienActualizado", true);
+            _select.select2("open");
+        });
+
+    });
+
+    /*=============================================
     BUSCAR HABITACIÓN POR FOLIO DE RESERVACIÓN
     =============================================*/
 
@@ -321,7 +410,6 @@ $(document).ready(function(){
         $("#totalVenta").val(0);
         $("#nuevoTotalVenta").attr("total",0);
         mostrarCambio();
-        actualizarVisibilidadPagoCambio();
 
         if($(this).val() != "0" && _nombreCliente){
 
@@ -594,7 +682,6 @@ function AgregaProducto(){
 
 			        $("#Qbarra").val("");
 			        sumarTotalPrecios();
-			        actualizarVisibilidadPagoCambio();
 
 			  };
 
@@ -856,26 +943,6 @@ $(".formularioVenta").on("change", "input.CantidadProducto", function(){
 })
 
 /*=============================================
-MOSTRAR/OCULTAR CAJAS DE PAGA Y CAMBIO
-(se ocultan en cuanto la habitación tiene al menos un producto cargado;
-se conservan en el DOM para reactivarse más adelante)
-=============================================*/
-
-function actualizarVisibilidadPagoCambio(){
-
-	if($(".nuevoProducto").children().length > 0){
-
-		$("#pagaBox, #cambioBox").hide();
-
-	}else{
-
-		$("#pagaBox, #cambioBox").show();
-
-	}
-
-}
-
-/*=============================================
 SUMAR TODOS LOS PRECIOS
 =============================================*/
 
@@ -959,7 +1026,6 @@ $(".formularioVenta").on("click", "button.quitarProducto", function(){
 	}
 
 	mostrarCambio();
-	actualizarVisibilidadPagoCambio();
 
 })
 
