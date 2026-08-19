@@ -17,6 +17,18 @@ if ($currentPage !== "reset"): ?>
             <?php
             if ($_SESSION["Perfil"] == "Soporte Tecnico") {
                 echo '<li>
+                        <a href="recepcion">
+                            <i class="fa fa-bell"></i>
+                            <span>Recepción</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="reservas">
+                            <i class="fa fa-calendar"></i>
+                            <span>Reserva</span>
+                        </a>
+                    </li>
+                    <li>
                         <a href="hoteles">
                             <i class="fa fa-handshake-o"></i>
                             <span>Hoteles</span>
@@ -62,6 +74,33 @@ if ($currentPage !== "reset"): ?>
                         <a href="inventarios">
                             <i class="fa fa-cubes"></i>
                             <span>Inventarios</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="habitaciones">
+                            <i class="fa fa-hotel"></i>
+                            <span>Habitaciones</span>
+                        </a>
+                    </li>';
+            }
+
+            if ($_SESSION["Perfil"] == "Administrador") {
+                echo '<li>
+                        <a href="recepcion">
+                            <i class="fa fa-bell"></i>
+                            <span>Recepción</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="reservas">
+                            <i class="fa fa-calendar"></i>
+                            <span>Reserva</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="habitaciones">
+                            <i class="fa fa-hotel"></i>
+                            <span>Habitaciones</span>
                         </a>
                     </li>';
             }

@@ -95,6 +95,10 @@ if (isset($_SESSION["IniciarSesion"]) && $_SESSION["IniciarSesion"] == "ok" && i
   <!-- bootstrap time picker -->
   <script src="views/plugins/timepicker/bootstrap-timepicker.min.js"></script>
 
+  <!-- bootstrap datepicker -->
+  <script src="views/bower_components/bootstrap-datepicker/dist/js/bootstrap-datepicker.min.js"></script>
+  <script src="views/bower_components/bootstrap-datepicker/dist/locales/bootstrap-datepicker.es.min.js"></script>
+
     <!-- daterangepicker http://www.daterangepicker.com/-->
   <script src="views/bower_components/moment/min/moment.min.js"></script>
   <script src="views/bower_components/bootstrap-daterangepicker/daterangepicker.js"></script>
@@ -145,6 +149,9 @@ if(isset($_SESSION["IniciarSesion"]) && $_SESSION["IniciarSesion"] == "ok")
          $_GET["ruta"] == "clasificaciones" ||
          $_GET["ruta"] == "productos" ||
          $_GET["ruta"] == "inventarios" ||
+         $_GET["ruta"] == "habitaciones" ||
+         $_GET["ruta"] == "recepcion" ||
+         $_GET["ruta"] == "reservas" ||
          $_GET["ruta"] == "ventas" ||
          $_GET["ruta"] == "crearventas" ||
          $_GET["ruta"] == "reporte" ||
@@ -184,6 +191,10 @@ if(isset($_SESSION["IniciarSesion"]) && $_SESSION["IniciarSesion"] == "ok")
 <script src="views/js/hoteles.js"></script>
 <script src="views/js/inventarios.js"></script>
 <script src="views/js/ventas.js?v=<?php echo @filemtime(__DIR__ . "/js/ventas.js"); ?>"></script>
+<script src="views/js/habitaciones.js?v=<?php echo @filemtime(__DIR__ . "/js/habitaciones.js"); ?>"></script>
+<script src="views/js/recepcion.js?v=<?php echo @filemtime(__DIR__ . "/js/recepcion.js"); ?>"></script>
+<script src="views/js/reservas.js?v=<?php echo @filemtime(__DIR__ . "/js/reservas.js"); ?>"></script>
+<script src="views/js/ventas.js"></script>
 <script src="views/js/ganancias.js"></script>
 <script src="views/js/recargas.js"></script>
 <script src="views/js/clientes.js"></script>
