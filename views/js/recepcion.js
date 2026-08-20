@@ -32,11 +32,14 @@ function pintarTarjetasRecepcion(habitaciones, mensajeVacio){
 			cliente = '<div class="hc-cliente"><i class="fa fa-user-o"></i> ' + escaparHtmlRecepcion(hab.nombreCliente) + '</div>';
 
 			if (hab.entradaCorta && hab.salidaCorta){
+				var tieneHoraAnticipada = parseInt(hab.horaAnticipada, 10) > 0;
+				var claseEntrada = tieneHoraAnticipada ? ' hc-stay-val-anticipada' : '';
+				var tituloEntrada = tieneHoraAnticipada ? ' title="Incluye ' + parseInt(hab.horaAnticipada, 10) + 'h anticipada"' : '';
 				var claseSalida = tieneHorasExtra ? ' hc-stay-val-extra' : '';
 				var tituloSalida = tieneHorasExtra ? ' title="Incluye ' + parseInt(hab.horasExtras, 10) + 'h extra"' : '';
 
 				cliente += '<div class="hc-stay">' +
-					'<div class="hc-stay-pair"><span class="hc-stay-lbl">Entrada</span><span class="hc-stay-val">' + escaparHtmlRecepcion(hab.entradaCorta) + '</span></div>' +
+					'<div class="hc-stay-pair"><span class="hc-stay-lbl">Entrada</span><span class="hc-stay-val' + claseEntrada + '"' + tituloEntrada + '>' + escaparHtmlRecepcion(hab.entradaCorta) + '</span></div>' +
 					'<span class="hc-stay-arrow"><i class="fa fa-long-arrow-right"></i></span>' +
 					'<div class="hc-stay-pair"><span class="hc-stay-lbl">Salida</span><span class="hc-stay-val' + claseSalida + '"' + tituloSalida + '>' + escaparHtmlRecepcion(hab.salidaCorta) + '</span></div>' +
 				'</div>';
@@ -61,6 +64,16 @@ function pintarTarjetasRecepcion(habitaciones, mensajeVacio){
 			htmlReservasProximas = '<div class="hc-reservas-proximas" title="Reservaciones próximas para esta habitación">' +
 				'<i class="fa fa-calendar"></i> ' + reservasProximas + ' ' + etiquetaReservas +
 			'</div>';
+		}
+
+		var htmlVerReservas = '';
+
+		if (hab.estadoClase !== 'disponible' || reservasProximas > 0){
+			htmlVerReservas = '<button type="button" class="hc-ver-reservas" title="Ver todas las reservas de esta habitación"' +
+				' data-id-habitacion="' + escaparHtmlRecepcion(hab.id) + '"' +
+				' data-tipo-habitacion="' + nombre + '">' +
+				'<i class="fa fa-list-alt"></i> Ver reservas' +
+			'</button>';
 		}
 
 		var accionesEstado = '';
@@ -91,11 +104,7 @@ function pintarTarjetasRecepcion(habitaciones, mensajeVacio){
 						'<div class="hc-badges">' + horasExtra + '</div>' +
 					'</div>' +
 					htmlReservasProximas +
-					'<button type="button" class="hc-ver-reservas" title="Ver todas las reservas de esta habitación"' +
-						' data-id-habitacion="' + escaparHtmlRecepcion(hab.id) + '"' +
-						' data-tipo-habitacion="' + nombre + '">' +
-						'<i class="fa fa-list-alt"></i> Ver reservas' +
-					'</button>' +
+					htmlVerReservas +
 					'<div class="hc-bed"><i class="fa fa-bed"></i></div>' +
 					cliente +
 					'<div class="hc-footer">' +
@@ -284,43 +293,123 @@ $(document).on("click", ".hc-ver-reservas", function(){
 /*=============================================
  Check-in y cancelación (íconos del pie de la tarjeta)
  =============================================*/
+function ejecutarCheckin(idReservacion){
+
+	mostrarCargaRecepcion();
+
+	$.ajax({
+		url: "ajax/reservaciones.ajax.php",
+		method: "POST",
+		data: { accion: "checkin", id_reservacion: idReservacion },
+		dataType: "json",
+		success: function(respuesta){
+			if (respuesta.ok){
+
+				var horas = parseInt(respuesta.horasAnticipada, 10) || 0;
+				var texto = horas > 0
+					? "Se cobraron " + horas + " hora(s) anticipada(s)."
+					: undefined;
+
+				Swal.fire({ icon: "success", title: "Check-in confirmado", text: texto, timer: horas > 0 ? 2500 : 1500, showConfirmButton: false });
+				refrescarRecepcion();
+
+			}else{
+				Swal.fire({ icon: "error", title: "No se pudo confirmar", text: respuesta.mensaje });
+			}
+		},
+		complete: ocultarCargaRecepcion
+	});
+
+}
+
 $(document).on("click", ".hc-icon-btn.checkin", function(){
 
 	var $boton = $(this);
 	var idReservacion = $boton.data("idReservacion");
 	var tipoHabitacion = $boton.data("tipoHabitacion");
 
-	Swal.fire({
-		icon: "question",
-		title: "¿Confirmar check-in?",
-		text: "Se marcará " + tipoHabitacion + " como Ocupada.",
-		showCancelButton: true,
-		confirmButtonText: "Sí, confirmar",
-		cancelButtonText: "Cancelar",
-		confirmButtonColor: "#3f6b4a"
-	}).then(function(resultado){
+	mostrarCargaRecepcion();
 
-		if (!resultado.value){
-			return;
-		}
+	$.ajax({
+		url: "ajax/reservaciones.ajax.php",
+		method: "GET",
+		data: { accion: "validarLlegadaAnticipada", id_reservacion: idReservacion },
+		dataType: "json",
+		success: function(respuesta){
 
-		mostrarCargaRecepcion();
+			if (!respuesta.ok){
+				Swal.fire({ icon: "error", title: "No se pudo validar", text: respuesta.mensaje });
+				return;
+			}
 
-		$.ajax({
-			url: "ajax/reservaciones.ajax.php",
-			method: "POST",
-			data: { accion: "checkin", id_reservacion: idReservacion },
-			dataType: "json",
-			success: function(respuesta){
-				if (respuesta.ok){
-					Swal.fire({ icon: "success", title: "Check-in confirmado", timer: 1500, showConfirmButton: false });
-					refrescarRecepcion();
+			if (!respuesta.requiereCargo){
+
+				Swal.fire({
+					icon: "question",
+					title: "¿Confirmar check-in?",
+					text: "Se marcará " + tipoHabitacion + " como Ocupada.",
+					showCancelButton: true,
+					confirmButtonText: "Sí, confirmar",
+					cancelButtonText: "Cancelar",
+					confirmButtonColor: "#3f6b4a"
+				}).then(function(resultado){
+					if (resultado.value){
+						ejecutarCheckin(idReservacion);
+					}
+				});
+
+				return;
+			}
+
+			if (respuesta.permitido === false){
+
+				if (respuesta.salidaAnterior){
+					Swal.fire({
+						icon: "warning",
+						title: "No se puede hacer check-in todavía",
+						html:
+							'<p style="margin:0 0 14px;color:#3f342e;">La habitación todavía tiene una reservación previa activa, así que no es posible cubrir esa cantidad de horas anticipadas.</p>' +
+							'<div style="background:#f4efe4;border:1px solid #eee3d2;border-radius:8px;padding:12px 16px;text-align:left;">' +
+								'<p style="margin:6px 0;color:#3f342e;font-size:14px;"><i class="fa fa-sign-out" style="color:#b96a37;width:20px;display:inline-block;"></i> Salida de la reservación anterior: <strong>' + escaparHtmlRecepcion(respuesta.salidaAnterior) + '</strong></p>' +
+							'</div>',
+						confirmButtonText: "Entendido",
+						confirmButtonColor: "#81412d"
+					});
 				}else{
-					Swal.fire({ icon: "error", title: "No se pudo confirmar", text: respuesta.mensaje });
+					Swal.fire({
+						icon: "warning",
+						title: "No se puede hacer check-in todavía",
+						text: respuesta.mensaje || "Es muy pronto para hacer check-in.",
+						confirmButtonText: "Entendido",
+						confirmButtonColor: "#81412d"
+					});
 				}
-			},
-			complete: ocultarCargaRecepcion
-		});
+
+				return;
+			}
+
+			var horas = parseInt(respuesta.horas, 10) || 0;
+			var precioTotal = parseFloat(respuesta.precioTotal) || 0;
+
+			Swal.fire({
+				icon: "info",
+				title: "Puedes hacer check-in pero se tomarán las HrsAnticipadas",
+				html: "Se cobrarán <b>" + horas + " hora" + (horas === 1 ? "" : "s") + " anticipada" + (horas === 1 ? "" : "s") + "</b> ($" + precioTotal.toFixed(2) + ") a " + escaparHtmlRecepcion(tipoHabitacion) + ".",
+				showCancelButton: true,
+				confirmButtonText: "Sí, confirmar",
+				cancelButtonText: "Cancelar",
+				confirmButtonColor: "#3f6b4a"
+			}).then(function(resultado){
+				if (resultado.value){
+					ejecutarCheckin(idReservacion);
+				}
+			});
+
+		},
+		error: function(){
+			Swal.fire({ icon: "error", title: "No se pudo validar el check-in", text: "Intenta de nuevo." });
+		},
+		complete: ocultarCargaRecepcion
 	});
 });
 

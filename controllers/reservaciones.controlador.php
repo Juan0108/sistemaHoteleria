@@ -155,6 +155,8 @@ class ControladorReservaciones{
 	}
 
 	// Confirma el check-in de una reservación Reservada (pasa a Id_Estatus=8, Ocupado).
+	// Si el huésped llega antes de FechaEntrada (más allá de la tolerancia configurada),
+	// cobra automáticamente las Horas Anticipadas correspondientes.
 	static public function crtConfirmarCheckIn($id_reservacion){
 		$id_hotel = ControladorHabitaciones::crtObtenerIdHotelSesion();
 
@@ -168,6 +170,15 @@ class ControladorReservaciones{
 			return ["ok" => false, "mensaje" => "Falta la reservación."];
 		}
 
+		// Se vuelve a calcular aquí (no se confía en nada que haya mandado el cliente sobre
+		// horas/precio) para que el cobro quede protegido aunque alguien salte el popup de
+		// vista previa y llame este endpoint directamente.
+		$anticipada = self::crtEvaluarLlegadaAnticipada($id_reservacion, $id_hotel);
+
+		if($anticipada["requiereCargo"] && $anticipada["permitido"] === false){
+			return ["ok" => false, "mensaje" => $anticipada["mensaje"] ?? "La habitación anterior aún no está disponible para recibir al huésped tan pronto."];
+		}
+
 		$resultado = ModeloReservaciones::MdlConfirmarCheckIn($id_reservacion, $id_hotel);
 		$afectados = $resultado ? (int) $resultado["Afectados"] : 0;
 
@@ -175,7 +186,164 @@ class ControladorReservaciones{
 			return ["ok" => false, "mensaje" => "Esta reservación ya no está en estado Reservada."];
 		}
 
-		return ["ok" => true, "mensaje" => "Check-in confirmado."];
+		$horasAnticipada = 0;
+		$montoAnticipada = 0;
+
+		if($anticipada["requiereCargo"] && $anticipada["permitido"] === true && $anticipada["horas"] > 0){
+			$idUsuario = $_SESSION["IdUsuario"] ?? null;
+			$ticketResp = ModeloVentas::MdlObtenerNuevoTicket($idUsuario);
+			$ticket = $ticketResp ? (int) $ticketResp["NuevoTicket"] : 0;
+
+			if($ticket > 0 && $anticipada["idInventarioAnticipada"] > 0){
+				ModeloVentas::MdlInsertarVenta(
+					$anticipada["idInventarioAnticipada"],
+					$anticipada["horas"],
+					$ticket,
+					$idUsuario,
+					$anticipada["precioTotal"],
+					$anticipada["idCliente"],
+					$id_reservacion
+				);
+
+				ModeloReservaciones::MdlActualizarHoraAnticipada($id_reservacion, $anticipada["horas"]);
+
+				$horasAnticipada = $anticipada["horas"];
+				$montoAnticipada = $anticipada["precioTotal"];
+			}
+		}
+
+		$mensaje = $horasAnticipada > 0
+			? "Check-in confirmado. Se cobraron {$horasAnticipada} hora(s) anticipada(s)."
+			: "Check-in confirmado.";
+
+		return [
+			"ok" => true,
+			"mensaje" => $mensaje,
+			"horasAnticipada" => $horasAnticipada,
+			"montoAnticipada" => $montoAnticipada,
+		];
+	}
+
+	// Vista previa (sin efectos secundarios) de si una reservación va a requerir cobro de
+	// Horas Anticipadas al hacer check-in, para mostrar el popup adecuado antes de confirmar.
+	static public function crtValidarLlegadaAnticipada($id_reservacion){
+		$id_hotel = ControladorHabitaciones::crtObtenerIdHotelSesion();
+
+		if($id_hotel === null){
+			return ["ok" => false, "mensaje" => "Tu negocio no tiene un hotel registrado, contacta a soporte técnico."];
+		}
+
+		$id_reservacion = trim((string) $id_reservacion);
+
+		if($id_reservacion === ""){
+			return ["ok" => false, "mensaje" => "Falta la reservación."];
+		}
+
+		return self::crtEvaluarLlegadaAnticipada($id_reservacion, $id_hotel);
+	}
+
+	// Núcleo compartido por el preview y el commit: calcula si la reservación llega antes de su
+	// FechaEntrada más allá de la tolerancia configurada (cat_estatus Id_Estatus=14) y, de ser
+	// así, si la habitación anterior permite cubrir esas horas y cuánto costarían.
+	private static function crtEvaluarLlegadaAnticipada($id_reservacion, $id_hotel){
+		$base = [
+			"ok" => true,
+			"mensaje" => null,
+			"requiereCargo" => false,
+			"permitido" => null,
+			"horas" => 0,
+			"precioUnitario" => null,
+			"precioTotal" => null,
+			"salidaAnterior" => null,
+			"idHabitacion" => null,
+			"idCliente" => null,
+			"idInventarioAnticipada" => null,
+		];
+
+		$reservacion = ModeloReservaciones::MdlObtenerReservacionParaCheckin($id_reservacion, $id_hotel);
+
+		if(!$reservacion || (int) $reservacion["Id_Estatus"] !== 9){
+			$base["ok"] = false;
+			$base["mensaje"] = "Esta reservación ya no está en estado Reservada.";
+			return $base;
+		}
+
+		$idHabitacion = (int) $reservacion["Id_Habitacion"];
+		$fechaEntrada = $reservacion["FechaEntrada"];
+
+		$base["idHabitacion"] = $idHabitacion;
+		$base["idCliente"] = (int) $reservacion["Id_Cliente"];
+
+		$tolerancia = ModeloReservaciones::MdlObtenerToleranciaAnticipada();
+		$horas = self::crtCalcularHorasAnticipadas($fechaEntrada, $tolerancia);
+
+		if($horas <= 0){
+			return $base; // llegó a tiempo (o dentro de la tolerancia): sin cargo, popup normal.
+		}
+
+		$base["requiereCargo"] = true;
+		$base["horas"] = $horas;
+
+		// Tope de anticipación: pasada esta ventana no se ofrece check-in anticipado (el botón ya
+		// ni siquiera se muestra en Recepción, ver ControladorHabitaciones::VENTANA_MAXIMA_CHECKIN_ANTICIPADO_HORAS).
+		// Esto evita cobrar HrsAnticipadas por adelantar una reserva un día entero.
+		if($horas > ControladorHabitaciones::VENTANA_MAXIMA_CHECKIN_ANTICIPADO_HORAS){
+			$base["permitido"] = false;
+			$horaMinima = strtotime($fechaEntrada) - (ControladorHabitaciones::VENTANA_MAXIMA_CHECKIN_ANTICIPADO_HORAS * 3600);
+			$base["mensaje"] = "Aún es muy pronto para hacer check-in. Podrás hacerlo a partir de las " . date("g:i a", $horaMinima) . " del " . date("d/m/Y", $horaMinima) . ".";
+			return $base;
+		}
+
+		// Reutiliza la misma validación que ya usa (para venta manual) ajax/validarHorasAnticipadas.ajax.php:
+		// no se pueden cubrir horas anticipadas si la habitación anterior no se desocupa a tiempo.
+		$anterior = ModeloHoteles::MdlObtenerReservacionAnterior($idHabitacion, $fechaEntrada, $id_reservacion);
+		$maxHoras = ($anterior && isset($anterior["HorasDisponibles"])) ? (int) $anterior["HorasDisponibles"] : null;
+
+		if($anterior && $maxHoras !== null && $horas > $maxHoras){
+			$base["permitido"] = false;
+			$base["salidaAnterior"] = !empty($anterior["FechaSalidaEfectiva"])
+				? date("d/m/Y g:i a", strtotime($anterior["FechaSalidaEfectiva"]))
+				: null;
+			return $base;
+		}
+
+		$base["permitido"] = true;
+
+		$producto = ModeloInventarios::MdlObtenerInventario($_SESSION["IdUsuario"] ?? null, "HRSANTICIPADA");
+
+		if(!$producto || !isset($producto["Id_Inventario"])){
+			// Sin el producto dado de alta en Inventario no hay forma de cobrar: se bloquea el
+			// check-in anticipado en vez de dejarlo pasar sin costo.
+			$base["permitido"] = false;
+			$base["mensaje"] = "No se encontró el producto de Horas Anticipadas en el inventario, contacta a soporte técnico.";
+			return $base;
+		}
+
+		$base["idInventarioAnticipada"] = (int) $producto["Id_Inventario"];
+		$base["precioUnitario"] = (float) $producto["PrecioVenta"];
+		$base["precioTotal"] = $base["precioUnitario"] * $horas;
+
+		return $base;
+	}
+
+	// Convierte "cuántos minutos antes llega" en horas facturables, redondeando hacia arriba
+	// cuando el residuo pasa de la tolerancia configurada (ej. 1h40m antes con 30min de
+	// tolerancia = 1h completa + 40min de residuo > 30min -> se cobran 2 horas).
+	private static function crtCalcularHorasAnticipadas($fechaEntrada, $toleranciaMinutos){
+		if(!$fechaEntrada){
+			return 0;
+		}
+
+		$minutosAntes = (strtotime($fechaEntrada) - time()) / 60;
+
+		if($minutosAntes <= 0){
+			return 0;
+		}
+
+		$horasCompletas = intdiv((int) $minutosAntes, 60);
+		$residual = $minutosAntes - ($horasCompletas * 60);
+
+		return ($residual > $toleranciaMinutos) ? $horasCompletas + 1 : $horasCompletas;
 	}
 
 	// Habitaciones del hotel en sesión disponibles entre $fecha_inicio y $fecha_fin (formato

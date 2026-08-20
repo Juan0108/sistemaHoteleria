@@ -126,4 +126,39 @@ class ModeloReservaciones{
 		$stmt->execute();
 		return $stmt->fetchAll();
 	}
+
+	// Tolerancia (en minutos) para redondear Horas Anticipadas al hacer check-in.
+	// Se guarda como texto (ej. "30m") en cat_estatus, Id_Estatus=14.
+	static public function MdlObtenerToleranciaAnticipada(){
+		$stmt = Conexion::conectar()->prepare("CALL ObtenerToleranciaAnticipada()");
+		$stmt->execute();
+		$fila = $stmt->fetch();
+		$stmt->closeCursor();
+
+		if(!$fila || !isset($fila["Nombre"])){
+			return 30;
+		}
+
+		$minutos = (int) preg_replace('/\D/', '', $fila["Nombre"]);
+		return $minutos > 0 ? $minutos : 30;
+	}
+
+	// Datos de una reservación (por folio) necesarios para validar el check-in
+	// anticipado, escopeados al hotel de la sesión.
+	static public function MdlObtenerReservacionParaCheckin($id_reservacion, $id_hotel){
+		$stmt = Conexion::conectar()->prepare("CALL ObtenerReservacionParaCheckin(:id_reservacion, :id_hotel)");
+		$stmt->bindParam(":id_reservacion", $id_reservacion);
+		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
+		$stmt->execute();
+		return $stmt->fetch();
+	}
+
+	// Suma horas anticipadas a la reservación (alimenta el badge "Anticipada Nh" en Recepción).
+	static public function MdlActualizarHoraAnticipada($id_reservacion, $horas){
+		$stmt = Conexion::conectar()->prepare("CALL ActualizarHoraAnticipada(:id_reservacion, :horas)");
+		$stmt->bindParam(":id_reservacion", $id_reservacion);
+		$stmt->bindParam(":horas", $horas, PDO::PARAM_INT);
+		$stmt->execute();
+		return $stmt->fetch();
+	}
 }

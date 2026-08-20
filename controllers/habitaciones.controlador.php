@@ -2,6 +2,13 @@
 
 class ControladorHabitaciones{
 
+	// Máximo de horas antes de FechaEntrada en que Recepción puede hacer check-in anticipado
+	// (con cobro de HrsAnticipadas). Más allá de esto no tiene sentido cobrarle a alguien un día
+	// entero de anticipación solo porque su reserva es para esa fecha: el botón de check-in se
+	// oculta (ver crtObtenerHabitacionesRecepcion) y el servidor lo rechaza aunque lo llamen
+	// directo (ver ControladorReservaciones::crtEvaluarLlegadaAnticipada).
+	const VENTANA_MAXIMA_CHECKIN_ANTICIPADO_HORAS = 4;
+
 	static public function crtObtenerHoteles(){
 		$respuesta = ModeloHabitaciones::MdlObtenerHoteles();
 		return $respuesta;
@@ -278,10 +285,19 @@ class ControladorHabitaciones{
 			$hab["HorasExtras"] = $reserva["horasExtras"] ?? 0;
 			$hab["HoraAnticipada"] = $reserva["horaAnticipada"] ?? 0;
 
-			// El botón de check-in solo debe ofrecerse cuando ya llegó la hora de entrada
-			// de la reservación, no apenas se crea (evita check-in anticipado de reservas futuras).
-			$hab["PuedeCheckin"] = $clase === "reservada" && $hab["FechaEntrada"] !== null
-				&& strtotime($hab["FechaEntrada"]) <= time();
+			// El botón de check-in solo se ofrece dentro de la ventana de anticipación permitida
+			// (o si ya llegó/pasó la hora de entrada). Fuera de esa ventana no se muestra: no
+			// tiene caso ofrecer un check-in que el servidor va a rechazar de todas formas.
+			$puedeCheckin = false;
+
+			if($clase === "reservada" && !empty($reserva["fechaEntrada"])){
+				$segundosParaEntrada = strtotime($reserva["fechaEntrada"]) - time();
+				$ventanaSegundos = self::VENTANA_MAXIMA_CHECKIN_ANTICIPADO_HORAS * 3600;
+
+				$puedeCheckin = $segundosParaEntrada <= $ventanaSegundos;
+			}
+
+			$hab["PuedeCheckin"] = $puedeCheckin;
 
 			$resultado[] = $hab;
 		}

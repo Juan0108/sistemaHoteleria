@@ -123,8 +123,7 @@ if (isset($_SESSION["IniciarSesion"]) && $_SESSION["IniciarSesion"] == "ok" && i
 </head>
 
 <!-- Cuerpo Documento -->
-<body <?php echo '
-class="hold-transition skin-red sidebar-collapse sidebar-mini login-page"'?>>
+<body class="hold-transition skin-red sidebar-collapse sidebar-mini<?php echo (isset($_SESSION["IniciarSesion"]) && $_SESSION["IniciarSesion"] == "ok") ? "" : " login-page"; ?>">
 
 <?php
 

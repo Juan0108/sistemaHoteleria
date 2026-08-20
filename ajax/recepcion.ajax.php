@@ -38,9 +38,10 @@ class RecepcionAjax
 			$salidaCorta = "";
 			if ($Habitaciones[$i]["FechaEntrada"] && $Habitaciones[$i]["FechaSalida"]) {
 				$tsSalidaReal = strtotime($Habitaciones[$i]["FechaSalida"]) + ((int) $Habitaciones[$i]["HorasExtras"] * 3600);
-				$tituloPill = "Entrada: " . date("d/m/Y g:i a", strtotime($Habitaciones[$i]["FechaEntrada"]))
+				$tsEntradaReal = strtotime($Habitaciones[$i]["FechaEntrada"]) - ((int) $Habitaciones[$i]["HoraAnticipada"] * 3600);
+				$tituloPill = "Entrada: " . date("d/m/Y g:i a", $tsEntradaReal)
 							. " · Salida: " . date("d/m/Y g:i a", $tsSalidaReal);
-				$entradaCorta = date("d/m g:i a", strtotime($Habitaciones[$i]["FechaEntrada"]));
+				$entradaCorta = date("d/m g:i a", $tsEntradaReal);
 				$salidaCorta = date("d/m g:i a", $tsSalidaReal);
 			}
 

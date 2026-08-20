@@ -58,11 +58,13 @@ $HabitacionesRecepcion = $ctlRecepcion->crtObtenerHabitacionesRecepcion($fechaHo
             <div class="recepcion-grid">
               <?php foreach ($HabitacionesRecepcion as $hab):
                 $horasExtras = (int) $hab["HorasExtras"];
+                $horaAnticipada = (int) $hab["HoraAnticipada"];
                 $tsSalidaReal = $hab["FechaSalida"] ? strtotime($hab["FechaSalida"]) + ($horasExtras * 3600) : null;
+                $tsEntradaReal = $hab["FechaEntrada"] ? strtotime($hab["FechaEntrada"]) - ($horaAnticipada * 3600) : null;
 
                 $tituloPill = "";
                 if ($hab["FechaEntrada"] && $hab["FechaSalida"]) {
-                  $tituloPill = "Entrada: " . date("d/m/Y g:i a", strtotime($hab["FechaEntrada"]))
+                  $tituloPill = "Entrada: " . date("d/m/Y g:i a", $tsEntradaReal)
                               . " · Salida: " . date("d/m/Y g:i a", $tsSalidaReal);
                 }
               ?>
@@ -77,9 +79,9 @@ $HabitacionesRecepcion = $ctlRecepcion->crtObtenerHabitacionesRecepcion($fechaHo
                           <i class="fa fa-clock-o"></i> +<?php echo $horasExtras; ?>h
                         </span>
                       <?php endif; ?>
-                      <?php if ((int) $hab["HoraAnticipada"] > 0): ?>
+                      <?php if ($horaAnticipada > 0): ?>
                         <span class="hc-hora-anticipada" title="Llegada anticipada">
-                          <i class="fa fa-history"></i> Anticipada <?php echo (int) $hab["HoraAnticipada"]; ?>h
+                          <i class="fa fa-history"></i> Anticipada <?php echo $horaAnticipada; ?>h
                         </span>
                       <?php endif; ?>
                     </div>
@@ -89,11 +91,13 @@ $HabitacionesRecepcion = $ctlRecepcion->crtObtenerHabitacionesRecepcion($fechaHo
                       <i class="fa fa-calendar"></i> <?php echo (int) $hab["ReservasProximas"]; ?> <?php echo (int) $hab["ReservasProximas"] === 1 ? "reserva próxima" : "reservas próximas"; ?>
                     </div>
                   <?php endif; ?>
-                  <button type="button" class="hc-ver-reservas" title="Ver todas las reservas de esta habitación"
-                          data-id-habitacion="<?php echo (int) $hab["Id_Habitacion"]; ?>"
-                          data-tipo-habitacion="<?php echo htmlspecialchars($hab["TipoHabitacion"]); ?>">
-                    <i class="fa fa-list-alt"></i> Ver reservas
-                  </button>
+                  <?php if ($hab["EstadoClase"] !== "disponible" || (int) $hab["ReservasProximas"] > 0): ?>
+                    <button type="button" class="hc-ver-reservas" title="Ver todas las reservas de esta habitación"
+                            data-id-habitacion="<?php echo (int) $hab["Id_Habitacion"]; ?>"
+                            data-tipo-habitacion="<?php echo htmlspecialchars($hab["TipoHabitacion"]); ?>">
+                      <i class="fa fa-list-alt"></i> Ver reservas
+                    </button>
+                  <?php endif; ?>
                   <div class="hc-bed"><i class="fa fa-bed"></i></div>
                   <?php if ($hab["NombreCliente"]): ?>
                     <div class="hc-cliente"><i class="fa fa-user-o"></i> <?php echo htmlspecialchars($hab["NombreCliente"]); ?></div>
@@ -101,7 +105,10 @@ $HabitacionesRecepcion = $ctlRecepcion->crtObtenerHabitacionesRecepcion($fechaHo
                       <div class="hc-stay">
                         <div class="hc-stay-pair">
                           <span class="hc-stay-lbl">Entrada</span>
-                          <span class="hc-stay-val"><?php echo date("d/m g:i a", strtotime($hab["FechaEntrada"])); ?></span>
+                          <span class="hc-stay-val<?php echo $horaAnticipada > 0 ? ' hc-stay-val-anticipada' : ''; ?>"
+                                <?php if ($horaAnticipada > 0): ?>title="Incluye <?php echo $horaAnticipada; ?>h anticipada"<?php endif; ?>>
+                            <?php echo date("d/m g:i a", $tsEntradaReal); ?>
+                          </span>
                         </div>
                         <span class="hc-stay-arrow"><i class="fa fa-long-arrow-right"></i></span>
                         <div class="hc-stay-pair">
@@ -705,6 +712,13 @@ $HabitacionesRecepcion = $ctlRecepcion->crtObtenerHabitacionesRecepcion($fechaHo
     display:inline-block;
     background:#fbe7c6;
     color:#8a5a00;
+    padding:1px 8px;
+    border-radius:6px;
+  }
+  .hc-stay-val-anticipada{
+    display:inline-block;
+    background:#dcebf1;
+    color:#2f5f7a;
     padding:1px 8px;
     border-radius:6px;
   }

@@ -6,6 +6,9 @@ require_once "../controllers/habitaciones.controlador.php";
 require_once "../controllers/reservaciones.controlador.php";
 require_once "../models/habitaciones.modelo.php";
 require_once "../models/reservaciones.modelo.php";
+require_once "../models/hoteles.modelo.php";
+require_once "../models/inventarios.modelo.php";
+require_once "../models/ventas.modelo.php";
 
 class ReservacionesAjax
 {
@@ -136,8 +139,20 @@ class ReservacionesAjax
 
 		$ok = $respuesta["ok"] ? "true" : "false";
 		$mensaje = isset($respuesta["mensaje"]) ? $this->jsonEscape($respuesta["mensaje"]) : "";
+		$horasAnticipada = isset($respuesta["horasAnticipada"]) ? (int) $respuesta["horasAnticipada"] : 0;
+		$montoAnticipada = isset($respuesta["montoAnticipada"]) ? (float) $respuesta["montoAnticipada"] : 0;
 
-		echo '{"ok": '.$ok.', "mensaje": "'.$mensaje.'"}';
+		echo '{"ok": '.$ok.', "mensaje": "'.$mensaje.'", "horasAnticipada": '.$horasAnticipada.', "montoAnticipada": '.$montoAnticipada.'}';
+	}
+
+	// Vista previa (sin escribir nada) de si el check-in de esta reservación va a requerir
+	// cobro de Horas Anticipadas, para decidir qué popup mostrar antes de confirmar.
+	public function validarLlegadaAnticipada(){
+
+		$id_reservacion = isset($_GET["id_reservacion"]) ? $_GET["id_reservacion"] : "";
+		$respuesta = ControladorReservaciones::crtValidarLlegadaAnticipada($id_reservacion);
+
+		echo json_encode($respuesta);
 	}
 
 	public function disponibilidad(){
@@ -181,6 +196,8 @@ if ($Accion === "buscarClientes") {
 	$Ajax->cancelar();
 } elseif ($Accion === "checkin") {
 	$Ajax->checkin();
+} elseif ($Accion === "validarLlegadaAnticipada") {
+	$Ajax->validarLlegadaAnticipada();
 } elseif ($Accion === "disponibilidad") {
 	$Ajax->disponibilidad();
 } elseif ($Accion === "motivosCancelacion") {

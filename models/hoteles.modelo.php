@@ -320,9 +320,16 @@ static public function MdlJsonObtenerEstatus(){
 	$stmt -> execute();
 
 	$Estatus = array();
- 
+
  	while($row=$stmt->fetch(PDO::FETCH_ASSOC)){
-  
+
+  		// Id_Estatus 14 es una fila de configuración (tolerancia de Horas Anticipadas
+  		// en Recepción), no un estatus real de hotel/habitación/reservación: se excluye
+  		// para que no aparezca como opción en los combos de estatus de otras pantallas.
+  		if((int) $row['Id_Estatus'] === 14){
+  			continue;
+  		}
+
   		$Estatus['data'][] = $row;
  	}
 	 $stmt->closeCursor();

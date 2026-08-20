@@ -1,4 +1,10 @@
-<?php 
+<?php
+
+// El date.timezone del php.ini de este servidor no siempre coincide con la zona horaria
+// real del hotel (Ciudad de México), lo que desfasa date()/strtotime() varias horas y
+// puede marcar reservaciones del mismo día como "en el pasado". Se fija aquí para que
+// coincida con la hora real del servidor de base de datos, sin depender del php.ini.
+date_default_timezone_set("America/Mexico_City");
 
 /**
  * Clase para la conexión al servidor de base de datos.
