@@ -22,6 +22,11 @@ if (isset($_SESSION["IniciarSesion"]) && $_SESSION["IniciarSesion"] == "ok" && i
 <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <!-- Sin esto, en navegadores/SO con tema oscuro se ve un flash de pantalla
+       negra al recargar (justo antes de que cargue el CSS del sitio, que es
+       claro): el navegador asume fondo oscuro por defecto si no se le dice
+       lo contrario. -->
+  <meta name="color-scheme" content="light">
 
   <title>System POS DIT</title>
   <!-- Tell the browser to be responsive to screen width -->
