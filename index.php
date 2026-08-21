@@ -14,6 +14,7 @@ require_once "controllers/webservice.controlador.php";
 require_once "controllers/clientes.controlador.php";
 require_once "controllers/habitaciones.controlador.php";
 require_once "controllers/reservaciones.controlador.php";
+require_once "controllers/mantenimiento.controlador.php";
 
 require_once "models/usuarios.modelo.php";
 require_once "models/categorias.modelo.php";
@@ -28,6 +29,7 @@ require_once "models/webservice.modelo.php";
 require_once "models/clientes.modelo.php";
 require_once "models/habitaciones.modelo.php";
 require_once "models/reservaciones.modelo.php";
+require_once "models/mantenimiento.modelo.php";
 
 require_once "objects/usuario.php";
 require_once "objects/categoria.php";

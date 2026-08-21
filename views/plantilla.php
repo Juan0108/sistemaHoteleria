@@ -123,7 +123,7 @@ if (isset($_SESSION["IniciarSesion"]) && $_SESSION["IniciarSesion"] == "ok" && i
 </head>
 
 <!-- Cuerpo Documento -->
-<body class="hold-transition skin-red sidebar-collapse sidebar-mini<?php echo (isset($_SESSION["IniciarSesion"]) && $_SESSION["IniciarSesion"] == "ok") ? "" : " login-page"; ?>">
+<body class="hold-transition skin-blue sidebar-collapse sidebar-mini<?php echo (isset($_SESSION["IniciarSesion"]) && $_SESSION["IniciarSesion"] == "ok") ? "" : " login-page"; ?>">
 
 <?php
 
@@ -151,6 +151,7 @@ if(isset($_SESSION["IniciarSesion"]) && $_SESSION["IniciarSesion"] == "ok")
          $_GET["ruta"] == "habitaciones" ||
          $_GET["ruta"] == "recepcion" ||
          $_GET["ruta"] == "reservas" ||
+         $_GET["ruta"] == "mantenimiento" ||
          $_GET["ruta"] == "ventas" ||
          $_GET["ruta"] == "crearventas" ||
          $_GET["ruta"] == "reporte" ||
@@ -193,6 +194,8 @@ if(isset($_SESSION["IniciarSesion"]) && $_SESSION["IniciarSesion"] == "ok")
 <script src="views/js/habitaciones.js?v=<?php echo @filemtime(__DIR__ . "/js/habitaciones.js"); ?>"></script>
 <script src="views/js/recepcion.js?v=<?php echo @filemtime(__DIR__ . "/js/recepcion.js"); ?>"></script>
 <script src="views/js/reservas.js?v=<?php echo @filemtime(__DIR__ . "/js/reservas.js"); ?>"></script>
+<script src="views/js/mantenimiento.js?v=<?php echo @filemtime(__DIR__ . "/js/mantenimiento.js"); ?>"></script>
+<script src="views/js/ventas.js"></script>
 <script src="views/js/ganancias.js"></script>
 <script src="views/js/recargas.js"></script>
 <script src="views/js/clientes.js"></script>
