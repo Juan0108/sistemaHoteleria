@@ -39,19 +39,29 @@ class CambiarEstatusMantenimientoAjax
 			return;
 		}
 
+		if($id_estatus === ControladorMantenimiento::ESTATUS_RESUELTO){
+			$archivoFoto = $_FILES["fotoResuelto"] ?? null;
+			$resultadoFoto = ControladorMantenimiento::crtGuardarFotoResuelta($id_mantenimiento, $archivoFoto);
+
+			if($resultadoFoto["status"] !== "success"){
+				http_response_code(400);
+				echo json_encode($resultadoFoto);
+				return;
+			}
+		}
+
 		$respuesta = ModeloMantenimiento::MdlActualizarEstatusMantenimiento($id_mantenimiento, $id_hotel, $id_estatus);
 
 		if($respuesta && (int) $respuesta["Afectados"] > 0){
 
-			// Se regresa la tarjeta ya renderizada en su nuevo estado para que el
-			// JS solo la mueva de columna, sin recargar toda la página.
-			$fila = ControladorMantenimiento::crtObtenerFilaTablero($id_mantenimiento);
+			// Reabrir: guarda el motivo capturado en el prompt del botón "Reabrir"
+			if($id_estatus === ControladorMantenimiento::ESTATUS_PENDIENTE && !empty($_POST["notaReapertura"])){
+				ControladorMantenimiento::crtActualizarNotaReapertura($id_mantenimiento, $_POST["notaReapertura"]);
+			}
 
 			echo json_encode([
 				"status" => "success",
-				"message" => "Incidencia actualizada correctamente",
-				"columna" => $fila["columna"] ?? null,
-				"html" => $fila["html"] ?? null
+				"message" => "Incidencia actualizada correctamente"
 			]);
 		}else{
 			http_response_code(400);
