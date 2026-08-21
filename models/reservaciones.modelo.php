@@ -86,6 +86,18 @@ class ModeloReservaciones{
 		return $stmt->fetch();
 	}
 
+	// Pasa una reservación Reservado/Ocupado a estatus "Movida" (19), sin borrarla, para
+	// dejar rastro en el calendario de que ese rango ya no aplica. No hace nada si ya no
+	// está activa o si no pertenece al hotel de la sesión. Regresa Id_Cliente y Precio de
+	// la reservación original para poder crear la reservación con las fechas nuevas.
+	static public function MdlMarcarReservacionMovida($id_reservacion, $id_hotel){
+		$stmt = Conexion::conectar()->prepare("CALL MarcarReservacionMovida(:id_reservacion, :id_hotel)");
+		$stmt->bindParam(":id_reservacion", $id_reservacion);
+		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
+		$stmt->execute();
+		return $stmt->fetch();
+	}
+
 	// Catálogo de motivos de cancelación (cat_Motivos), para el combo del formulario.
 	static public function MdlObtenerMotivosCancelacion(){
 		$stmt = Conexion::conectar()->prepare("CALL ObtenerMotivosCancelacion()");
@@ -101,20 +113,6 @@ class ModeloReservaciones{
 		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
 		$stmt->execute();
 		return $stmt->fetch();
-	}
-
-	// Habitaciones activas del hotel sin ninguna reservación vigente (Ocupado/Reservado)
-	// que se traslape con el rango [fecha_entrada, fecha_salida). Requiere el SP
-	// ObtenerHabitacionesDisponiblesPorFecha (ver sql/ObtenerHabitacionesDisponiblesPorFecha.sql).
-	static public function MdlObtenerHabitacionesDisponibles($id_hotel, $fecha_entrada, $fecha_salida){
-		$stmt = Conexion::conectar()->prepare(
-			"CALL ObtenerHabitacionesDisponiblesPorFecha(:id_hotel, :fecha_entrada, :fecha_salida)"
-		);
-		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
-		$stmt->bindParam(":fecha_entrada", $fecha_entrada);
-		$stmt->bindParam(":fecha_salida", $fecha_salida);
-		$stmt->execute();
-		return $stmt->fetchAll();
 	}
 
 	// Conteo, por habitación, de reservaciones Reservadas (Id_Estatus=9) cuya entrada aún no

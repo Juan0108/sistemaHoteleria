@@ -21,12 +21,19 @@ class RecepcionAjax
 	public function mostrarRecepcion(){
 
 		$busqueda = isset($_GET["busqueda"]) ? trim($_GET["busqueda"]) : "";
+		$tipo = isset($_GET["tipo"]) ? trim($_GET["tipo"]) : "";
 
 		if ($busqueda !== "") {
 			$Habitaciones = ControladorHabitaciones::crtBuscarHabitacionesRecepcion($busqueda);
 		} else {
 			$fecha = isset($_GET["fecha"]) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET["fecha"]) ? $_GET["fecha"] : date("Y-m-d");
 			$Habitaciones = ControladorHabitaciones::crtObtenerHabitacionesRecepcion($fecha);
+		}
+
+		if ($tipo !== "") {
+			$Habitaciones = array_values(array_filter($Habitaciones, function($hab) use ($tipo){
+				return $hab["TipoHabitacion"] === $tipo;
+			}));
 		}
 
 		$datosJason = '{"data":[';

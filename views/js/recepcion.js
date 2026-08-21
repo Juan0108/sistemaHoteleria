@@ -56,19 +56,25 @@ function pintarTarjetasRecepcion(habitaciones, mensajeVacio){
 			horasExtra += '<span class="hc-hora-anticipada" title="Llegada anticipada"><i class="fa fa-history"></i> Anticipada ' + parseInt(hab.horaAnticipada, 10) + 'h</span>';
 		}
 
+		// El contador y "Ver reservas" cuentan lo mismo: las adicionales en cola
+		// (reservasProximas) más la reservación de hoy solo si es Reservada (aún no ha
+		// llegado, así que sigue teniendo sentido poder moverla). Si ya está Ocupada, esa
+		// estadía ya sucedió: no cuenta, solo lo que venga después en cola.
 		var reservasProximas = parseInt(hab.reservasProximas, 10) || 0;
+		var tieneReservaActual = hab.estadoClase === 'reservada';
+		var totalReservas = reservasProximas + (tieneReservaActual ? 1 : 0);
 		var htmlReservasProximas = '';
 
-		if (reservasProximas > 0){
-			var etiquetaReservas = reservasProximas === 1 ? 'reserva próxima' : 'reservas próximas';
-			htmlReservasProximas = '<div class="hc-reservas-proximas" title="Reservaciones próximas para esta habitación">' +
-				'<i class="fa fa-calendar"></i> ' + reservasProximas + ' ' + etiquetaReservas +
+		if (totalReservas > 0){
+			var etiquetaReservas = totalReservas === 1 ? 'reserva' : 'reservas';
+			htmlReservasProximas = '<div class="hc-reservas-proximas" title="Reservaciones para esta habitación">' +
+				'<i class="fa fa-calendar"></i> ' + totalReservas + ' ' + etiquetaReservas +
 			'</div>';
 		}
 
 		var htmlVerReservas = '';
 
-		if (hab.estadoClase !== 'disponible' || reservasProximas > 0){
+		if (totalReservas > 0){
 			htmlVerReservas = '<button type="button" class="hc-ver-reservas" title="Ver todas las reservas de esta habitación"' +
 				' data-id-habitacion="' + escaparHtmlRecepcion(hab.id) + '"' +
 				' data-tipo-habitacion="' + nombre + '">' +
@@ -144,13 +150,14 @@ function ocultarCargaRecepcion(){
 function actualizarRecepcion(){
 
 	var fecha = $("#recepcionFecha").val();
+	var tipo = $("#recepcionTipo").val();
 
 	mostrarCargaRecepcion();
 
 	$.ajax({
 		url: "ajax/recepcion.ajax.php",
 		method: "GET",
-		data: { fecha: fecha },
+		data: { fecha: fecha, tipo: tipo },
 		dataType: "json",
 		success: function(respuesta){
 			pintarTarjetasRecepcion(respuesta.data, "No hay habitaciones disponibles para este día. Las habitaciones inhabilitadas en el módulo de Habitaciones no se muestran aquí.");
@@ -162,12 +169,14 @@ function actualizarRecepcion(){
 
 function buscarRecepcion(termino){
 
+	var tipo = $("#recepcionTipo").val();
+
 	mostrarCargaRecepcion();
 
 	$.ajax({
 		url: "ajax/recepcion.ajax.php",
 		method: "GET",
-		data: { busqueda: termino },
+		data: { busqueda: termino, tipo: tipo },
 		dataType: "json",
 		success: function(respuesta){
 			pintarTarjetasRecepcion(respuesta.data, "Ninguna habitación coincide con la búsqueda.");
@@ -191,6 +200,17 @@ $(document).on("input", "#recepcionBusqueda", function(){
 			buscarRecepcion(termino);
 		}
 	}, 300);
+});
+
+$(document).on("change", "#recepcionTipo", function(){
+
+	var termino = $.trim($("#recepcionBusqueda").val());
+
+	if (termino === ""){
+		actualizarRecepcion();
+	}else{
+		buscarRecepcion(termino);
+	}
 });
 
 if ($("#recepcionFecha").length){
@@ -247,15 +267,16 @@ $(document).on("click", ".hc-ver-reservas", function(){
 
 	var $boton = $(this);
 	var idHabitacion = $boton.data("idHabitacion");
+	var tipoHabitacion = $boton.data("tipoHabitacion");
 
-	$("#hrHabitacionNombre").text($boton.data("tipoHabitacion"));
+	$("#hrHabitacionNombre").text(tipoHabitacion);
 	$("#hrContenido").html('<p class="text-muted text-center" style="padding:20px;">Cargando…</p>');
 	$("#modalHistorialReservas").modal("show");
 
 	$.ajax({
 		url: "ajax/reservaciones.ajax.php",
 		method: "GET",
-		data: { accion: "historial", id_habitacion: idHabitacion },
+		data: { accion: "historial", id_habitacion: idHabitacion, fecha: $("#recepcionFecha").val() },
 		dataType: "json",
 		success: function(respuesta){
 
@@ -267,16 +288,31 @@ $(document).on("click", ".hc-ver-reservas", function(){
 			}
 
 			var html = '<div style="overflow-x:auto;"><table class="hr-tabla"><thead><tr>' +
-				'<th>Folio</th><th>Cliente</th><th>Entrada</th><th>Salida</th><th>Estado</th>' +
+				'<th>Folio</th><th>Cliente</th><th>Entrada</th><th>Salida</th><th>Estado</th><th></th>' +
 				'</tr></thead><tbody>';
 
 			reservas.forEach(function(r){
+				var puedeMover = r.estadoClase === "ocupada" || r.estadoClase === "reservada";
+
+				var botonMover = puedeMover
+					? '<button type="button" class="hr-mover" title="Mover a otra habitación/fechas"' +
+						' data-folio="' + escaparHtmlRecepcion(r.folio) + '"' +
+						' data-cliente="' + escaparHtmlRecepcion(r.cliente) + '"' +
+						' data-entrada-raw="' + escaparHtmlRecepcion(r.entradaRaw) + '"' +
+						' data-salida-raw="' + escaparHtmlRecepcion(r.salidaRaw) + '"' +
+						' data-id-habitacion="' + escaparHtmlRecepcion(idHabitacion) + '"' +
+						' data-tipo-habitacion="' + escaparHtmlRecepcion(tipoHabitacion) + '">' +
+						'<i class="fa fa-exchange"></i> Mover' +
+					'</button>'
+					: '';
+
 				html += '<tr>' +
 					'<td>' + escaparHtmlRecepcion(r.folio) + '</td>' +
 					'<td>' + escaparHtmlRecepcion(r.cliente) + '</td>' +
 					'<td>' + escaparHtmlRecepcion(r.entrada) + '</td>' +
 					'<td>' + escaparHtmlRecepcion(r.salida) + '</td>' +
 					'<td><span class="hr-estado estado-' + r.estadoClase + '">' + escaparHtmlRecepcion(r.estadoTexto) + '</span></td>' +
+					'<td>' + botonMover + '</td>' +
 					'</tr>';
 			});
 
@@ -287,6 +323,97 @@ $(document).on("click", ".hc-ver-reservas", function(){
 		error: function(){
 			$("#hrContenido").html('<p class="text-muted text-center" style="padding:20px;">No se pudo cargar el historial.</p>');
 		}
+	});
+});
+
+/*=============================================
+ Mover reservación (botón "Mover" dentro de "Ver reservas")
+ =============================================*/
+
+// "YYYY-MM-DD HH:MM:SS" -> partes para los selects día/hora/minuto del modal.
+function mrPartesFecha(fechaMysql){
+	if (!fechaMysql){
+		return { dia: "", hora: "15", minuto: "00" };
+	}
+
+	var partes = fechaMysql.split(" ");
+	var horaMin = partes[1] ? partes[1].split(":") : ["15", "00"];
+
+	return { dia: partes[0], hora: horaMin[0], minuto: horaMin[1] };
+}
+
+$(document).on("click", ".hr-mover", function(){
+
+	var $boton = $(this);
+
+	$("#mrIdReservacion").val($boton.data("folio"));
+	$("#mrFolioActual").text($boton.data("folio") + " — " + $boton.data("cliente"));
+	$("#mrIdHabitacion").val($boton.data("idHabitacion"));
+	$("#mrHabitacionNombre").val($boton.data("tipoHabitacion"));
+
+	var entrada = mrPartesFecha(String($boton.data("entradaRaw") || ""));
+	$("#mrFechaEntradaDia").val(entrada.dia);
+	$("#mrFechaEntradaHora").val(entrada.hora);
+	$("#mrFechaEntradaMin").val(entrada.minuto);
+	mrSincronizarFecha("Entrada");
+
+	var salida = mrPartesFecha(String($boton.data("salidaRaw") || ""));
+	$("#mrFechaSalidaDia").val(salida.dia);
+	$("#mrFechaSalidaHora").val(salida.hora);
+	$("#mrFechaSalidaMin").val(salida.minuto);
+	mrSincronizarFecha("Salida");
+
+	// Se encadena con un spinner y se espera a que "Ver reservas" termine de cerrar
+	// (evento hidden.bs.modal) antes de abrir "Mover": mostrar/ocultar ambos modales
+	// al mismo tiempo dejaba un parpadeo/backdrop encimado entre los dos.
+	mostrarCargaRecepcion();
+
+	$("#modalHistorialReservas").one("hidden.bs.modal", function(){
+		$("#modalMoverReservacion")
+			.one("shown.bs.modal", function(){ ocultarCargaRecepcion(); })
+			.modal("show");
+	}).modal("hide");
+});
+
+$(document).on("click", "#mrGuardar", function(){
+
+	var datos = {
+		id_reservacion: $("#mrIdReservacion").val(),
+		id_habitacion: $("#mrIdHabitacion").val(),
+		fecha_entrada: $("#mrFechaEntrada").val(),
+		fecha_salida: $("#mrFechaSalida").val()
+	};
+
+	if (!datos.id_reservacion || !datos.id_habitacion || !datos.fecha_entrada || !datos.fecha_salida){
+		Swal.fire({ icon: "warning", title: "Faltan datos", text: "Selecciona habitación, entrada y salida nuevas." });
+		return;
+	}
+
+	if (new Date(datos.fecha_salida).getTime() <= new Date(datos.fecha_entrada).getTime()){
+		Swal.fire({ icon: "warning", title: "Fechas inválidas", text: "La salida debe ser posterior a la entrada." });
+		return;
+	}
+
+	mostrarCargaRecepcion();
+
+	$.ajax({
+		url: "ajax/reservaciones.ajax.php",
+		method: "POST",
+		data: $.extend({ accion: "mover" }, datos),
+		dataType: "json",
+		success: function(respuesta){
+			if (respuesta.ok){
+				$("#modalMoverReservacion").modal("hide");
+				Swal.fire({ icon: "success", title: "Reservación movida", text: "Folio nuevo: " + respuesta.folio });
+				refrescarRecepcion();
+			}else{
+				Swal.fire({ icon: "error", title: "No se pudo mover", text: respuesta.mensaje });
+			}
+		},
+		error: function(){
+			Swal.fire({ icon: "error", title: "Error", text: "No se pudo mover la reservación. Intenta de nuevo." });
+		},
+		complete: ocultarCargaRecepcion
 	});
 });
 
@@ -515,8 +642,8 @@ function nrPoblarSelectsHora(){
 		minutos += '<option value="' + m + '">' + m + '</option>';
 	});
 
-	$("#nrFechaEntradaHora, #nrFechaSalidaHora").html(horas);
-	$("#nrFechaEntradaMin, #nrFechaSalidaMin").html(minutos);
+	$("#nrFechaEntradaHora, #nrFechaSalidaHora, #mrFechaEntradaHora, #mrFechaSalidaHora").html(horas);
+	$("#nrFechaEntradaMin, #nrFechaSalidaMin, #mrFechaEntradaMin, #mrFechaSalidaMin").html(minutos);
 }
 nrPoblarSelectsHora();
 
@@ -537,12 +664,32 @@ $(document).on("change", "#nrFechaSalidaDia, #nrFechaSalidaHora, #nrFechaSalidaM
 	nrSincronizarFecha("Salida");
 });
 
+// Mismo patrón que nrSincronizarFecha, para los selects día/hora/minuto del modal "Mover reservación".
+function mrSincronizarFecha(prefijo){
+	var dia = $("#mrFecha" + prefijo + "Dia").val();
+	var hora = $("#mrFecha" + prefijo + "Hora").val();
+	var minuto = $("#mrFecha" + prefijo + "Min").val();
+
+	var valor = dia ? (dia + "T" + hora + ":" + minuto) : "";
+	$("#mrFecha" + prefijo).val(valor);
+}
+
+$(document).on("change", "#mrFechaEntradaDia, #mrFechaEntradaHora, #mrFechaEntradaMin", function(){
+	mrSincronizarFecha("Entrada");
+});
+$(document).on("change", "#mrFechaSalidaDia, #mrFechaSalidaHora, #mrFechaSalidaMin", function(){
+	mrSincronizarFecha("Salida");
+});
+
 function nrCalcularPrecio(){
 	var entrada = $("#nrFechaEntrada").val();
 	var salida = $("#nrFechaSalida").val();
 	var precioNoche = parseFloat($("#nrPrecioNoche").val()) || 0;
 
 	if (!entrada || !salida || !precioNoche){
+		// Sin entrada/salida completas no hay precio válido que mostrar: se limpia en vez
+		// de dejar pegado el último cálculo (ej. si borran la fecha de salida ya elegida).
+		$("#nrPrecio").val("");
 		return;
 	}
 
@@ -550,6 +697,7 @@ function nrCalcularPrecio(){
 	var tsSalida = new Date(salida).getTime();
 
 	if (isNaN(tsEntrada) || isNaN(tsSalida) || tsSalida <= tsEntrada){
+		$("#nrPrecio").val("");
 		return;
 	}
 
@@ -566,6 +714,10 @@ $(document).on("click", ".hc-arrow", function(){
 	var $arrow = $(this);
 
 	$("#formNuevaReservacion")[0].reset();
+	// nrCalcularPrecio() no limpia #nrPrecio si faltan entrada/salida (solo calcula cuando
+	// ambas están completas), así que hay que vaciarlo explícitamente aquí y no depender
+	// del reset del <form> (el precio de la reservación anterior se quedaba pegado).
+	$("#nrPrecio").val("");
 	$("#nrIdClienteSeleccionado").val("");
 	$("#nrResultadosCliente").hide().empty();
 	$("#nrClienteSeleccionadoTexto").hide();
@@ -598,6 +750,11 @@ $(document).on("click", ".hc-arrow", function(){
 	$("#nrFechaSalida").val("");
 
 	$("#modalNuevaReservacion").modal("show");
+
+	// Seguro adicional: si el navegador repone un valor "recordado" en #nrPrecio justo al
+	// volverse visible el modal (autocompletado fuera de nuestro control), se limpia de
+	// nuevo un tick después de mostrarlo.
+	setTimeout(function(){ $("#nrPrecio").val(""); }, 0);
 });
 
 $(document).on("change", "#nrFechaEntrada", function(){
@@ -696,6 +853,8 @@ $(document).on("click", "#nrToggleClienteNuevo", function(e){
 		$("#nrBuscarCliente").prop("disabled", false);
 		$("#nrTelefono").val("");
 		nrLimpiarAdvertenciaTelefono();
+		$("#nrNombre, #nrApaterno, #nrAmaterno").val("");
+		nrLimpiarAdvertenciaNombre();
 	}
 });
 
@@ -707,6 +866,59 @@ function nrLimpiarAdvertenciaTelefono(){
 	clearTimeout(nrTelefonoCheckTimeout);
 	$("#nrTelefonoAdvertencia").hide().text("");
 }
+
+var nrNombreDuplicado = false;
+var nrNombreCheckTimeout = null;
+
+function nrLimpiarAdvertenciaNombre(){
+	nrNombreDuplicado = false;
+	clearTimeout(nrNombreCheckTimeout);
+	$("#nrNombreAdvertencia").hide().text("");
+}
+
+$(document).on("input", "#nrNombre, #nrApaterno, #nrAmaterno", function(){
+
+	nrLimpiarAdvertenciaNombre();
+
+	var nombre = $.trim($("#nrNombre").val());
+	var apaterno = $.trim($("#nrApaterno").val());
+	var amaterno = $.trim($("#nrAmaterno").val());
+
+	// El apellido materno es opcional en el resto del flujo, así que no se exige aquí tampoco.
+	if (!nombre || !apaterno){
+		return;
+	}
+
+	nrNombreCheckTimeout = setTimeout(function(){
+		$.ajax({
+			url: "ajax/reservaciones.ajax.php",
+			method: "GET",
+			data: { accion: "buscarClientes", termino: nombre },
+			dataType: "json",
+			success: function(respuesta){
+				// Se ignoran acentos para no dejar pasar duplicados solo porque alguien
+				// escribió "Martinez" en vez de "Martínez" (o viceversa).
+				var acentosRegex = new RegExp("[" + String.fromCharCode(0x0300) + "-" + String.fromCharCode(0x036f) + "]", "g");
+				var normalizar = function(valor){
+					return $.trim(valor || "").toLowerCase().normalize("NFD").replace(acentosRegex, "");
+				};
+
+				var existe = (respuesta.data || []).some(function(cliente){
+					return normalizar(cliente.nombre) === normalizar(nombre)
+						&& normalizar(cliente.apaterno) === normalizar(apaterno)
+						&& normalizar(cliente.amaterno) === normalizar(amaterno);
+				});
+
+				if (existe){
+					nrNombreDuplicado = true;
+					$("#nrNombreAdvertencia")
+						.text("Ya existe un cliente registrado con ese nombre. Búscalo arriba en vez de crear uno nuevo.")
+						.show();
+				}
+			}
+		});
+	}, 400);
+});
 
 $(document).on("input", "#nrTelefono", function(){
 
@@ -778,6 +990,11 @@ $(document).on("click", "#nrGuardar", function(){
 
 	if (!datos.id_cliente && nrTelefonoDuplicado){
 		Swal.fire({ icon: "warning", title: "Teléfono duplicado", text: "Ya existe un cliente con ese teléfono. Selecciónalo desde la búsqueda en vez de crear uno nuevo." });
+		return;
+	}
+
+	if (!datos.id_cliente && nrNombreDuplicado){
+		Swal.fire({ icon: "warning", title: "Cliente duplicado", text: "Ya existe un cliente con ese nombre. Selecciónalo desde la búsqueda en vez de crear uno nuevo." });
 		return;
 	}
 

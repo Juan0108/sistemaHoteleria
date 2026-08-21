@@ -169,6 +169,7 @@ $(document).ready(function(){
                         .attr("data-fecha-entrada", _hab.FechaEntrada)
                         .attr("data-fecha-salida", _hab.FechaSalida)
                         .attr("data-horas-extras", _hab.HorasExtras)
+                        .attr("data-hora-anticipada", _hab.HoraAnticipada)
                         .text(_hab.TipoHabitacion)
                         .appendTo(_select);
 
@@ -394,6 +395,7 @@ $(document).ready(function(){
         var _fechaSalida = _seleccionada.data("fecha-salida");
         var _idReservacion = _seleccionada.data("reservacion");
         var _horasExtras = parseInt(_seleccionada.data("horas-extras"), 10) || 0;
+        var _horaAnticipada = parseInt(_seleccionada.data("hora-anticipada"), 10) || 0;
 
         // Si la habitación seleccionada no corresponde a la búsqueda (folio o nombre), se limpia el campo.
         // Se omite cuando el cambio lo disparó la propia búsqueda (skipFolioCheck).
@@ -406,7 +408,7 @@ $(document).ready(function(){
         // Cada cambio de habitación es una venta nueva: se limpia el carrito de la habitación anterior
         $(".nuevoProducto").empty();
         $("#Qbarra").val("");
-        $("#nuevoTotalVenta").val(0);
+        $("#nuevoTotalVenta").val(formatearPrecio(0));
         $("#totalVenta").val(0);
         $("#nuevoTotalVenta").attr("total",0);
         mostrarCambio();
@@ -421,6 +423,18 @@ $(document).ready(function(){
 
             $("#entradaFecha").text(formatearFechaHora(_fechaEntrada));
             $("#entradaBox").show();
+
+            if(_horaAnticipada > 0){
+
+                $("#horaAnticipadaFecha").text(formatearFechaHora(sumarHorasAFecha(_fechaEntrada, -_horaAnticipada)));
+                $("#horaAnticipadaBox").show();
+
+            }else{
+
+                $("#horaAnticipadaFecha").text("");
+                $("#horaAnticipadaBox").hide();
+
+            }
 
             $("#salidaFecha").text(formatearFechaHora(_fechaSalida));
             $("#salidaBox").show();
@@ -452,6 +466,9 @@ $(document).ready(function(){
 
             $("#entradaFecha").text("");
             $("#entradaBox").hide();
+
+            $("#horaAnticipadaFecha").text("");
+            $("#horaAnticipadaBox").hide();
 
             $("#salidaFecha").text("");
             $("#salidaBox").hide();
@@ -494,6 +511,22 @@ function formatearFechaHora(fechaStr){
 
     return dia + " " + mes + ", " + h12 + ":" + m + " " + ampm;
 
+}
+
+/*=============================================
+FORMATEAR UN PRECIO CON SEPARADOR DE MILES Y 2 DECIMALES (solo para mostrar;
+el valor real para cálculos sigue viviendo en el atributo "precioReal" de
+cada fila, o en el campo oculto #totalVenta para el total de la venta)
+=============================================*/
+function formatearPrecio(valor){
+    var numero = Number(valor);
+    if(isNaN(numero)) return "0.00";
+    return numero.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// Inversa de formatearPrecio: quita la coma de miles para poder sumar el valor de nuevo.
+function desformatearPrecio(valorFormateado){
+    return Number(String(valorFormateado).replace(/,/g, ""));
 }
 
 /*=============================================
@@ -579,7 +612,7 @@ function AgregaProducto(){
           	var stock = respuesta["Stock"];
           	var precio = respuesta["PrecioVenta"];
           	var precioCompra = respuesta["PrecioCompra"];
-          	var precioVenta = "Precio Unitario: $" + respuesta["PrecioVenta"];
+          	var precioVenta = "Precio Unitario: $" + formatearPrecio(respuesta["PrecioVenta"]);
           	var StockActual = "Stock: " + respuesta["Stock"];
           	var idInventario = respuesta["Id_Inventario"];
 
@@ -628,7 +661,7 @@ function AgregaProducto(){
 
 							$(_cantidadAgregada[_indiceExistente]).val(_cantidadSolicitada);
 							$(_cantidadAgregada[_indiceExistente]).attr("data-valor-anterior", _cantidadSolicitada);
-							$(_PrecioAgregada[_indiceExistente]).val(_cantidadSolicitada * precio);
+							$(_PrecioAgregada[_indiceExistente]).val(formatearPrecio(_cantidadSolicitada * precio));
 						}
 
 				  }else{
@@ -670,7 +703,7 @@ function AgregaProducto(){
 
 							'<span class="input-group-addon"><i class="ion ion-social-usd"></i></span>'+
 
-							'<input type="text" class="form-control nuevoPrecioProducto" precioReal="'+precio+'" name="nuevoPrecioProducto" value="'+precio+'" readonly required>'+
+							'<input type="text" class="form-control nuevoPrecioProducto" precioReal="'+precio+'" name="nuevoPrecioProducto" value="'+formatearPrecio(precio)+'" readonly required>'+
               '<input type="hidden" class="form-control precioCompra" precioCompra="'+precioCompra+'" name="precioCompra" value="'+precioCompra+'" readonly required>'+
 						  '</div>'+
 
@@ -851,7 +884,7 @@ $(".formularioVenta").on("change", "input.CantidadProducto", function(){
 
 	var precioFinal = _input.val() * precio.attr("precioReal");
 
-	precio.val(precioFinal);
+	precio.val(formatearPrecio(precioFinal));
 
 	var nuevoStock = Number(_input.attr("stock")) - _input.val();
 
@@ -863,7 +896,7 @@ $(".formularioVenta").on("change", "input.CantidadProducto", function(){
 
 		var precioFinal = _input.val() * precio.attr("precioReal");
 
-		precio.val(precioFinal);
+		precio.val(formatearPrecio(precioFinal));
 
 		Swal.fire({
 		  title : "Sistema PosDit",
@@ -895,7 +928,7 @@ $(".formularioVenta").on("change", "input.CantidadProducto", function(){
 				_input.val(_valorAnterior);
 
 				var precioRevertido = _valorAnterior * precio.attr("precioReal");
-				precio.val(precioRevertido);
+				precio.val(formatearPrecio(precioRevertido));
 
 				mostrarAlertaHorasExtraNoDisponibles(resultado);
 
@@ -921,7 +954,7 @@ $(".formularioVenta").on("change", "input.CantidadProducto", function(){
 				_input.val(_valorAnterior);
 
 				var precioRevertido = _valorAnterior * precio.attr("precioReal");
-				precio.val(precioRevertido);
+				precio.val(formatearPrecio(precioRevertido));
 
 				mostrarAlertaHorasAnticipadasNoDisponibles(resultado);
 
@@ -953,8 +986,8 @@ function sumarTotalPrecios(){
 
 	for(var i = 0; i < precioItem.length; i++){
 
-		 arraySumaPrecio.push(Number($(precioItem[i]).val()));
-		 
+		 arraySumaPrecio.push(desformatearPrecio($(precioItem[i]).val()));
+
 	}
 
 	function sumaArrayPrecios(total, numero){
@@ -964,8 +997,8 @@ function sumarTotalPrecios(){
 	}
 
 	var sumaTotalPrecio = arraySumaPrecio.reduce(sumaArrayPrecios);
-	
-	$("#nuevoTotalVenta").val(sumaTotalPrecio);
+
+	$("#nuevoTotalVenta").val(formatearPrecio(sumaTotalPrecio));
 	$("#totalVenta").val(sumaTotalPrecio);
 	$("#nuevoTotalVenta").attr("total",sumaTotalPrecio);
 
@@ -986,11 +1019,11 @@ SUMAR TODOS LOS PRECIOS
 function mostrarCambio(){
 
 	var Pagar = $("#paga").val();
-	var Precio = $("#nuevoTotalVenta").val();
-	
+	var Precio = $("#totalVenta").val();
+
 	if(Precio != 0 && Pagar != 0){
 
-	var Precio = $("#nuevoTotalVenta").val();
+	var Precio = $("#totalVenta").val();
 	var Resultado = Number(Pagar) - Number(Precio);
 	
 	$("#cambio").val(Resultado);
@@ -1014,7 +1047,7 @@ $(".formularioVenta").on("click", "button.quitarProducto", function(){
 
 	if($(".nuevoProducto").children().length == 0){
 
-		$("#nuevoTotalVenta").val(0);
+		$("#nuevoTotalVenta").val(formatearPrecio(0));
 		$("#totalVenta").val(0);
 		$("#nuevoTotalVenta").attr("total",0);
 
@@ -1070,7 +1103,7 @@ $(".formularioVenta").on("click", "button.descuentos", function(){
               precioConDescuento = precio - descuentoCalculado;
             }
             
-            $(precioItem[i]).val(precioConDescuento.toFixed(2));
+            $(precioItem[i]).val(formatearPrecio(precioConDescuento));
           }
       }
 
@@ -1315,7 +1348,7 @@ function InsertarProductos(){
 	 			    datos.append("cantidad",$(cantidad[i]).val());
 	 			    datos.append("nTicket",NTicket);
 	 			    datos.append("idUsuario",IdUsuario);
-            datos.append("precioFinal",$(precioItem[i]).val());
+            datos.append("precioFinal",desformatearPrecio($(precioItem[i]).val()));
             datos.append("cliente",cliente);
             datos.append("reservacion",reservacion);
 
@@ -1485,7 +1518,7 @@ function TicketCargoHabitacion(){
 	 			    datos.append("cantidad",$(cantidad[i]).val());
 	 			    datos.append("nTicket",NTicket);
 	 			    datos.append("idUsuario",IdUsuario);
-            datos.append("precioFinal",$(precioItem[i]).val());
+            datos.append("precioFinal",desformatearPrecio($(precioItem[i]).val()));
             datos.append("cliente",cliente);
             datos.append("reservacion",reservacion);
 

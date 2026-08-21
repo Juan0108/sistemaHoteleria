@@ -93,6 +93,33 @@ class ControladorReservaciones{
 				return ["ok" => false, "mensaje" => "Selecciona un cliente existente o captura nombre, apellido paterno y teléfono del cliente nuevo."];
 			}
 
+			// No se permite dar de alta un cliente duplicado: mismo nombre completo o mismo
+			// teléfono que uno ya registrado en este hotel. Se revalida aquí (además del aviso
+			// en el formulario) porque el frontend se puede saltar. Se ignoran acentos para no
+			// dejar pasar duplicados solo porque alguien escribió "Martinez" en vez de "Martínez".
+			$normalizar = function($valor){
+				$valor = mb_strtolower(trim((string) $valor), "UTF-8");
+				return str_replace(
+					["á", "é", "í", "ó", "ú", "ü", "ñ"],
+					["a", "e", "i", "o", "u", "u", "n"],
+					$valor
+				);
+			};
+
+			foreach(ModeloReservaciones::MdlBuscarClientes($id_hotel, $nombre) as $candidato){
+				if($normalizar($candidato["Nombre"]) === $normalizar($nombre)
+					&& $normalizar($candidato["APaterno"]) === $normalizar($apaterno)
+					&& $normalizar($candidato["AMaterno"]) === $normalizar($amaterno)){
+					return ["ok" => false, "mensaje" => "Ya existe un cliente registrado con ese nombre. Selecciónalo desde la búsqueda en vez de crear uno nuevo."];
+				}
+			}
+
+			foreach(ModeloReservaciones::MdlBuscarClientes($id_hotel, $telefono) as $candidato){
+				if((string) $candidato["Telefono"] === $telefono){
+					return ["ok" => false, "mensaje" => "Ya existe un cliente registrado con este teléfono. Selecciónalo desde la búsqueda en vez de crear uno nuevo."];
+				}
+			}
+
 			$clienteNuevo = ModeloReservaciones::MdlInsertarCliente($nombre, $apaterno, $amaterno, $telefono, $id_hotel);
 
 			if(!$clienteNuevo){
@@ -114,6 +141,80 @@ class ControladorReservaciones{
 		}
 
 		return ["ok" => true, "folio" => $reservacion["Id_Reservacion"]];
+	}
+
+	// Mueve una reservación activa (Ocupado/Reservado) a otra habitación/fechas: la original
+	// queda marcada como "Movida" (no se borra, sigue viéndose en el calendario) y se crea
+	// una reservación nueva (Reservado) con el mismo cliente y precio, en las fechas nuevas.
+	// $datos trae id_habitacion (destino), fecha_entrada, fecha_salida.
+	static public function crtMoverReservacion($id_reservacion, $datos){
+		$id_hotel = ControladorHabitaciones::crtObtenerIdHotelSesion();
+
+		if($id_hotel === null){
+			return ["ok" => false, "mensaje" => "Tu negocio no tiene un hotel registrado, contacta a soporte técnico."];
+		}
+
+		$id_reservacion = trim((string) $id_reservacion);
+		$id_habitacion = isset($datos["id_habitacion"]) ? (int) $datos["id_habitacion"] : 0;
+		$fecha_entrada = isset($datos["fecha_entrada"]) ? trim($datos["fecha_entrada"]) : "";
+		$fecha_salida = isset($datos["fecha_salida"]) ? trim($datos["fecha_salida"]) : "";
+
+		if($id_reservacion === "" || $id_habitacion <= 0 || $fecha_entrada === "" || $fecha_salida === ""){
+			return ["ok" => false, "mensaje" => "Faltan datos para mover la reservación."];
+		}
+
+		if(strtotime($fecha_salida) === false || strtotime($fecha_entrada) === false || strtotime($fecha_salida) <= strtotime($fecha_entrada)){
+			return ["ok" => false, "mensaje" => "La fecha de salida debe ser posterior a la de entrada."];
+		}
+
+		if(strtotime(date("Y-m-d", strtotime($fecha_entrada))) < strtotime(date("Y-m-d"))){
+			return ["ok" => false, "mensaje" => "La fecha de entrada no puede ser en el pasado."];
+		}
+
+		$fecha_entrada = date("Y-m-d H:i:s", strtotime($fecha_entrada));
+		$fecha_salida = date("Y-m-d H:i:s", strtotime($fecha_salida));
+
+		// Misma verificación de traslape que usa crear reservación. Se hace antes de tocar
+		// la reservación original: si las fechas nuevas no están disponibles, no se mueve nada.
+		$conflictos = ModeloReservaciones::MdlVerificarDisponibilidadHabitacion($id_habitacion, $fecha_entrada, $fecha_salida);
+
+		if(count($conflictos) > 0){
+			$salidaRealMaxima = null;
+
+			foreach($conflictos as $conflicto){
+				$salidaReal = strtotime($conflicto["FechaSalida"]) + ((int) $conflicto["HorasExtras"] * 3600);
+
+				if($salidaRealMaxima === null || $salidaReal > $salidaRealMaxima){
+					$salidaRealMaxima = $salidaReal;
+				}
+			}
+
+			return [
+				"ok" => false,
+				"mensaje" => "La habitación destino ya tiene una reservación activa hasta el " . date("d/m/Y g:i a", $salidaRealMaxima) . ", elige otras fechas.",
+			];
+		}
+
+		$original = ModeloReservaciones::MdlMarcarReservacionMovida($id_reservacion, $id_hotel);
+		$afectados = $original ? (int) $original["Afectados"] : 0;
+
+		if($afectados === 0){
+			return ["ok" => false, "mensaje" => "Esa reservación ya no está activa o no pertenece a este hotel."];
+		}
+
+		$id_cliente = (int) $original["Id_Cliente"];
+		$precio = (float) $original["Precio"];
+
+		// Toda reserva nueva entra como Reservado; solo el check-in la pasa a Ocupado.
+		$reservacionNueva = ModeloReservaciones::MdlInsertarReservacion(
+			$id_habitacion, $id_cliente, $precio, $fecha_entrada, $fecha_salida, 9
+		);
+
+		if(!$reservacionNueva){
+			return ["ok" => false, "mensaje" => "No se pudo crear la reservación en las fechas nuevas."];
+		}
+
+		return ["ok" => true, "folio" => $reservacionNueva["Id_Reservacion"]];
 	}
 
 	// Cancela una reservación Ocupada o Reservada. El SP decide el estatus de cancelación
@@ -346,34 +447,4 @@ class ControladorReservaciones{
 		return ($residual > $toleranciaMinutos) ? $horasCompletas + 1 : $horasCompletas;
 	}
 
-	// Habitaciones del hotel en sesión disponibles entre $fecha_inicio y $fecha_fin (formato
-	// Y-m-d). Bloquea el día completo de inicio y fin, igual que las barras del calendario.
-	static public function crtObtenerHabitacionesDisponibles($fecha_inicio, $fecha_fin){
-		$id_hotel = ControladorHabitaciones::crtObtenerIdHotelSesion();
-
-		if($id_hotel === null){
-			return ["ok" => false, "mensaje" => "Tu negocio no tiene un hotel registrado, contacta a soporte técnico."];
-		}
-
-		$fecha_inicio = trim((string) $fecha_inicio);
-		$fecha_fin = trim((string) $fecha_fin);
-
-		if($fecha_inicio === "" || $fecha_fin === ""){
-			return ["ok" => false, "mensaje" => "Selecciona fecha de inicio y de fin."];
-		}
-
-		$tsInicio = strtotime($fecha_inicio);
-		$tsFin = strtotime($fecha_fin);
-
-		if($tsInicio === false || $tsFin === false || $tsFin < $tsInicio){
-			return ["ok" => false, "mensaje" => "El rango de fechas no es válido."];
-		}
-
-		$fecha_entrada = date("Y-m-d", $tsInicio) . " 00:00:00";
-		$fecha_salida = date("Y-m-d", $tsFin) . " 23:59:59";
-
-		$habitaciones = ModeloReservaciones::MdlObtenerHabitacionesDisponibles($id_hotel, $fecha_entrada, $fecha_salida);
-
-		return ["ok" => true, "habitaciones" => $habitaciones];
-	}
 }

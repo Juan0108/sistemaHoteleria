@@ -53,16 +53,41 @@ class ReservacionesAjax
 		$id_habitacion = isset($_GET["id_habitacion"]) ? (int) $_GET["id_habitacion"] : 0;
 		$Reservaciones = ControladorReservaciones::crtObtenerReservacionesHabitacion($id_habitacion);
 
+		// La referencia para "ya terminada" es la fecha que se está viendo en Recepción
+		// (el picker #recepcionFecha), no la fecha real del servidor: si el usuario se
+		// paró en el 22 de agosto, una estadía que terminó el 21 ya debe verse como pasada
+		// aunque "hoy" (la fecha real) sea otra.
+		$fechaReferencia = isset($_GET["fecha"]) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET["fecha"]) ? $_GET["fecha"] : date("Y-m-d");
+
 		// IDs de cat_estatus usados en reservaciones: 8=Ocupado, 9=Reservado,
-		// 12=CancelacionOcupacion, 13=CancelacionReserva.
+		// 12=CancelacionOcupacion, 13=CancelacionReserva, 19=Movida.
 		$claseParaEstatus = [8 => "ocupada", 9 => "reservada", 12 => "cancelada", 13 => "cancelada"];
 		$textoParaEstatus = [12 => "Cancelada (estadía)", 13 => "Cancelada (reserva)"];
 
 		$datosJason = '{"data":[';
+		$totalAgregadas = 0;
 
 		for ($i = 0; $i < count($Reservaciones); $i++){
 
 			$idEstatus = (int) $Reservaciones[$i]["Id_Estatus"];
+
+			// Este modal es de "próximas reservas" vigentes: las canceladas (12/13) y las
+			// movidas (19, ya reemplazadas por una reservación nueva) no cuentan aquí. Ese
+			// rastro histórico solo se ve en el calendario de Reservas.
+			if ($idEstatus === 12 || $idEstatus === 13 || $idEstatus === 19){
+				continue;
+			}
+
+			// Tampoco cuentan las estadías ya terminadas (FechaSalida antes de la fecha de
+			// referencia). El estatus se queda en 8/9 para siempre (no hay un "completada"),
+			// así que sin este filtro el historial completo de la habitación aparecía como
+			// si fueran reservas vigentes.
+			$fechaSalida = $Reservaciones[$i]["FechaSalida"] ?? "";
+			if ($fechaSalida !== "" && strtotime(date("Y-m-d", strtotime($fechaSalida))) < strtotime($fechaReferencia)){
+				continue;
+			}
+
+			$totalAgregadas++;
 			$clase = $claseParaEstatus[$idEstatus] ?? "otro";
 			$texto = $textoParaEstatus[$idEstatus] ?? $Reservaciones[$i]["EstatusNombre"];
 			$nombreCliente = trim($Reservaciones[$i]["Nombre"] . " " . $Reservaciones[$i]["APaterno"] . " " . $Reservaciones[$i]["AMaterno"]);
@@ -71,13 +96,15 @@ class ReservacionesAjax
 				"folio": "'.$this->jsonEscape($Reservaciones[$i]["Id_Reservacion"]).'",
 				"entrada": "'.$this->jsonEscape($Reservaciones[$i]["FechaEntrada"] ? date("d/m/Y g:i a", strtotime($Reservaciones[$i]["FechaEntrada"])) : "").'",
 				"salida": "'.$this->jsonEscape($Reservaciones[$i]["FechaSalida"] ? date("d/m/Y g:i a", strtotime($Reservaciones[$i]["FechaSalida"])) : "").'",
+				"entradaRaw": "'.$this->jsonEscape($Reservaciones[$i]["FechaEntrada"] ?? "").'",
+				"salidaRaw": "'.$this->jsonEscape($Reservaciones[$i]["FechaSalida"] ?? "").'",
 				"estadoClase": "'.$clase.'",
 				"estadoTexto": "'.$this->jsonEscape($texto).'",
 				"cliente": "'.$this->jsonEscape($nombreCliente).'"
 			},';
 		}
 
-		if (count($Reservaciones) > 0) {
+		if ($totalAgregadas > 0) {
 			$datosJason = substr($datosJason, 0, -1);
 		}
 
@@ -89,6 +116,18 @@ class ReservacionesAjax
 	public function crearReservacion(){
 
 		$respuesta = ControladorReservaciones::crtCrearReservacion($_POST);
+
+		$ok = $respuesta["ok"] ? "true" : "false";
+		$mensaje = isset($respuesta["mensaje"]) ? $this->jsonEscape($respuesta["mensaje"]) : "";
+		$folio = isset($respuesta["folio"]) ? $this->jsonEscape($respuesta["folio"]) : "";
+
+		echo '{"ok": '.$ok.', "mensaje": "'.$mensaje.'", "folio": "'.$folio.'"}';
+	}
+
+	public function mover(){
+
+		$id_reservacion = isset($_POST["id_reservacion"]) ? $_POST["id_reservacion"] : "";
+		$respuesta = ControladorReservaciones::crtMoverReservacion($id_reservacion, $_POST);
 
 		$ok = $respuesta["ok"] ? "true" : "false";
 		$mensaje = isset($respuesta["mensaje"]) ? $this->jsonEscape($respuesta["mensaje"]) : "";
@@ -155,34 +194,6 @@ class ReservacionesAjax
 		echo json_encode($respuesta);
 	}
 
-	public function disponibilidad(){
-
-		$fechaInicio = isset($_GET["fecha_inicio"]) ? $_GET["fecha_inicio"] : "";
-		$fechaFin = isset($_GET["fecha_fin"]) ? $_GET["fecha_fin"] : "";
-		$respuesta = ControladorReservaciones::crtObtenerHabitacionesDisponibles($fechaInicio, $fechaFin);
-
-		$ok = $respuesta["ok"] ? "true" : "false";
-		$mensaje = isset($respuesta["mensaje"]) ? $this->jsonEscape($respuesta["mensaje"]) : "";
-		$habitaciones = $respuesta["habitaciones"] ?? [];
-
-		$datosJason = '{"ok": '.$ok.', "mensaje": "'.$mensaje.'", "habitaciones": [';
-
-		for ($i = 0; $i < count($habitaciones); $i++){
-			$datosJason .= '{
-				"id": '.(int) $habitaciones[$i]["Id_Habitacion"].',
-				"numero": "'.$this->jsonEscape($habitaciones[$i]["NumeroHabitacion"]).'",
-				"tipo": "'.$this->jsonEscape($habitaciones[$i]["TipoHabitacion"]).'"
-			},';
-		}
-
-		if (count($habitaciones) > 0) {
-			$datosJason = substr($datosJason, 0, -1);
-		}
-
-		$datosJason .= ']}';
-
-		echo $datosJason;
-	}
 }
 
 $Accion = isset($_REQUEST["accion"]) ? $_REQUEST["accion"] : "";
@@ -198,10 +209,10 @@ if ($Accion === "buscarClientes") {
 	$Ajax->checkin();
 } elseif ($Accion === "validarLlegadaAnticipada") {
 	$Ajax->validarLlegadaAnticipada();
-} elseif ($Accion === "disponibilidad") {
-	$Ajax->disponibilidad();
 } elseif ($Accion === "motivosCancelacion") {
 	$Ajax->motivosCancelacion();
+} elseif ($Accion === "mover") {
+	$Ajax->mover();
 } else {
 	$Ajax->crearReservacion();
 }

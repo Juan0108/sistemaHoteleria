@@ -136,13 +136,23 @@ class ControladorHabitaciones{
 		$totalDias = (int) date("t", mktime(0, 0, 0, $mes, 1, $anio));
 		$tsMesInicio = mktime(0, 0, 0, $mes, 1, $anio);
 
-		// IDs de cat_estatus usados en reservaciones: 8=Ocupado, 9=Reservado.
-		$claseParaEstatus = [8 => "ocupada", 9 => "reservada"];
+		// IDs de cat_estatus usados en reservaciones: 8=Ocupado, 9=Reservado,
+		// 12=CancelacionOcupacion (se canceló una estadía que ya había iniciado),
+		// 19=Movida (se reagendó a otra habitación/fechas). Ambas se pintan en el
+		// calendario como rastro histórico; 13 (se canceló una reserva que nunca llegó
+		// a ocuparse) no se pinta, no aporta nada ver un hueco que nunca fue real.
+		$claseParaEstatus = [8 => "ocupada", 9 => "reservada", 12 => "cancelada", 19 => "movida"];
 		$segmentosPorHabitacion = [];
 
 		foreach($reservaciones as $res){
+			$idEstatusRes = (int) $res["Id_Estatus"];
+
+			if(!isset($claseParaEstatus[$idEstatusRes])){
+				continue;
+			}
+
 			$idHab = (int) $res["Id_Habitacion"];
-			$clase = $claseParaEstatus[(int) $res["Id_Estatus"]] ?? "reservada";
+			$clase = $claseParaEstatus[$idEstatusRes];
 
 			$tsEntrada = strtotime(date("Y-m-d", strtotime($res["FechaEntrada"])));
 			$tsSalida = strtotime(date("Y-m-d", strtotime($res["FechaSalida"])));
@@ -170,10 +180,16 @@ class ControladorHabitaciones{
 			}
 
 			$segmentosPorHabitacion[$idHab][] = [
-				"inicio" => $diaInicio,
-				"fin"    => $diaFin,
-				"estado" => $clase,
-				"titulo" => $tituloBarra,
+				"inicio"        => $diaInicio,
+				"fin"           => $diaFin,
+				"estado"        => $clase,
+				"titulo"        => $tituloBarra,
+				// Solo se usan para "mover reservación" (ocupada/reservada); en cancelada/
+				// movida no hace falta moverlas de nuevo, pero no cuesta nada llevarlos.
+				"idReservacion" => $res["Id_Reservacion"] ?? "",
+				"idHabitacion"  => $idHab,
+				"fechaEntrada"  => $res["FechaEntrada"] ?? "",
+				"fechaSalida"   => $res["FechaSalida"] ?? "",
 			];
 		}
 

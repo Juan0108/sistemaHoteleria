@@ -6,6 +6,12 @@ $fechaMinima = $fechaHoy;
 $ctlRecepcion = new ControladorHabitaciones();
 $HabitacionesRecepcion = $ctlRecepcion->crtObtenerHabitacionesRecepcion($fechaHoy);
 
+$TiposHabitacionRecepcion = array_values(array_unique(array_map(
+	function($hab){ return $hab["TipoHabitacion"]; },
+	$HabitacionesRecepcion
+)));
+sort($TiposHabitacionRecepcion);
+
 ?>
 <div class="content-wrapper">
 
@@ -36,6 +42,15 @@ $HabitacionesRecepcion = $ctlRecepcion->crtObtenerHabitacionesRecepcion($fechaHo
           <input type="text" class="form-control" id="recepcionBusqueda"
                  placeholder="Buscar folio o cliente">
         </div>
+        <div class="input-group input-group-sm recepcion-tipo-group" style="width:200px; margin-left:10px;">
+          <span class="input-group-addon"><i class="fa fa-bed"></i></span>
+          <select class="form-control" id="recepcionTipo">
+            <option value="">Todos los tipos</option>
+            <?php foreach ($TiposHabitacionRecepcion as $tipo): ?>
+              <option value="<?php echo htmlspecialchars($tipo); ?>"><?php echo htmlspecialchars($tipo); ?></option>
+            <?php endforeach; ?>
+          </select>
+        </div>
         <span class="recepcion-actualizado text-muted small" style="margin-left:10px;"></span>
       </div>
       <div class="box-body">
@@ -62,6 +77,13 @@ $HabitacionesRecepcion = $ctlRecepcion->crtObtenerHabitacionesRecepcion($fechaHo
                 $tsSalidaReal = $hab["FechaSalida"] ? strtotime($hab["FechaSalida"]) + ($horasExtras * 3600) : null;
                 $tsEntradaReal = $hab["FechaEntrada"] ? strtotime($hab["FechaEntrada"]) - ($horaAnticipada * 3600) : null;
 
+                // El contador y "Ver reservas" cuentan lo mismo: las adicionales en cola
+                // (ReservasProximas) más la reservación de hoy solo si es Reservada (aún no
+                // ha llegado, sigue teniendo sentido poder moverla). Si ya está Ocupada, esa
+                // estadía ya sucedió: no cuenta, solo lo que venga después en cola.
+                $tieneReservaActual = $hab["EstadoClase"] === "reservada";
+                $totalReservas = (int) $hab["ReservasProximas"] + ($tieneReservaActual ? 1 : 0);
+
                 $tituloPill = "";
                 if ($hab["FechaEntrada"] && $hab["FechaSalida"]) {
                   $tituloPill = "Entrada: " . date("d/m/Y g:i a", $tsEntradaReal)
@@ -86,12 +108,12 @@ $HabitacionesRecepcion = $ctlRecepcion->crtObtenerHabitacionesRecepcion($fechaHo
                       <?php endif; ?>
                     </div>
                   </div>
-                  <?php if ((int) $hab["ReservasProximas"] > 0): ?>
-                    <div class="hc-reservas-proximas" title="Reservaciones próximas para esta habitación">
-                      <i class="fa fa-calendar"></i> <?php echo (int) $hab["ReservasProximas"]; ?> <?php echo (int) $hab["ReservasProximas"] === 1 ? "reserva próxima" : "reservas próximas"; ?>
+                  <?php if ($totalReservas > 0): ?>
+                    <div class="hc-reservas-proximas" title="Reservaciones para esta habitación">
+                      <i class="fa fa-calendar"></i> <?php echo $totalReservas; ?> <?php echo $totalReservas === 1 ? "reserva" : "reservas"; ?>
                     </div>
                   <?php endif; ?>
-                  <?php if ($hab["EstadoClase"] !== "disponible" || (int) $hab["ReservasProximas"] > 0): ?>
+                  <?php if ($totalReservas > 0): ?>
                     <button type="button" class="hc-ver-reservas" title="Ver todas las reservas de esta habitación"
                             data-id-habitacion="<?php echo (int) $hab["Id_Habitacion"]; ?>"
                             data-tipo-habitacion="<?php echo htmlspecialchars($hab["TipoHabitacion"]); ?>">
@@ -180,7 +202,7 @@ $HabitacionesRecepcion = $ctlRecepcion->crtObtenerHabitacionesRecepcion($fechaHo
         <h4 class="modal-title" id="detalleHabNombre"><i class="fa fa-bed"></i></h4>
       </div>
       <div class="modal-body">
-        <img id="detalleHabFoto" src="" alt="Foto de la habitación" style="width:100%; max-height:320px; object-fit:cover; border-radius:6px; margin-bottom:15px; display:none;" onerror="mostrarErrorFotoRecepcion()">
+        <img id="detalleHabFoto" alt="Foto de la habitación" style="width:100%; max-height:320px; object-fit:cover; border-radius:6px; margin-bottom:15px; display:none;" onerror="mostrarErrorFotoRecepcion()">
         <p id="detalleHabSinFoto" class="text-muted" style="display:none;"><i class="fa fa-exclamation-triangle"></i> No se encontró la foto de esta habitación.</p>
 
         <p><strong>Descripción:</strong> <span id="detalleHabDescripcion"></span></p>
@@ -217,7 +239,7 @@ $HabitacionesRecepcion = $ctlRecepcion->crtObtenerHabitacionesRecepcion($fechaHo
         <h4 class="modal-title"><i class="fa fa-calendar-plus-o"></i> Nueva reservación — <span id="nrHabitacionNombre"></span></h4>
       </div>
       <div class="modal-body">
-        <form id="formNuevaReservacion">
+        <form id="formNuevaReservacion" autocomplete="off">
           <input type="hidden" id="nrIdHabitacion">
           <input type="hidden" id="nrPrecioNoche">
           <input type="hidden" id="nrIdClienteSeleccionado" value="">
@@ -266,6 +288,7 @@ $HabitacionesRecepcion = $ctlRecepcion->crtObtenerHabitacionesRecepcion($fechaHo
                 </div>
               </div>
             </div>
+            <span id="nrNombreAdvertencia" class="nr-telefono-advertencia" style="display:none;"></span>
           </div>
 
           <div class="row">
@@ -299,7 +322,7 @@ $HabitacionesRecepcion = $ctlRecepcion->crtObtenerHabitacionesRecepcion($fechaHo
             <label>Precio</label>
             <div class="input-group">
               <span class="input-group-addon">$</span>
-              <input type="number" step="0.01" min="0" class="form-control" id="nrPrecio" readonly>
+              <input type="number" step="0.01" min="0" class="form-control" id="nrPrecio" readonly autocomplete="off">
             </div>
           </div>
         </form>
@@ -307,6 +330,66 @@ $HabitacionesRecepcion = $ctlRecepcion->crtObtenerHabitacionesRecepcion($fechaHo
       <div class="modal-footer">
         <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
         <button type="button" class="btn" id="nrGuardar" style="background:#81412d; border-color:#81412d; color:#fff;">Guardar reservación</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Mover Reservación (disparado desde "Ver reservas") -->
+<div id="modalMoverReservacion" class="modal fade" role="dialog">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#3f342e; color:white">
+        <button type="button" class="close" data-dismiss="modal" style="color:white; opacity:1;">&times;</button>
+        <h4 class="modal-title"><i class="fa fa-exchange"></i> Mover reservación — <span id="mrFolioActual"></span></h4>
+      </div>
+      <div class="modal-body">
+        <form id="formMoverReservacion" autocomplete="off">
+          <input type="hidden" id="mrIdReservacion">
+
+          <div class="form-group">
+            <label>Habitación</label>
+            <input type="hidden" id="mrIdHabitacion">
+            <input type="text" class="form-control" id="mrHabitacionNombre" readonly>
+          </div>
+
+          <div class="row">
+            <div class="col-xs-6">
+              <div class="form-group">
+                <label>Entrada nueva</label>
+                <div class="nr-datetime-row">
+                  <input type="date" class="form-control" id="mrFechaEntradaDia">
+                  <select class="form-control" id="mrFechaEntradaHora"></select>
+                  <span class="nr-datetime-sep">:</span>
+                  <select class="form-control" id="mrFechaEntradaMin"></select>
+                </div>
+                <input type="hidden" id="mrFechaEntrada">
+              </div>
+            </div>
+            <div class="col-xs-6">
+              <div class="form-group">
+                <label>Salida nueva</label>
+                <div class="nr-datetime-row">
+                  <input type="date" class="form-control" id="mrFechaSalidaDia">
+                  <select class="form-control" id="mrFechaSalidaHora"></select>
+                  <span class="nr-datetime-sep">:</span>
+                  <select class="form-control" id="mrFechaSalidaMin"></select>
+                </div>
+                <input type="hidden" id="mrFechaSalida">
+              </div>
+            </div>
+          </div>
+
+          <p class="text-muted" style="font-size:12px; margin-top:6px;">
+            La reservación actual quedará marcada como "Movida" (se conserva en el calendario de Reservas como
+            rastro histórico) y se crea una reservación nueva, con el mismo cliente, en la habitación y fechas
+            que elijas aquí.
+          </p>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn" id="mrGuardar" style="background:#81412d; border-color:#81412d; color:#fff;">Mover reservación</button>
       </div>
     </div>
   </div>
@@ -421,6 +504,19 @@ $HabitacionesRecepcion = $ctlRecepcion->crtObtenerHabitacionesRecepcion($fechaHo
     border-color:#e4d9c8;
   }
 
+  .recepcion-tipo-group .input-group-addon{
+    border-top-left-radius:8px;
+    border-bottom-left-radius:8px;
+    background:#f2ede6;
+    color:#81412d;
+    border-color:#e4d9c8;
+  }
+  .recepcion-tipo-group .form-control{
+    border-top-right-radius:8px;
+    border-bottom-right-radius:8px;
+    border-color:#e4d9c8;
+  }
+
   #modalDetalleHabitacion .modal-content{
     border-radius:16px;
     overflow:hidden;
@@ -469,6 +565,21 @@ $HabitacionesRecepcion = $ctlRecepcion->crtObtenerHabitacionesRecepcion($fechaHo
   .hr-estado.estado-reservada{ background:#b96a37; }
   .hr-estado.estado-cancelada{ background:#9a3b2c; }
   .hr-estado.estado-otro{ background:#a8987f; }
+  .hr-mover{
+    display:inline-flex;
+    align-items:center;
+    gap:5px;
+    padding:4px 10px;
+    border-radius:6px;
+    border:1px solid #81412d;
+    background:#fff;
+    color:#81412d;
+    font-size:11px;
+    font-weight:700;
+    white-space:nowrap;
+    transition:background .15s, color .15s;
+  }
+  .hr-mover:hover{ background:#81412d; color:#fff; }
   .nr-resultados-cliente{
     border:1px solid #e4d9c8;
     border-top:none;

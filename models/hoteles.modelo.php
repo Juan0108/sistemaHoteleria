@@ -326,7 +326,7 @@ static public function MdlJsonObtenerEstatus(){
   		// Id_Estatus 14 es una fila de configuración (tolerancia de Horas Anticipadas
   		// en Recepción), no un estatus real de hotel/habitación/reservación: se excluye
   		// para que no aparezca como opción en los combos de estatus de otras pantallas.
-  		if((int) $row['Id_Estatus'] === 14){
+  		if((int) $row['Id_estatus'] === 14){
   			continue;
   		}
 

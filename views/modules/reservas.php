@@ -57,24 +57,6 @@ $Habitaciones = $ctlReservas->crtObtenerHabitacionesReserva($anioActual, $mesAct
           <div class="reserva-toolbar-titulo" id="reservaTitulo"><?php echo $nombresMes[$mesActual] . " " . $anioActual; ?></div>
         </div>
 
-        <div class="reserva-filtro">
-          <div class="reserva-filtro-campo">
-            <label for="reservaFiltroInicio">Del</label>
-            <input type="date" id="reservaFiltroInicio" class="form-control input-sm">
-          </div>
-          <div class="reserva-filtro-campo">
-            <label for="reservaFiltroFin">Al</label>
-            <input type="date" id="reservaFiltroFin" class="form-control input-sm">
-          </div>
-          <button type="button" class="reserva-btn reserva-btn-activo" id="reservaFiltroBuscar">
-            <i class="fa fa-search"></i> Buscar disponibilidad
-          </button>
-          <button type="button" class="reserva-btn-nav reserva-filtro-limpiar" id="reservaFiltroLimpiar" title="Quitar filtro" style="display:none;">
-            <i class="fa fa-times"></i>
-          </button>
-          <span class="reserva-filtro-mensaje" id="reservaFiltroMensaje"></span>
-        </div>
-
         <div class="reserva-grid-wrapper">
           <table class="reserva-grid" id="reservaTabla">
             <?php include __DIR__ . "/reservas_tabla.php"; ?>
@@ -84,6 +66,8 @@ $Habitaciones = $ctlReservas->crtObtenerHabitacionesReserva($anioActual, $mesAct
         <div class="reserva-legend">
           <span><i class="reserva-dot reserva-dot-ocupada"></i> Ocupada</span>
           <span><i class="reserva-dot reserva-dot-reservada"></i> Reservada</span>
+          <span><i class="reserva-dot reserva-dot-cancelada"></i> Cancelada (estadía)</span>
+          <span><i class="reserva-dot reserva-dot-movida"></i> Movida</span>
         </div>
 
       </div>
@@ -158,35 +142,6 @@ $Habitaciones = $ctlReservas->crtObtenerHabitacionesReserva($anioActual, $mesAct
     color:#3f342e;
   }
 
-  .reserva-filtro{
-    display:flex;
-    align-items:flex-end;
-    flex-wrap:wrap;
-    gap:12px;
-    margin-bottom:18px;
-    padding:12px;
-    background:#faf5ec;
-    border:1px solid #eee2d3;
-    border-radius:10px;
-  }
-  .reserva-filtro-campo{
-    display:flex;
-    flex-direction:column;
-    gap:4px;
-  }
-  .reserva-filtro-campo label{
-    font-size:11px;
-    font-weight:700;
-    color:#7a6a58;
-    text-transform:uppercase;
-    letter-spacing:.5px;
-  }
-  .reserva-filtro-mensaje{
-    font-size:13px;
-    font-weight:600;
-    color:#3f342e;
-  }
-
   .reserva-grid-wrapper{
     border:1px solid #eee2d3;
     border-radius:10px;
@@ -253,13 +208,6 @@ $Habitaciones = $ctlReservas->crtObtenerHabitacionesReserva($anioActual, $mesAct
     box-shadow:inset 4px 0 0 #b96a37;
   }
 
-  .reserva-fila-descartada td{
-    opacity:.3;
-  }
-  .reserva-fila-disponible .reserva-col-habitacion{
-    box-shadow:inset 4px 0 0 #4c8c4a;
-  }
-
   .reserva-celda-barra{
     padding:4px !important;
   }
@@ -269,6 +217,17 @@ $Habitaciones = $ctlReservas->crtObtenerHabitacionesReserva($anioActual, $mesAct
   }
   .reserva-barra.estado-ocupada{ background:#81412d; }
   .reserva-barra.estado-reservada{ background:#b96a37; }
+
+  /* Cancelada/Movida son rastro histórico, no una reservación vigente: se pintan con
+     rayas diagonales en tonos apagados de la misma paleta, para que se lean distinto
+     de una barra sólida (Ocupada/Reservada) a simple vista. */
+  .reserva-barra.estado-cancelada{
+    background:repeating-linear-gradient(45deg, #9c8a76, #9c8a76 6px, #b3a48f 6px, #b3a48f 12px);
+  }
+  .reserva-barra.estado-movida{
+    background:repeating-linear-gradient(45deg, #dfc6a2, #dfc6a2 6px, #ecdcc0 6px, #ecdcc0 12px);
+    border:1px solid #cdb88f;
+  }
 
   .reserva-legend{
     display:flex;
@@ -292,4 +251,6 @@ $Habitaciones = $ctlReservas->crtObtenerHabitacionesReserva($anioActual, $mesAct
   }
   .reserva-dot-ocupada{ background:#81412d; }
   .reserva-dot-reservada{ background:#b96a37; }
+  .reserva-dot-cancelada{ background:repeating-linear-gradient(45deg, #9c8a76, #9c8a76 3px, #b3a48f 3px, #b3a48f 6px); }
+  .reserva-dot-movida{ background:repeating-linear-gradient(45deg, #dfc6a2, #dfc6a2 3px, #ecdcc0 3px, #ecdcc0 6px); border:1px solid #cdb88f; }
 </style>

@@ -121,6 +121,51 @@
   background:#fff;
 }
 
+/* Lista desplegable del combo: siempre hacia abajo (nunca invertida), con la paleta del hotel */
+.cv-campo-habitacion .select2-dropdown{
+  border:1px solid var(--sand);
+  border-radius:8px;
+  box-shadow:0 8px 20px rgba(63,52,46,.18);
+  overflow:hidden;
+}
+.cv-campo-habitacion .select2-dropdown--above{
+  top:100% !important;
+  bottom:auto !important;
+  margin-top:4px;
+}
+.cv-campo-habitacion .select2-container--open .select2-dropdown{
+  margin-top:4px;
+}
+.cv-campo-habitacion .select2-search--dropdown{
+  padding:8px;
+  background:#fdfaf4;
+  border-bottom:1px solid #eee3d2;
+}
+.cv-campo-habitacion .select2-search--dropdown .select2-search__field{
+  border:1px solid var(--sand);
+  border-radius:6px;
+  padding:6px 10px;
+  color:var(--espresso);
+}
+.cv-campo-habitacion .select2-search--dropdown .select2-search__field:focus{
+  outline:none;
+  border-color:var(--accent);
+}
+.cv-campo-habitacion .select2-results__option{
+  padding:9px 14px;
+  color:var(--espresso);
+  font-weight:500;
+}
+.cv-campo-habitacion .select2-results__option--highlighted[aria-selected]{
+  background:var(--rust) !important;
+  color:#fff !important;
+}
+.cv-campo-habitacion .select2-results__option[aria-selected="true"]:not(.select2-results__option--highlighted){
+  background:#f4efe4;
+  color:var(--espresso);
+  font-weight:700;
+}
+
 .cv-info-row{ display:flex; flex-wrap:wrap; gap:10px; margin-top:10px; }
 .cv-huesped-box{ flex:1; min-width:180px; background:#f4efe4; border:1px solid #eee3d2; border-radius:8px; padding:10px 14px; display:flex; align-items:center; gap:8px; }
 .cv-huesped-box i{ color:var(--rust); }
@@ -327,7 +372,8 @@
                       data-numero="<?php echo htmlspecialchars($habitacion["NumeroHabitacion"]); ?>"
                       data-fecha-entrada="<?php echo $habitacion["FechaEntrada"]; ?>"
                       data-fecha-salida="<?php echo $habitacion["FechaSalida"]; ?>"
-                      data-horas-extras="<?php echo (int)$habitacion["HorasExtras"]; ?>">
+                      data-horas-extras="<?php echo (int)$habitacion["HorasExtras"]; ?>"
+                      data-hora-anticipada="<?php echo (int)($habitacion["HoraAnticipada"] ?? 0); ?>">
                 <?php echo htmlspecialchars($habitacion["TipoHabitacion"]); ?>
               </option>
             <?php endforeach; ?>
@@ -349,10 +395,17 @@
           </div>
 
           <div class="cv-info-row">
-            <div class="cv-huesped-box" id="entradaBox" style="display:none;">
-              <i class="fa fa-sign-in"></i>
-              <span class="cv-huesped-label">Entrada:</span>
-              <span class="cv-huesped-nombre" id="entradaFecha"></span>
+            <div class="cv-huesped-box cv-huesped-box-split" id="entradaBox" style="display:none;">
+              <div class="cv-huesped-mitad">
+                <i class="fa fa-sign-in"></i>
+                <span class="cv-huesped-label">Entrada:</span>
+                <span class="cv-huesped-nombre" id="entradaFecha"></span>
+              </div>
+              <div class="cv-huesped-mitad cv-huesped-mitad-extra" id="horaAnticipadaBox" style="display:none;">
+                <i class="fa fa-history"></i>
+                <span class="cv-huesped-label">Hora anticipada:</span>
+                <span class="cv-huesped-nombre" id="horaAnticipadaFecha"></span>
+              </div>
             </div>
 
             <div class="cv-huesped-box cv-huesped-box-split" id="salidaBox" style="display:none;">
