@@ -2,11 +2,7 @@
 
 class ControladorHabitaciones{
 
-	// Máximo de horas antes de FechaEntrada en que Recepción puede hacer check-in anticipado
-	// (con cobro de HrsAnticipadas). Más allá de esto no tiene sentido cobrarle a alguien un día
-	// entero de anticipación solo porque su reserva es para esa fecha: el botón de check-in se
-	// oculta (ver crtObtenerHabitacionesRecepcion) y el servidor lo rechaza aunque lo llamen
-	// directo (ver ControladorReservaciones::crtEvaluarLlegadaAnticipada).
+	
 	const VENTANA_MAXIMA_CHECKIN_ANTICIPADO_HORAS = 4;
 
 	static public function crtObtenerHoteles(){
@@ -118,11 +114,7 @@ class ControladorHabitaciones{
 		return $resultado;
 	}
 
-	// Habitaciones con sus reservaciones del mes (recortadas a los días del mes visible), para el
-	// calendario del módulo Reserva. Cada habitación regresa con "Carriles": un arreglo de una o
-	// más filas (cada una indexada por día de inicio, lista para dibujar con colspan). Cuando dos
-	// reservaciones de la misma habitación se traslapan, se reparten en carriles distintos para
-	// que ambas queden visibles en vez de que una tape a la otra.
+	
 	static public function crtObtenerHabitacionesReserva($anio, $mes){
 		$id_hotel = self::crtObtenerIdHotelSesion();
 
@@ -137,11 +129,11 @@ class ControladorHabitaciones{
 		$tsMesInicio = mktime(0, 0, 0, $mes, 1, $anio);
 
 		// IDs de cat_estatus usados en reservaciones: 8=Ocupado, 9=Reservado,
-		// 12=CancelacionOcupacion (se canceló una estadía que ya había iniciado),
-		// 19=Movida (se reagendó a otra habitación/fechas). Ambas se pintan en el
-		// calendario como rastro histórico; 13 (se canceló una reserva que nunca llegó
-		// a ocuparse) no se pinta, no aporta nada ver un hueco que nunca fue real.
-		$claseParaEstatus = [8 => "ocupada", 9 => "reservada", 12 => "cancelada", 19 => "movida"];
+		// 12=CancelacionOcupacion, 13=CancelacionReserva. Cada una se pinta con su propio
+		// color/patrón en el calendario. 19=Movida (reservación reagendada a otra
+		// habitación/fechas) queda fuera a propósito: al no estar en este mapa, esas fechas
+		// simplemente no se pintan, para que se vean disponibles/normales sin ninguna huella.
+		$claseParaEstatus = [8 => "ocupada", 9 => "reservada", 12 => "cancelada-estadia", 13 => "cancelada-reserva"];
 		$segmentosPorHabitacion = [];
 
 		foreach($reservaciones as $res){
@@ -157,9 +149,9 @@ class ControladorHabitaciones{
 			$tsEntrada = strtotime(date("Y-m-d", strtotime($res["FechaEntrada"])));
 			$tsSalida = strtotime(date("Y-m-d", strtotime($res["FechaSalida"])));
 
-			// El día de salida no cuenta como ocupado (checkout), por eso el -86400.
+			// La barra cubre el rango completo, incluyendo el día de salida (checkout).
 			$diaInicio = max(1, (int) (($tsEntrada - $tsMesInicio) / 86400) + 1);
-			$diaFin = min($totalDias, (int) ((($tsSalida - 86400) - $tsMesInicio) / 86400) + 1);
+			$diaFin = min($totalDias, (int) (($tsSalida - $tsMesInicio) / 86400) + 1);
 
 			if($diaFin < $diaInicio){
 				// La reservación no toca ningún día visible de este mes.
@@ -168,11 +160,27 @@ class ControladorHabitaciones{
 
 			$nombreCliente = trim(($res["Nombre"] ?? "") . " " . ($res["APaterno"] ?? "") . " " . ($res["AMaterno"] ?? ""));
 
-			$tituloBarra = "Entrada: " . date("d/m/Y g:i a", strtotime($res["FechaEntrada"]))
-						 . " · Salida: " . date("d/m/Y g:i a", strtotime($res["FechaSalida"]));
+			// Mismo ajuste que ya usa Recepción: la entrada real se adelanta por las horas
+			// anticipadas cobradas, y la salida real se corre por las horas extra, para que el
+			// tooltip refleje la hora real de la estadía, no solo la programada originalmente.
+			$horasExtras = (int) ($res["HorasExtras"] ?? 0);
+			$horaAnticipada = (int) ($res["HoraAnticipada"] ?? 0);
+			$tsEntradaReal = strtotime($res["FechaEntrada"]) - ($horaAnticipada * 3600);
+			$tsSalidaReal = strtotime($res["FechaSalida"]) + ($horasExtras * 3600);
 
-			if($nombreCliente !== ""){
-				$tituloBarra = $nombreCliente . " · " . $tituloBarra;
+			// Nativo del navegador (atributo title): no se puede pintar con colores ni
+			// tipografía propia, pero sí se acomoda en líneas para que se lea más ordenado.
+			// La hora de entrada/salida ya viene sumada/restada por anticipada/extra; la nota
+			// de cuántas horas fueron va aparte, ya no se marca con un ícono en la barra.
+			$tituloBarra = ($nombreCliente !== "" ? $nombreCliente . "\n" : "")
+						 . "Entrada: " . date("d/m/Y g:i a", $tsEntradaReal) . "\n"
+						 . "Salida: " . date("d/m/Y g:i a", $tsSalidaReal);
+
+			if($horaAnticipada > 0){
+				$tituloBarra .= "\nIncluye " . $horaAnticipada . "h anticipada";
+			}
+			if($horasExtras > 0){
+				$tituloBarra .= "\nIncluye " . $horasExtras . "h extra";
 			}
 
 			if(!isset($segmentosPorHabitacion[$idHab])){
@@ -184,6 +192,9 @@ class ControladorHabitaciones{
 				"fin"           => $diaFin,
 				"estado"        => $clase,
 				"titulo"        => $tituloBarra,
+				"nombreCliente" => $nombreCliente,
+				"horasExtras"   => $horasExtras,
+				"horaAnticipada" => $horaAnticipada,
 				// Solo se usan para "mover reservación" (ocupada/reservada); en cancelada/
 				// movida no hace falta moverlas de nuevo, pero no cuesta nada llevarlos.
 				"idReservacion" => $res["Id_Reservacion"] ?? "",
@@ -301,19 +312,18 @@ class ControladorHabitaciones{
 			$hab["HorasExtras"] = $reserva["horasExtras"] ?? 0;
 			$hab["HoraAnticipada"] = $reserva["horaAnticipada"] ?? 0;
 
-			// El botón de check-in solo se ofrece dentro de la ventana de anticipación permitida
-			// (o si ya llegó/pasó la hora de entrada). Fuera de esa ventana no se muestra: no
-			// tiene caso ofrecer un check-in que el servidor va a rechazar de todas formas.
-			$puedeCheckin = false;
-
-			if($clase === "reservada" && !empty($reserva["fechaEntrada"])){
-				$segundosParaEntrada = strtotime($reserva["fechaEntrada"]) - time();
-				$ventanaSegundos = self::VENTANA_MAXIMA_CHECKIN_ANTICIPADO_HORAS * 3600;
-
-				$puedeCheckin = $segundosParaEntrada <= $ventanaSegundos;
-			}
+			$puedeCheckin = $clase === "reservada"
+				&& !empty($reserva["fechaEntrada"])
+				&& date("Y-m-d", strtotime($reserva["fechaEntrada"])) <= date("Y-m-d");
 
 			$hab["PuedeCheckin"] = $puedeCheckin;
+
+			// Solo aparece el día exacto de la salida (no antes, no después de que ya se venció).
+			$puedeCheckout = $clase === "ocupada"
+				&& !empty($reserva["fechaSalida"])
+				&& date("Y-m-d", strtotime($reserva["fechaSalida"])) === date("Y-m-d");
+
+			$hab["PuedeCheckout"] = $puedeCheckout;
 
 			$resultado[] = $hab;
 		}

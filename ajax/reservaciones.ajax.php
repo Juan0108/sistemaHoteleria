@@ -60,7 +60,7 @@ class ReservacionesAjax
 		$fechaReferencia = isset($_GET["fecha"]) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET["fecha"]) ? $_GET["fecha"] : date("Y-m-d");
 
 		// IDs de cat_estatus usados en reservaciones: 8=Ocupado, 9=Reservado,
-		// 12=CancelacionOcupacion, 13=CancelacionReserva, 19=Movida.
+		// 12=CancelacionOcupacion, 13=CancelacionReserva, 19=Movida, 20=Completada.
 		$claseParaEstatus = [8 => "ocupada", 9 => "reservada", 12 => "cancelada", 13 => "cancelada"];
 		$textoParaEstatus = [12 => "Cancelada (estadía)", 13 => "Cancelada (reserva)"];
 
@@ -71,10 +71,11 @@ class ReservacionesAjax
 
 			$idEstatus = (int) $Reservaciones[$i]["Id_Estatus"];
 
-			// Este modal es de "próximas reservas" vigentes: las canceladas (12/13) y las
-			// movidas (19, ya reemplazadas por una reservación nueva) no cuentan aquí. Ese
-			// rastro histórico solo se ve en el calendario de Reservas.
-			if ($idEstatus === 12 || $idEstatus === 13 || $idEstatus === 19){
+			// Este modal es de "próximas reservas" vigentes: las canceladas (12/13), las
+			// movidas (19, ya reemplazadas por una reservación nueva) y las que ya completaron
+			// checkout (20) no cuentan aquí. Ese rastro histórico solo se ve en el calendario
+			// de Reservas.
+			if ($idEstatus === 12 || $idEstatus === 13 || $idEstatus === 19 || $idEstatus === 20){
 				continue;
 			}
 
@@ -184,6 +185,46 @@ class ReservacionesAjax
 		echo '{"ok": '.$ok.', "mensaje": "'.$mensaje.'", "horasAnticipada": '.$horasAnticipada.', "montoAnticipada": '.$montoAnticipada.'}';
 	}
 
+	public function checkout(){
+
+		$id_reservacion = isset($_POST["id_reservacion"]) ? $_POST["id_reservacion"] : "";
+		$respuesta = ControladorReservaciones::crtCompletarCheckout($id_reservacion);
+
+		$ok = $respuesta["ok"] ? "true" : "false";
+		$mensaje = isset($respuesta["mensaje"]) ? $this->jsonEscape($respuesta["mensaje"]) : "";
+
+		echo '{"ok": '.$ok.', "mensaje": "'.$mensaje.'"}';
+	}
+
+	public function consumo(){
+
+		$id_reservacion = isset($_GET["id_reservacion"]) ? $_GET["id_reservacion"] : "";
+		$Consumo = ControladorReservaciones::crtObtenerConsumoReservacion($id_reservacion);
+
+		$datosJason = '{"data":[';
+		$total = 0;
+
+		for ($i = 0; $i < count($Consumo); $i++){
+			$subtotal = (float) $Consumo[$i]["Total"];
+			$total += $subtotal;
+
+			$datosJason .= '{
+				"producto": "'.$this->jsonEscape($Consumo[$i]["Producto"]).'",
+				"cantidad": '.(int) $Consumo[$i]["Cantidad"].',
+				"precioVenta": '.number_format((float) $Consumo[$i]["PrecioVenta"], 2, '.', '').',
+				"total": '.number_format($subtotal, 2, '.', '').'
+			},';
+		}
+
+		if (count($Consumo) > 0) {
+			$datosJason = substr($datosJason, 0, -1);
+		}
+
+		$datosJason .= '], "total": '.number_format($total, 2, '.', '').'}';
+
+		echo $datosJason;
+	}
+
 	// Vista previa (sin escribir nada) de si el check-in de esta reservación va a requerir
 	// cobro de Horas Anticipadas, para decidir qué popup mostrar antes de confirmar.
 	public function validarLlegadaAnticipada(){
@@ -207,6 +248,10 @@ if ($Accion === "buscarClientes") {
 	$Ajax->cancelar();
 } elseif ($Accion === "checkin") {
 	$Ajax->checkin();
+} elseif ($Accion === "checkout") {
+	$Ajax->checkout();
+} elseif ($Accion === "consumo") {
+	$Ajax->consumo();
 } elseif ($Accion === "validarLlegadaAnticipada") {
 	$Ajax->validarLlegadaAnticipada();
 } elseif ($Accion === "motivosCancelacion") {

@@ -66,8 +66,8 @@ $Habitaciones = $ctlReservas->crtObtenerHabitacionesReserva($anioActual, $mesAct
         <div class="reserva-legend">
           <span><i class="reserva-dot reserva-dot-ocupada"></i> Ocupada</span>
           <span><i class="reserva-dot reserva-dot-reservada"></i> Reservada</span>
-          <span><i class="reserva-dot reserva-dot-cancelada"></i> Cancelada (estadía)</span>
-          <span><i class="reserva-dot reserva-dot-movida"></i> Movida</span>
+          <span><i class="reserva-dot reserva-dot-cancelada-estadia"></i> Estadía cancelada</span>
+          <span><i class="reserva-dot reserva-dot-cancelada-reserva"></i> Reserva cancelada</span>
         </div>
 
       </div>
@@ -198,7 +198,10 @@ $Habitaciones = $ctlReservas->crtObtenerHabitacionesReserva($anioActual, $mesAct
   .reserva-fila{
     cursor:pointer;
   }
-  .reserva-fila:hover td{
+  /* JS agrega/quita esta clase a TODOS los carriles de la misma habitación al pasar el
+     mouse por cualquiera de ellos (con solo :hover, únicamente resaltaría el carril bajo
+     el cursor, no los demás de esa misma habitación). */
+  .reserva-fila-hover td{
     background:#faf5ec;
   }
   .reserva-fila-activa td{
@@ -207,6 +210,9 @@ $Habitaciones = $ctlReservas->crtObtenerHabitacionesReserva($anioActual, $mesAct
   .reserva-fila-activa .reserva-col-habitacion{
     box-shadow:inset 4px 0 0 #b96a37;
   }
+
+  .reserva-fila-continua td{ border-top:none; }
+  .reserva-fila-sin-borde-inferior td{ border-bottom:none; }
 
   .reserva-celda-barra{
     padding:4px !important;
@@ -218,17 +224,13 @@ $Habitaciones = $ctlReservas->crtObtenerHabitacionesReserva($anioActual, $mesAct
   .reserva-barra.estado-ocupada{ background:#81412d; }
   .reserva-barra.estado-reservada{ background:#b96a37; }
 
-  /* Cancelada/Movida son rastro histórico, no una reservación vigente: se pintan con
-     rayas diagonales en tonos apagados de la misma paleta, para que se lean distinto
-     de una barra sólida (Ocupada/Reservada) a simple vista. */
-  .reserva-barra.estado-cancelada{
+  
+  .reserva-barra.estado-cancelada-estadia{
     background:repeating-linear-gradient(45deg, #9c8a76, #9c8a76 6px, #b3a48f 6px, #b3a48f 12px);
   }
-  .reserva-barra.estado-movida{
-    background:repeating-linear-gradient(45deg, #dfc6a2, #dfc6a2 6px, #ecdcc0 6px, #ecdcc0 12px);
-    border:1px solid #cdb88f;
+  .reserva-barra.estado-cancelada-reserva{
+    background:repeating-linear-gradient(-45deg, #c9a184, #c9a184 6px, #dbbca3 6px, #dbbca3 12px);
   }
-
   .reserva-legend{
     display:flex;
     gap:24px;
@@ -251,6 +253,6 @@ $Habitaciones = $ctlReservas->crtObtenerHabitacionesReserva($anioActual, $mesAct
   }
   .reserva-dot-ocupada{ background:#81412d; }
   .reserva-dot-reservada{ background:#b96a37; }
-  .reserva-dot-cancelada{ background:repeating-linear-gradient(45deg, #9c8a76, #9c8a76 3px, #b3a48f 3px, #b3a48f 6px); }
-  .reserva-dot-movida{ background:repeating-linear-gradient(45deg, #dfc6a2, #dfc6a2 3px, #ecdcc0 3px, #ecdcc0 6px); border:1px solid #cdb88f; }
+  .reserva-dot-cancelada-estadia{ background:repeating-linear-gradient(45deg, #9c8a76, #9c8a76 3px, #b3a48f 3px, #b3a48f 6px); }
+  .reserva-dot-cancelada-reserva{ background:repeating-linear-gradient(-45deg, #c9a184, #c9a184 3px, #dbbca3 3px, #dbbca3 6px); }
 </style>

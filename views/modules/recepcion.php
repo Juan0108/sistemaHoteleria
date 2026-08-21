@@ -78,10 +78,14 @@ sort($TiposHabitacionRecepcion);
                 $tsEntradaReal = $hab["FechaEntrada"] ? strtotime($hab["FechaEntrada"]) - ($horaAnticipada * 3600) : null;
 
                 // El contador y "Ver reservas" cuentan lo mismo: las adicionales en cola
-                // (ReservasProximas) más la reservación de hoy solo si es Reservada (aún no
-                // ha llegado, sigue teniendo sentido poder moverla). Si ya está Ocupada, esa
-                // estadía ya sucedió: no cuenta, solo lo que venga después en cola.
-                $tieneReservaActual = $hab["EstadoClase"] === "reservada";
+                // (ReservasProximas, que ya cuenta cualquier Reservada con FechaEntrada
+                // futura) más la reservación de hoy solo si es Reservada Y su entrada YA
+                // pasó (si todavía no llega, el conteo de arriba ya la incluyó — sumarla
+                // aquí también la duplicaría). Si ya está Ocupada, esa estadía ya sucedió
+                // igual: no cuenta, solo lo que venga después en cola.
+                $tieneReservaActual = $hab["EstadoClase"] === "reservada"
+                  && !empty($hab["FechaEntrada"])
+                  && strtotime($hab["FechaEntrada"]) <= time();
                 $totalReservas = (int) $hab["ReservasProximas"] + ($tieneReservaActual ? 1 : 0);
 
                 $tituloPill = "";
@@ -116,7 +120,8 @@ sort($TiposHabitacionRecepcion);
                   <?php if ($totalReservas > 0): ?>
                     <button type="button" class="hc-ver-reservas" title="Ver todas las reservas de esta habitación"
                             data-id-habitacion="<?php echo (int) $hab["Id_Habitacion"]; ?>"
-                            data-tipo-habitacion="<?php echo htmlspecialchars($hab["TipoHabitacion"]); ?>">
+                            data-tipo-habitacion="<?php echo htmlspecialchars($hab["TipoHabitacion"]); ?>"
+                            data-precio-noche="<?php echo htmlspecialchars((float) $hab["PrecioNoche"]); ?>">
                       <i class="fa fa-list-alt"></i> Ver reservas
                     </button>
                   <?php endif; ?>
@@ -163,6 +168,13 @@ sort($TiposHabitacionRecepcion);
                               data-id-reservacion="<?php echo htmlspecialchars($hab["Id_Reservacion"]); ?>"
                               data-tipo-habitacion="<?php echo htmlspecialchars($hab["TipoHabitacion"]); ?>">
                         <i class="fa fa-sign-in"></i>
+                      </button>
+                    <?php endif; ?>
+                    <?php if ($hab["PuedeCheckout"]): ?>
+                      <button type="button" class="hc-icon-btn checkout" title="Check out"
+                              data-id-reservacion="<?php echo htmlspecialchars($hab["Id_Reservacion"]); ?>"
+                              data-tipo-habitacion="<?php echo htmlspecialchars($hab["TipoHabitacion"]); ?>">
+                        <i class="fa fa-sign-out"></i>
                       </button>
                     <?php endif; ?>
                     <?php if ($hab["EstadoClase"] === "ocupada" || $hab["EstadoClase"] === "reservada"): ?>
@@ -225,6 +237,51 @@ sort($TiposHabitacionRecepcion);
         <div id="hrContenido">
           <p class="text-muted text-center" style="padding:20px;">Cargando…</p>
         </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Check Out -->
+<div id="modalCheckOut" class="modal fade" role="dialog">
+  <div class="modal-dialog">
+    <div class="modal-content co-modal-content">
+      <div class="modal-header" style="background:#3f342e; color:white">
+        <button type="button" class="close" data-dismiss="modal" style="color:white; opacity:1;">&times;</button>
+        <h4 class="modal-title"><i class="fa fa-sign-out"></i> Check Out</h4>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="coIdReservacion">
+
+        <div class="co-seccion">
+          <h5 class="co-seccion-titulo">Preguntas</h5>
+          <div class="co-preguntas-scroll">
+            <table class="table co-tabla-preguntas">
+              <tbody id="coPreguntasCuerpo">
+                <tr><td class="text-center text-muted" style="padding:15px;">Cargando…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="co-seccion">
+          <h5 class="co-seccion-titulo">Consumo</h5>
+          <div class="co-consumo-scroll">
+            <table class="table co-tabla-consumo">
+              <thead>
+                <tr><th>Producto</th><th>Cant.</th><th>Precio</th><th>Total</th></tr>
+              </thead>
+              <tbody id="coConsumoCuerpo">
+                <tr><td colspan="4" class="text-center text-muted" style="padding:15px;">Cargando…</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="co-consumo-total">Total consumo: $<span id="coConsumoTotal">0.00</span></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Salir</button>
+        <button type="button" class="btn" id="coConfirmar" style="background:#4c8c5a; border-color:#4c8c5a; color:#fff;"><i class="fa fa-check"></i> Confirmar Check Out</button>
       </div>
     </div>
   </div>
@@ -322,7 +379,7 @@ sort($TiposHabitacionRecepcion);
             <label>Precio</label>
             <div class="input-group">
               <span class="input-group-addon">$</span>
-              <input type="number" step="0.01" min="0" class="form-control" id="nrPrecio" readonly autocomplete="off">
+              <input type="text" inputmode="decimal" class="form-control" id="nrPrecio" readonly autocomplete="off">
             </div>
           </div>
         </form>
@@ -341,7 +398,8 @@ sort($TiposHabitacionRecepcion);
     <div class="modal-content">
       <div class="modal-header" style="background:#3f342e; color:white">
         <button type="button" class="close" data-dismiss="modal" style="color:white; opacity:1;">&times;</button>
-        <h4 class="modal-title"><i class="fa fa-exchange"></i> Mover reservación — <span id="mrFolioActual"></span></h4>
+        <h4 class="modal-title"><i class="fa fa-exchange"></i> Mover reservación</h4>
+        <div class="mr-subtitulo" id="mrFolioActual"></div>
       </div>
       <div class="modal-body">
         <form id="formMoverReservacion" autocomplete="off">
@@ -350,6 +408,7 @@ sort($TiposHabitacionRecepcion);
           <div class="form-group">
             <label>Habitación</label>
             <input type="hidden" id="mrIdHabitacion">
+            <input type="hidden" id="mrPrecioNoche">
             <input type="text" class="form-control" id="mrHabitacionNombre" readonly>
           </div>
 
@@ -380,11 +439,17 @@ sort($TiposHabitacionRecepcion);
             </div>
           </div>
 
-          <p class="text-muted" style="font-size:12px; margin-top:6px;">
-            La reservación actual quedará marcada como "Movida" (se conserva en el calendario de Reservas como
-            rastro histórico) y se crea una reservación nueva, con el mismo cliente, en la habitación y fechas
-            que elijas aquí.
-          </p>
+          <div class="form-group">
+            <label>Precio</label>
+            <div class="input-group">
+              <span class="input-group-addon">$</span>
+              <input type="text" inputmode="decimal" class="form-control" id="mrPrecio" readonly autocomplete="off">
+            </div>
+            <p class="text-muted" style="font-size:12px; margin-top:6px;">
+              Se recalcula según las noches de las fechas nuevas y la tarifa de esta habitación.
+            </p>
+          </div>
+
         </form>
       </div>
       <div class="modal-footer">
@@ -531,6 +596,25 @@ sort($TiposHabitacionRecepcion);
     border-radius:16px;
     overflow:hidden;
   }
+
+  #modalMoverReservacion .modal-content{
+    border-radius:16px;
+    overflow:hidden;
+  }
+  #modalMoverReservacion .modal-title{
+    margin-bottom:2px;
+  }
+  .mr-subtitulo{
+    font-size:12.5px;
+    color:#dcd2c4;
+  }
+  .mr-subtitulo-sep{
+    margin:0 6px;
+    opacity:.6;
+  }
+  #modalMoverReservacion .form-group{
+    margin-bottom:18px;
+  }
   .hr-tabla{
     width:100%;
     border-collapse:collapse;
@@ -628,13 +712,13 @@ sort($TiposHabitacionRecepcion);
   .nr-datetime-row{
     display:flex;
     align-items:center;
-    gap:4px;
+    gap:6px;
   }
   .nr-datetime-row input[type="date"]{
     flex:1 1 auto;
     min-width:0;
-    padding-left:6px;
-    padding-right:6px;
+    padding-left:8px;
+    padding-right:8px;
   }
   .nr-datetime-row select{
     flex:0 0 52px;
@@ -909,4 +993,45 @@ sort($TiposHabitacionRecepcion);
   .hc-icon-btn:active{ transform:translateY(0); }
   .hc-icon-btn.checkin{ background:#e1ece2; color:#3f6b4a; }
   .hc-icon-btn.cancelar{ background:#f7e2dc; color:#9a3b2c; }
+  .hc-icon-btn.checkout{ background:#e6ddf0; color:#5a3f81; }
+
+  .co-modal-content{ border-radius:16px; overflow:hidden; }
+  .co-seccion{ margin-bottom:22px; }
+  .co-seccion:last-child{ margin-bottom:0; }
+  .co-seccion-titulo{
+    color:#3f342e;
+    font-weight:800;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+    font-size:13px;
+    margin:0 0 10px;
+    border-bottom:1px solid #eee3d2;
+    padding-bottom:6px;
+  }
+  .co-preguntas-scroll{
+    max-height:230px;
+    overflow-y:auto;
+    border:1px solid #eee3d2;
+    border-radius:8px;
+  }
+  .co-tabla-preguntas{ margin-bottom:0; }
+  .co-tabla-preguntas td{ vertical-align:middle; border-top:1px solid #f4efe4; }
+  .co-tabla-preguntas tr:first-child td{ border-top:none; }
+  .co-preg-num{ width:30px; color:#9c8a76; font-weight:700; }
+  .co-preg-toggle{ width:70px; text-align:right; }
+  .co-consumo-scroll{
+    max-height:200px;
+    overflow-y:auto;
+    border:1px solid #eee3d2;
+    border-radius:8px;
+  }
+  .co-tabla-consumo{ margin-bottom:0; }
+  .co-tabla-consumo thead th{ background:#3f342e; color:#fff; border-color:#3f342e; position:sticky; top:0; }
+  .co-consumo-total{
+    text-align:right;
+    font-weight:800;
+    color:#3f342e;
+    margin-top:8px;
+    font-size:14px;
+  }
 </style>

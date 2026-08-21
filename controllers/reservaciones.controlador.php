@@ -144,8 +144,9 @@ class ControladorReservaciones{
 	}
 
 	// Mueve una reservación activa (Ocupado/Reservado) a otra habitación/fechas: la original
-	// queda marcada como "Movida" (no se borra, sigue viéndose en el calendario) y se crea
-	// una reservación nueva (Reservado) con el mismo cliente y precio, en las fechas nuevas.
+	// queda marcada como "Movida" (no se borra, pero el calendario no la pinta con ningún
+	// color: la habitación se ve disponible/normal en esas fechas, sin dejar huella) y se
+	// crea una reservación nueva (Reservado) con el mismo cliente y precio, en las fechas nuevas.
 	// $datos trae id_habitacion (destino), fecha_entrada, fecha_salida.
 	static public function crtMoverReservacion($id_reservacion, $datos){
 		$id_hotel = ControladorHabitaciones::crtObtenerIdHotelSesion();
@@ -176,7 +177,15 @@ class ControladorReservaciones{
 
 		// Misma verificación de traslape que usa crear reservación. Se hace antes de tocar
 		// la reservación original: si las fechas nuevas no están disponibles, no se mueve nada.
-		$conflictos = ModeloReservaciones::MdlVerificarDisponibilidadHabitacion($id_habitacion, $fecha_entrada, $fecha_salida);
+		// La reservación que se está moviendo se excluye de sus propios conflictos: si alguien
+		// solo quiere agregar/quitar días en la misma habitación, el rango nuevo se traslapa
+		// con el suyo propio (que sigue activo hasta este punto) y no debe contar como choque.
+		$conflictos = array_values(array_filter(
+			ModeloReservaciones::MdlVerificarDisponibilidadHabitacion($id_habitacion, $fecha_entrada, $fecha_salida),
+			function($conflicto) use ($id_reservacion){
+				return $conflicto["Id_Reservacion"] !== $id_reservacion;
+			}
+		));
 
 		if(count($conflictos) > 0){
 			$salidaRealMaxima = null;
@@ -195,6 +204,24 @@ class ControladorReservaciones{
 			];
 		}
 
+		// El precio se recalcula con la habitación y fechas nuevas (noches × precio por
+		// noche), nunca se confía en lo que mande el navegador: si cambian los días o la
+		// habitación tiene otra tarifa, el total de la reservación original ya no aplica.
+		$precioNoche = 0;
+		foreach(ModeloHabitaciones::MdlObtenerHabitaciones($id_hotel) as $habitacionDestino){
+			if((int) $habitacionDestino["Id_Habitacion"] === $id_habitacion){
+				$precioNoche = (float) $habitacionDestino["PrecioNoche"];
+				break;
+			}
+		}
+
+		$noches = (int) ceil((strtotime($fecha_salida) - strtotime($fecha_entrada)) / 86400);
+		if($noches < 1){
+			$noches = 1;
+		}
+
+		$precio = $noches * $precioNoche;
+
 		$original = ModeloReservaciones::MdlMarcarReservacionMovida($id_reservacion, $id_hotel);
 		$afectados = $original ? (int) $original["Afectados"] : 0;
 
@@ -203,7 +230,6 @@ class ControladorReservaciones{
 		}
 
 		$id_cliente = (int) $original["Id_Cliente"];
-		$precio = (float) $original["Precio"];
 
 		// Toda reserva nueva entra como Reservado; solo el check-in la pasa a Ocupado.
 		$reservacionNueva = ModeloReservaciones::MdlInsertarReservacion(
@@ -253,6 +279,42 @@ class ControladorReservaciones{
 	// Catálogo de motivos de cancelación, para el combo del formulario.
 	static public function crtObtenerMotivosCancelacion(){
 		return ModeloReservaciones::MdlObtenerMotivosCancelacion();
+	}
+
+	// Completa el Check Out de una reservación Ocupada (pasa a Id_Estatus=20, Completada),
+	// liberando la habitación.
+	static public function crtCompletarCheckout($id_reservacion){
+		$id_hotel = ControladorHabitaciones::crtObtenerIdHotelSesion();
+
+		if($id_hotel === null){
+			return ["ok" => false, "mensaje" => "Tu negocio no tiene un hotel registrado, contacta a soporte técnico."];
+		}
+
+		$id_reservacion = trim((string) $id_reservacion);
+
+		if($id_reservacion === ""){
+			return ["ok" => false, "mensaje" => "Falta la reservación."];
+		}
+
+		$resultado = ModeloReservaciones::MdlCompletarCheckout($id_reservacion, $id_hotel);
+		$afectados = $resultado ? (int) $resultado["Afectados"] : 0;
+
+		if($afectados === 0){
+			return ["ok" => false, "mensaje" => "Esta reservación ya no está en estado Ocupado."];
+		}
+
+		return ["ok" => true, "mensaje" => "Check out completado correctamente."];
+	}
+
+	// Consumo desglosado (productos vendidos ligados a la estadía) para el modal de Check Out.
+	static public function crtObtenerConsumoReservacion($id_reservacion){
+		$id_reservacion = trim((string) $id_reservacion);
+
+		if($id_reservacion === ""){
+			return [];
+		}
+
+		return ModeloReservaciones::MdlObtenerConsumoReservacion($id_reservacion);
 	}
 
 	// Confirma el check-in de una reservación Reservada (pasa a Id_Estatus=8, Ocupado).

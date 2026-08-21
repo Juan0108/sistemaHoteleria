@@ -87,9 +87,11 @@ class ModeloReservaciones{
 	}
 
 	// Pasa una reservación Reservado/Ocupado a estatus "Movida" (19), sin borrarla, para
-	// dejar rastro en el calendario de que ese rango ya no aplica. No hace nada si ya no
-	// está activa o si no pertenece al hotel de la sesión. Regresa Id_Cliente y Precio de
-	// la reservación original para poder crear la reservación con las fechas nuevas.
+	// que ese rango quede libre de inmediato (el calendario de Reservas no reconoce este
+	// estatus, así que no se pinta: la habitación se ve disponible/normal en esas fechas,
+	// sin dejar ninguna huella). No hace nada si ya no está activa o si no pertenece al
+	// hotel de la sesión. Regresa Id_Cliente y Precio de la reservación original para
+	// poder crear la reservación con las fechas nuevas.
 	static public function MdlMarcarReservacionMovida($id_reservacion, $id_hotel){
 		$stmt = Conexion::conectar()->prepare("CALL MarcarReservacionMovida(:id_reservacion, :id_hotel)");
 		$stmt->bindParam(":id_reservacion", $id_reservacion);
@@ -113,6 +115,24 @@ class ModeloReservaciones{
 		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
 		$stmt->execute();
 		return $stmt->fetch();
+	}
+
+	// Completa la estadía (Ocupado -> Completada, 20), liberando la habitación. No hace nada
+	// si la reservación ya no está en Ocupado o si no pertenece al hotel de la sesión.
+	static public function MdlCompletarCheckout($id_reservacion, $id_hotel){
+		$stmt = Conexion::conectar()->prepare("CALL CompletarCheckout(:id_reservacion, :id_hotel)");
+		$stmt->bindParam(":id_reservacion", $id_reservacion);
+		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
+		$stmt->execute();
+		return $stmt->fetch();
+	}
+
+	// Consumo (ventas ligadas vía Tb_Consumo) de una estadía, desglosado por producto.
+	static public function MdlObtenerConsumoReservacion($id_reservacion){
+		$stmt = Conexion::conectar()->prepare("CALL ObtenerConsumoReservacion(:id_reservacion)");
+		$stmt->bindParam(":id_reservacion", $id_reservacion);
+		$stmt->execute();
+		return $stmt->fetchAll();
 	}
 
 	// Conteo, por habitación, de reservaciones Reservadas (Id_Estatus=9) cuya entrada aún no

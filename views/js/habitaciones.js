@@ -54,7 +54,7 @@ $(document).on("click", ".btnEditarHabitacion", function(){
 			$("#editarNumero").val(respuesta["NumeroHabitacion"]);
 			$("#editarTipo").val(respuesta["TipoHabitacion"]);
 			$("#editarCapacidad").val(respuesta["Capacidad"]);
-			$("#editarPrecio").val(formatearPrecio(respuesta["PrecioNoche"]));
+			$("#editarPrecio").val(formatearPrecioEntrada(respuesta["PrecioNoche"]));
 			$("#editarDescripcion").val(respuesta["Descripcion"]);
 
 			if (Number(respuesta["Id_Estatus"]) === 1) {
@@ -158,7 +158,10 @@ function mostrarErrorFotoHabitacion(){
 		.show();
 }
 
-function formatearPrecio(valor){
+// "Entrada" porque formatea mientras el usuario ESCRIBE (tolera un "." final a medio
+// teclear, no fuerza 2 decimales); no confundir con formatearPrecio de ventas.js, que
+// formatea un número completo ya calculado para solo mostrarlo.
+function formatearPrecioEntrada(valor){
 
 	valor = String(valor).replace(/[^0-9.]/g, "");
 
@@ -174,17 +177,17 @@ function formatearPrecio(valor){
 	return entero + decimal;
 }
 
-function desformatearPrecio(valor){
+function desformatearPrecioEntrada(valor){
 	return String(valor).replace(/,/g, "");
 }
 
 $(document).on("input", "#nuevoPrecio, #editarPrecio", function(){
-	this.value = formatearPrecio(this.value);
+	this.value = formatearPrecioEntrada(this.value);
 });
 
 $(document).on("submit", "#modalAgregarHabitacion form, #modalEditarHabitacion form", function(){
 	$(this).find('input[name="nuevoPrecio"], input[name="editarPrecio"]').each(function(){
-		this.value = desformatearPrecio(this.value);
+		this.value = desformatearPrecioEntrada(this.value);
 	});
 });
 

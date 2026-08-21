@@ -58,6 +58,13 @@ class RecepcionAjax
 				$proximaTexto = "Disponible hasta el " . date("d/m/Y g:i a", strtotime($proxima["fechaEntrada"]));
 			}
 
+			// El SP de ReservasProximas cuenta cualquier Reservada con FechaEntrada futura,
+			// incluida la que ya se ve en esta misma tarjeta si aún no llega. "entradaYaLlego"
+			// le dice al frontend si esa reservación actual YA está incluida en ese conteo
+			// (entrada futura -> sí) o si hay que sumarla aparte (entrada ya pasada -> no).
+			$entradaYaLlego = !empty($Habitaciones[$i]["FechaEntrada"])
+				&& strtotime($Habitaciones[$i]["FechaEntrada"]) <= time();
+
 			$datosJason .= '{
 				"id": "'.$Habitaciones[$i]["Id_Habitacion"].'",
 				"nombre": "'.$this->jsonEscape($Habitaciones[$i]["TipoHabitacion"]).'",
@@ -72,7 +79,9 @@ class RecepcionAjax
 				"horasExtras": '.(int) $Habitaciones[$i]["HorasExtras"].',
 				"horaAnticipada": '.(int) $Habitaciones[$i]["HoraAnticipada"].',
 				"puedeCheckin": '.($Habitaciones[$i]["PuedeCheckin"] ? "true" : "false").',
+				"puedeCheckout": '.($Habitaciones[$i]["PuedeCheckout"] ? "true" : "false").',
 				"reservasProximas": '.(int) $Habitaciones[$i]["ReservasProximas"].',
+				"entradaYaLlego": '.($entradaYaLlego ? "true" : "false").',
 				"proximaReservacionTexto": "'.$this->jsonEscape($proximaTexto).'",
 				"descripcion": "'.$this->jsonEscape($Habitaciones[$i]["Descripcion"]).'",
 				"capacidad": "'.$this->jsonEscape($Habitaciones[$i]["Capacidad"]).'",

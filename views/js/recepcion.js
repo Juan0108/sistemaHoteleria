@@ -57,11 +57,12 @@ function pintarTarjetasRecepcion(habitaciones, mensajeVacio){
 		}
 
 		// El contador y "Ver reservas" cuentan lo mismo: las adicionales en cola
-		// (reservasProximas) más la reservación de hoy solo si es Reservada (aún no ha
-		// llegado, así que sigue teniendo sentido poder moverla). Si ya está Ocupada, esa
-		// estadía ya sucedió: no cuenta, solo lo que venga después en cola.
+		// (reservasProximas, que ya cuenta cualquier Reservada con entrada futura) más la
+		// reservación de hoy solo si es Reservada Y su entrada YA llegó (entradaYaLlego):
+		// si todavía no llega, ese conteo de arriba ya la incluyó y sumarla de nuevo la
+		// duplicaría. Si ya está Ocupada, esa estadía ya sucedió: no cuenta.
 		var reservasProximas = parseInt(hab.reservasProximas, 10) || 0;
-		var tieneReservaActual = hab.estadoClase === 'reservada';
+		var tieneReservaActual = hab.estadoClase === 'reservada' && hab.entradaYaLlego;
 		var totalReservas = reservasProximas + (tieneReservaActual ? 1 : 0);
 		var htmlReservasProximas = '';
 
@@ -77,7 +78,8 @@ function pintarTarjetasRecepcion(habitaciones, mensajeVacio){
 		if (totalReservas > 0){
 			htmlVerReservas = '<button type="button" class="hc-ver-reservas" title="Ver todas las reservas de esta habitación"' +
 				' data-id-habitacion="' + escaparHtmlRecepcion(hab.id) + '"' +
-				' data-tipo-habitacion="' + nombre + '">' +
+				' data-tipo-habitacion="' + nombre + '"' +
+				' data-precio-noche="' + escaparHtmlRecepcion(hab.precioNoche) + '">' +
 				'<i class="fa fa-list-alt"></i> Ver reservas' +
 			'</button>';
 		}
@@ -89,6 +91,14 @@ function pintarTarjetasRecepcion(habitaciones, mensajeVacio){
 				' data-id-reservacion="' + escaparHtmlRecepcion(hab.idReservacion) + '"' +
 				' data-tipo-habitacion="' + nombre + '">' +
 				'<i class="fa fa-sign-in"></i>' +
+			'</button>';
+		}
+
+		if (hab.puedeCheckout){
+			accionesEstado += '<button type="button" class="hc-icon-btn checkout" title="Check out"' +
+				' data-id-reservacion="' + escaparHtmlRecepcion(hab.idReservacion) + '"' +
+				' data-tipo-habitacion="' + nombre + '">' +
+				'<i class="fa fa-sign-out"></i>' +
 			'</button>';
 		}
 
@@ -268,6 +278,7 @@ $(document).on("click", ".hc-ver-reservas", function(){
 	var $boton = $(this);
 	var idHabitacion = $boton.data("idHabitacion");
 	var tipoHabitacion = $boton.data("tipoHabitacion");
+	var precioNoche = $boton.data("precioNoche");
 
 	$("#hrHabitacionNombre").text(tipoHabitacion);
 	$("#hrContenido").html('<p class="text-muted text-center" style="padding:20px;">Cargando…</p>');
@@ -301,7 +312,8 @@ $(document).on("click", ".hc-ver-reservas", function(){
 						' data-entrada-raw="' + escaparHtmlRecepcion(r.entradaRaw) + '"' +
 						' data-salida-raw="' + escaparHtmlRecepcion(r.salidaRaw) + '"' +
 						' data-id-habitacion="' + escaparHtmlRecepcion(idHabitacion) + '"' +
-						' data-tipo-habitacion="' + escaparHtmlRecepcion(tipoHabitacion) + '">' +
+						' data-tipo-habitacion="' + escaparHtmlRecepcion(tipoHabitacion) + '"' +
+						' data-precio-noche="' + escaparHtmlRecepcion(precioNoche) + '">' +
 						'<i class="fa fa-exchange"></i> Mover' +
 					'</button>'
 					: '';
@@ -347,9 +359,13 @@ $(document).on("click", ".hr-mover", function(){
 	var $boton = $(this);
 
 	$("#mrIdReservacion").val($boton.data("folio"));
-	$("#mrFolioActual").text($boton.data("folio") + " — " + $boton.data("cliente"));
+	$("#mrFolioActual").html(
+		"Folio " + escaparHtmlRecepcion($boton.data("folio")) +
+		'<span class="mr-subtitulo-sep">·</span>' + escaparHtmlRecepcion($boton.data("cliente"))
+	);
 	$("#mrIdHabitacion").val($boton.data("idHabitacion"));
 	$("#mrHabitacionNombre").val($boton.data("tipoHabitacion"));
+	$("#mrPrecioNoche").val($boton.data("precioNoche"));
 
 	var entrada = mrPartesFecha(String($boton.data("entradaRaw") || ""));
 	$("#mrFechaEntradaDia").val(entrada.dia);
@@ -362,6 +378,8 @@ $(document).on("click", ".hr-mover", function(){
 	$("#mrFechaSalidaHora").val(salida.hora);
 	$("#mrFechaSalidaMin").val(salida.minuto);
 	mrSincronizarFecha("Salida");
+
+	mrCalcularPrecio();
 
 	// Se encadena con un spinner y se espera a que "Ver reservas" termine de cerrar
 	// (evento hidden.bs.modal) antes de abrir "Mover": mostrar/ocultar ambos modales
@@ -449,6 +467,24 @@ function ejecutarCheckin(idReservacion){
 
 }
 
+// Último paso antes de ejecutar el check-in de verdad, sin importar si hubo o no cobro de
+// horas anticipadas: siempre se pide esta confirmación simple al final.
+function confirmarCheckinFinal(idReservacion, tipoHabitacion){
+	Swal.fire({
+		icon: "question",
+		title: "¿Confirmar check-in?",
+		text: "Se marcará " + tipoHabitacion + " como Ocupada.",
+		showCancelButton: true,
+		confirmButtonText: "Sí, confirmar",
+		cancelButtonText: "Cancelar",
+		confirmButtonColor: "#3f6b4a"
+	}).then(function(resultado){
+		if (resultado.value){
+			ejecutarCheckin(idReservacion);
+		}
+	});
+}
+
 $(document).on("click", ".hc-icon-btn.checkin", function(){
 
 	var $boton = $(this);
@@ -470,21 +506,7 @@ $(document).on("click", ".hc-icon-btn.checkin", function(){
 			}
 
 			if (!respuesta.requiereCargo){
-
-				Swal.fire({
-					icon: "question",
-					title: "¿Confirmar check-in?",
-					text: "Se marcará " + tipoHabitacion + " como Ocupada.",
-					showCancelButton: true,
-					confirmButtonText: "Sí, confirmar",
-					cancelButtonText: "Cancelar",
-					confirmButtonColor: "#3f6b4a"
-				}).then(function(resultado){
-					if (resultado.value){
-						ejecutarCheckin(idReservacion);
-					}
-				});
-
+				confirmarCheckinFinal(idReservacion, tipoHabitacion);
 				return;
 			}
 
@@ -521,14 +543,14 @@ $(document).on("click", ".hc-icon-btn.checkin", function(){
 			Swal.fire({
 				icon: "info",
 				title: "Puedes hacer check-in pero se tomarán las HrsAnticipadas",
-				html: "Se cobrarán <b>" + horas + " hora" + (horas === 1 ? "" : "s") + " anticipada" + (horas === 1 ? "" : "s") + "</b> ($" + precioTotal.toFixed(2) + ") a " + escaparHtmlRecepcion(tipoHabitacion) + ".",
+				html: "Se cobrarán <b>" + horas + " hora" + (horas === 1 ? "" : "s") + " anticipada" + (horas === 1 ? "" : "s") + "</b> ($" + formatearPrecio(precioTotal) + ") a " + escaparHtmlRecepcion(tipoHabitacion) + ".",
 				showCancelButton: true,
 				confirmButtonText: "Sí, confirmar",
 				cancelButtonText: "Cancelar",
 				confirmButtonColor: "#3f6b4a"
 			}).then(function(resultado){
 				if (resultado.value){
-					ejecutarCheckin(idReservacion);
+					confirmarCheckinFinal(idReservacion, tipoHabitacion);
 				}
 			});
 
@@ -615,6 +637,129 @@ $(document).on("click", ".hc-icon-btn.cancelar", function(){
 });
 
 /*=============================================
+ Check Out (preguntas + consumo de la estadía)
+ =============================================*/
+$(document).on("click", ".hc-icon-btn.checkout", function(){
+
+	var idReservacion = $(this).data("idReservacion");
+
+	$("#coIdReservacion").val(idReservacion);
+	$("#coPreguntasCuerpo").html('<tr><td class="text-center text-muted" style="padding:15px;">Cargando…</td></tr>');
+	$("#coConsumoCuerpo").html('<tr><td colspan="4" class="text-center text-muted" style="padding:15px;">Cargando…</td></tr>');
+	$("#coConsumoTotal").text("0.00");
+
+	$("#modalCheckOut").modal("show");
+
+	$.ajax({
+		url: "ajax/preguntas.ajax.php",
+		method: "GET",
+		data: { accion: "activas" },
+		dataType: "json",
+		success: function(respuesta){
+
+			var preguntas = respuesta.data || [];
+			var $cuerpo = $("#coPreguntasCuerpo");
+			$cuerpo.empty();
+
+			if (preguntas.length === 0){
+				$cuerpo.append('<tr><td class="text-center text-muted" style="padding:15px;">No hay preguntas configuradas.</td></tr>');
+				return;
+			}
+
+			preguntas.forEach(function(pregunta, indice){
+				$cuerpo.append(
+					'<tr>' +
+						'<td class="co-preg-num">' + (indice + 1) + '.</td>' +
+						'<td>' + escaparHtmlRecepcion(pregunta) + '</td>' +
+						'<td class="co-preg-toggle"><input type="checkbox" data-toggle="toggle" data-size="mini" data-onstyle="success" data-offstyle="default"></td>' +
+					'</tr>'
+				);
+			});
+
+			$cuerpo.find('input[data-toggle="toggle"]').bootstrapToggle();
+		},
+		error: function(){
+			$("#coPreguntasCuerpo").html('<tr><td class="text-center text-muted" style="padding:15px;">No se pudieron cargar las preguntas.</td></tr>');
+		}
+	});
+
+	$.ajax({
+		url: "ajax/reservaciones.ajax.php",
+		method: "GET",
+		data: { accion: "consumo", id_reservacion: idReservacion },
+		dataType: "json",
+		success: function(respuesta){
+
+			var consumo = respuesta.data || [];
+			var $cuerpo = $("#coConsumoCuerpo");
+			$cuerpo.empty();
+
+			if (consumo.length === 0){
+				$cuerpo.append('<tr><td colspan="4" class="text-center text-muted" style="padding:15px;">Sin consumo registrado.</td></tr>');
+			}else{
+				consumo.forEach(function(item){
+					$cuerpo.append(
+						'<tr>' +
+							'<td>' + escaparHtmlRecepcion(item.producto) + '</td>' +
+							'<td>' + item.cantidad + '</td>' +
+							'<td>$' + formatearPrecio(item.precioVenta) + '</td>' +
+							'<td>$' + formatearPrecio(item.total) + '</td>' +
+						'</tr>'
+					);
+				});
+			}
+
+			$("#coConsumoTotal").text(formatearPrecio(respuesta.total || 0));
+		},
+		error: function(){
+			$("#coConsumoCuerpo").html('<tr><td colspan="4" class="text-center text-muted" style="padding:15px;">No se pudo cargar el consumo.</td></tr>');
+		}
+	});
+});
+
+$(document).on("click", "#coConfirmar", function(){
+
+	var idReservacion = $("#coIdReservacion").val();
+
+	Swal.fire({
+		icon: "question",
+		title: "¿Confirmar Check Out?",
+		text: "La habitación quedará disponible.",
+		showCancelButton: true,
+		confirmButtonText: "Sí, confirmar",
+		cancelButtonText: "Cancelar",
+		confirmButtonColor: "#3f6b4a"
+	}).then(function(resultado){
+
+		if (!resultado.value){
+			return;
+		}
+
+		mostrarCargaRecepcion();
+
+		$.ajax({
+			url: "ajax/reservaciones.ajax.php",
+			method: "POST",
+			data: { accion: "checkout", id_reservacion: idReservacion },
+			dataType: "json",
+			success: function(respuesta){
+				if (respuesta.ok){
+					$("#modalCheckOut").modal("hide");
+					Swal.fire({ icon: "success", title: "Check out completado", timer: 1500, showConfirmButton: false });
+					refrescarRecepcion();
+				}else{
+					Swal.fire({ icon: "error", title: "No se pudo completar", text: respuesta.mensaje });
+				}
+			},
+			error: function(){
+				Swal.fire({ icon: "error", title: "Error", text: "No se pudo completar el check out. Intenta de nuevo." });
+			},
+			complete: ocultarCargaRecepcion
+		});
+	});
+});
+
+/*=============================================
  Nueva reservación (modal desde la flecha de la tarjeta)
  =============================================*/
 function refrescarRecepcion(){
@@ -676,10 +821,40 @@ function mrSincronizarFecha(prefijo){
 
 $(document).on("change", "#mrFechaEntradaDia, #mrFechaEntradaHora, #mrFechaEntradaMin", function(){
 	mrSincronizarFecha("Entrada");
+	mrCalcularPrecio();
 });
 $(document).on("change", "#mrFechaSalidaDia, #mrFechaSalidaHora, #mrFechaSalidaMin", function(){
 	mrSincronizarFecha("Salida");
+	mrCalcularPrecio();
 });
+
+// Mismo cálculo que nrCalcularPrecio, pero para el modal "Mover reservación": noches ×
+// precio por noche de la habitación (que ya no se puede cambiar en este modal).
+function mrCalcularPrecio(){
+	var entrada = $("#mrFechaEntrada").val();
+	var salida = $("#mrFechaSalida").val();
+	var precioNoche = parseFloat($("#mrPrecioNoche").val()) || 0;
+
+	if (!entrada || !salida || !precioNoche){
+		$("#mrPrecio").val("");
+		return;
+	}
+
+	var tsEntrada = new Date(entrada).getTime();
+	var tsSalida = new Date(salida).getTime();
+
+	if (isNaN(tsEntrada) || isNaN(tsSalida) || tsSalida <= tsEntrada){
+		$("#mrPrecio").val("");
+		return;
+	}
+
+	var noches = Math.ceil((tsSalida - tsEntrada) / (1000 * 60 * 60 * 24));
+	if (noches < 1){
+		noches = 1;
+	}
+
+	$("#mrPrecio").val(formatearPrecio(noches * precioNoche));
+}
 
 function nrCalcularPrecio(){
 	var entrada = $("#nrFechaEntrada").val();
@@ -706,7 +881,7 @@ function nrCalcularPrecio(){
 		noches = 1;
 	}
 
-	$("#nrPrecio").val((noches * precioNoche).toFixed(2));
+	$("#nrPrecio").val(formatearPrecio(noches * precioNoche));
 }
 
 $(document).on("click", ".hc-arrow", function(){
@@ -962,7 +1137,9 @@ $(document).on("click", "#nrGuardar", function(){
 		id_habitacion: $("#nrIdHabitacion").val(),
 		fecha_entrada: $("#nrFechaEntrada").val(),
 		fecha_salida: $("#nrFechaSalida").val(),
-		precio: $("#nrPrecio").val(),
+		// #nrPrecio se muestra con comas de miles (ej. "1,400.00"); se le quitan antes de
+		// mandarlo al servidor para que (float) lo interprete completo, no solo hasta la coma.
+		precio: desformatearPrecio($("#nrPrecio").val()),
 		id_cliente: $("#nrIdClienteSeleccionado").val()
 	};
 

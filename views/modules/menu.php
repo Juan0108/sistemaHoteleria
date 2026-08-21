@@ -87,6 +87,12 @@ if ($currentPage !== "reset"): ?>
                             <i class="fa fa-wrench"></i>
                             <span>Mantenimiento</span>
                         </a>
+                    </li>
+                    <li>
+                        <a href="preguntas">
+                            <i class="fa fa-question-circle"></i>
+                            <span>Preguntas</span>
+                        </a>
                     </li>';
             }
 
@@ -113,6 +119,12 @@ if ($currentPage !== "reset"): ?>
                         <a href="mantenimiento">
                             <i class="fa fa-wrench"></i>
                             <span>Mantenimiento</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="preguntas">
+                            <i class="fa fa-question-circle"></i>
+                            <span>Preguntas</span>
                         </a>
                     </li>';
             }

@@ -27,8 +27,16 @@
   <?php else: foreach ($Habitaciones as $hab):
     $carriles = $hab["Carriles"];
     $totalCarriles = count($carriles);
-    foreach ($carriles as $indiceCarril => $segmentos): ?>
-    <tr class="reserva-fila" data-habitacion="<?php echo (int) $hab["Id_Habitacion"]; ?>">
+    foreach ($carriles as $indiceCarril => $segmentos):
+      // Cuando una habitación tiene reservas encimadas usa varios "carriles" (filas) para
+      // mostrarlas todas. La línea entre esas filas es de la MISMA habitación, no una
+      // separación real como la que hay entre habitaciones distintas: se quita para que no
+      // parezca que la fila de abajo pertenece a la siguiente habitación de la tabla.
+      $clasesFila = "reserva-fila";
+      if ($indiceCarril > 0) { $clasesFila .= " reserva-fila-continua"; }
+      if ($indiceCarril < $totalCarriles - 1) { $clasesFila .= " reserva-fila-sin-borde-inferior"; }
+    ?>
+    <tr class="<?php echo $clasesFila; ?>" data-habitacion="<?php echo (int) $hab["Id_Habitacion"]; ?>">
       <?php if ($indiceCarril === 0): ?>
         <td class="reserva-col-habitacion" rowspan="<?php echo $totalCarriles; ?>"><?php echo htmlspecialchars($hab["TipoHabitacion"]); ?></td>
       <?php endif; ?>
