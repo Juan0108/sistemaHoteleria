@@ -81,6 +81,12 @@ if ($currentPage !== "reset"): ?>
                             <i class="fa fa-hotel"></i>
                             <span>Habitaciones</span>
                         </a>
+                    </li>
+                    <li>
+                        <a href="mantenimiento">
+                            <i class="fa fa-wrench"></i>
+                            <span>Mantenimiento</span>
+                        </a>
                     </li>';
             }
 
@@ -101,6 +107,12 @@ if ($currentPage !== "reset"): ?>
                         <a href="habitaciones">
                             <i class="fa fa-hotel"></i>
                             <span>Habitaciones</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="mantenimiento">
+                            <i class="fa fa-wrench"></i>
+                            <span>Mantenimiento</span>
                         </a>
                     </li>';
             }
