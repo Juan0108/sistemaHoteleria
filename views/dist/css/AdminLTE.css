@@ -3409,8 +3409,16 @@ overflow: hidden;
 z-index: -1;
 }
 
+.login-box {
+    position: absolute;
+    top: 35%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    max-width: 400px; /* Limita el ancho para que no ocupe toda la pantalla */
+    padding: 20px;
+}
 
-.login-box,
 .register-box {
   width: 360px;
   margin: 7% auto;
