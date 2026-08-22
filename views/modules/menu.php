@@ -126,14 +126,17 @@ if ($currentPage !== "reset"): ?>
                             <i class="fa fa-question-circle"></i>
                             <span>Preguntas</span>
                         </a>
-                    </li>';
-            }
-
-            if ($_SESSION["Perfil"] == "Administrador") {
-                echo '<li>
+                    </li>
+                    <li>
                         <a href="usuarios">
                             <i class="fa fa-user"></i>
                             <span>Personal</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="clientes">
+                            <i class="fa fa-users"></i>
+                            <span>Clientes</span>
                         </a>
                     </li>
                     <li>
