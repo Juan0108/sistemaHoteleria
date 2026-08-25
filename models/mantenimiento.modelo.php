@@ -27,6 +27,15 @@ class ModeloMantenimiento{
 		return $stmt->fetchAll();
 	}
 
+	// Habitaciones con una incidencia de mantenimiento activa (Pendiente o En proceso),
+	// para el badge de mantenimiento en las tarjetas de Recepción.
+	static public function MdlObtenerHabitacionesEnMantenimiento($id_hotel){
+		$stmt = Conexion::conectar()->prepare("CALL ObtenerHabitacionesEnMantenimiento(:id_hotel)");
+		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
+		$stmt->execute();
+		return $stmt->fetchAll();
+	}
+
 	// Insertar incidencia (siempre entra en Pendiente)
 	static public function MdlInsertarMantenimiento($id_habitacion, $id_tipo, $pieza, $proveedor, $descripcion, $foto, $fecha_inicio, $fecha_fin, $costo, $id_usuario){
 		$stmt = Conexion::conectar()->prepare("CALL InsertarMantenimiento(:id_habitacion, :id_tipo, :pieza, :proveedor, :descripcion, :foto, :fecha_inicio, :fecha_fin, :costo, :id_usuario)");
@@ -64,28 +73,6 @@ class ModeloMantenimiento{
 		return $stmt->fetch();
 	}
 
-	// Detalle de una incidencia para el popup "Detalle" de la tarjeta: quién la
-	// registró (se usa como "persona encargada"), fecha de registro, el rango
-	// estimado capturado al crearla y la fecha real de resuelto. Consulta
-	// directa (no SP), igual que MdlSuspenderHabitacion, limitada al hotel de
-	// la sesión.
-	static public function MdlObtenerDetalleMantenimiento($id_mantenimiento, $id_hotel){
-		$stmt = Conexion::conectar()->prepare(
-			"SELECT m.Fecha_Registro, m.Fecha_Resuelto, m.Fecha_InicioEstimado, m.Fecha_FinEstimado, m.Veces_Reabierta, m.Foto, m.Foto_Resuelto, m.NotaReapertura, m.Id_Pieza AS Pieza, m.Proveedor,
-			        u.Nombre, u.Apaterno, u.Amaterno
-			 FROM Tb_Mantenimiento m
-			 INNER JOIN cat_habitaciones h ON h.Id_Habitacion = m.Id_Habitacion
-			 LEFT JOIN usuarios u ON u.Id_Usuario = m.Id_Usuario
-			 WHERE m.Id_Mantenimiento = :id_mantenimiento
-			   AND h.Id_Hotel = :id_hotel
-			 LIMIT 1"
-		);
-		$stmt->bindParam(":id_mantenimiento", $id_mantenimiento, PDO::PARAM_INT);
-		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
-		$stmt->execute();
-		return $stmt->fetch();
-	}
-
 	// Eliminar incidencia (borrado suave: pasa a Id_Estatus = 18 "EliminadoMantenimiento"
 	// con su motivo, no se hace DELETE — mismo criterio que CancelarReservacion)
 	static public function MdlEliminarMantenimiento($id_mantenimiento, $id_hotel, $id_motivo){
@@ -93,6 +80,16 @@ class ModeloMantenimiento{
 		$stmt->bindParam(":id_mantenimiento", $id_mantenimiento, PDO::PARAM_INT);
 		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
 		$stmt->bindParam(":id_motivo", $id_motivo, PDO::PARAM_INT);
+		$stmt->execute();
+		return $stmt->fetch();
+	}
+
+	// Restaura una incidencia eliminada por error, de vuelta a su último estatus antes de
+	// borrarse (Pendiente/En proceso/Resuelto).
+	static public function MdlRestaurarMantenimiento($id_mantenimiento, $id_hotel){
+		$stmt = Conexion::conectar()->prepare("CALL RestaurarMantenimiento(:id_mantenimiento, :id_hotel)");
+		$stmt->bindParam(":id_mantenimiento", $id_mantenimiento, PDO::PARAM_INT);
+		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
 		$stmt->execute();
 		return $stmt->fetch();
 	}
@@ -146,9 +143,40 @@ class ModeloMantenimiento{
 		return $stmt->fetchAll();
 	}
 
-	// Bitácora de incidencias eliminadas del hotel (historial global, sin importar la incidencia)
-	static public function MdlObtenerBitacoraEliminadas($id_hotel){
-		$stmt = Conexion::conectar()->prepare("CALL ObtenerBitacoraEliminadas(:id_hotel)");
+	// Historial de TRANSICIONES (un renglón por cada cambio de estatus, sin sobreescribir
+	// nada) de todas las incidencias de una habitación. Para la pestaña "Bitácora".
+	static public function MdlObtenerHistorialTransicionesHabitacion($id_habitacion, $id_hotel){
+		$stmt = Conexion::conectar()->prepare("CALL ObtenerHistorialTransicionesHabitacion(:id_habitacion, :id_hotel)");
+		$stmt->bindParam(":id_habitacion", $id_habitacion, PDO::PARAM_INT);
+		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
+		$stmt->execute();
+		return $stmt->fetchAll();
+	}
+
+	// Info completa capturada al registrar una incidencia (pieza, proveedor, descripción,
+	// fechas estimadas, foto, costo), para el pop up de detalle en la pestaña Bitácora.
+	static public function MdlObtenerInfoRegistroIncidencia($id_mantenimiento, $id_hotel){
+		$stmt = Conexion::conectar()->prepare("CALL ObtenerInfoRegistroIncidencia(:id_mantenimiento, :id_hotel)");
+		$stmt->bindParam(":id_mantenimiento", $id_mantenimiento, PDO::PARAM_INT);
+		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
+		$stmt->execute();
+		return $stmt->fetch();
+	}
+
+	// Historial de INCIDENCIAS (un renglón por cada ticket, sin importar su estatus, incluidas
+	// las eliminadas) de una habitación. Para la pestaña "Historial".
+	static public function MdlObtenerHistorialIncidenciasHabitacion($id_habitacion, $id_hotel){
+		$stmt = Conexion::conectar()->prepare("CALL ObtenerHistorialIncidenciasHabitacion(:id_habitacion, :id_hotel)");
+		$stmt->bindParam(":id_habitacion", $id_habitacion, PDO::PARAM_INT);
+		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
+		$stmt->execute();
+		return $stmt->fetchAll();
+	}
+
+	// Igual que la anterior, pero de TODO el hotel (todas las habitaciones juntas). Para la
+	// pestaña "Historial" mientras no se haya elegido una habitación en el filtro.
+	static public function MdlObtenerHistorialIncidenciasHotel($id_hotel){
+		$stmt = Conexion::conectar()->prepare("CALL ObtenerHistorialIncidenciasHotel(:id_hotel)");
 		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
 		$stmt->execute();
 		return $stmt->fetchAll();

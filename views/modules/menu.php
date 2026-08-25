@@ -89,9 +89,21 @@ if ($currentPage !== "reset"): ?>
                         </a>
                     </li>
                     <li>
+                        <a href="servicio">
+                            <img src="views/img/Iconos/limpieza.png" alt="" style="width:14px;height:14px;object-fit:contain;margin-right:10px;vertical-align:-1px;filter:brightness(0) invert(1);">
+                            <span>Limpieza</span>
+                        </a>
+                    </li>
+                    <li>
                         <a href="preguntas">
                             <i class="fa fa-question-circle"></i>
                             <span>Preguntas</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="tareas">
+                            <i class="fa fa-tasks"></i>
+                            <span>Tareas</span>
                         </a>
                     </li>';
             }
@@ -122,9 +134,21 @@ if ($currentPage !== "reset"): ?>
                         </a>
                     </li>
                     <li>
+                        <a href="servicio">
+                            <img src="views/img/Iconos/limpieza.png" alt="" style="width:14px;height:14px;object-fit:contain;margin-right:10px;vertical-align:-1px;filter:brightness(0) invert(1);">
+                            <span>Limpieza</span>
+                        </a>
+                    </li>
+                    <li>
                         <a href="preguntas">
                             <i class="fa fa-question-circle"></i>
                             <span>Preguntas</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="tareas">
+                            <i class="fa fa-tasks"></i>
+                            <span>Tareas</span>
                         </a>
                     </li>';
             }

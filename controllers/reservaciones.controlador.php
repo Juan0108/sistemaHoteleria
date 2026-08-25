@@ -317,6 +317,26 @@ class ControladorReservaciones{
 		return ModeloReservaciones::MdlObtenerConsumoReservacion($id_reservacion);
 	}
 
+	// Precio de hospedaje pactado + horas extra/anticipada de la estadía, para el resumen de
+	// cobro del Check Out. Las horas extra ya se cobran como producto en Punto de Venta (por
+	// lo que aparecen dentro del consumo); las horas anticipada no tienen tarifa configurada,
+	// así que aquí solo se informa la cantidad, sin sumarles un precio.
+	static public function crtObtenerHospedajeReservacion($id_reservacion){
+		$id_reservacion = trim((string) $id_reservacion);
+
+		if($id_reservacion === ""){
+			return null;
+		}
+
+		$id_hotel = ControladorHabitaciones::crtObtenerIdHotelSesion();
+
+		if($id_hotel === null){
+			return null;
+		}
+
+		return ModeloReservaciones::MdlObtenerReservacionParaCheckout($id_reservacion, $id_hotel);
+	}
+
 	// Confirma el check-in de una reservación Reservada (pasa a Id_Estatus=8, Ocupado).
 	// Si el huésped llega antes de FechaEntrada (más allá de la tolerancia configurada),
 	// cobra automáticamente las Horas Anticipadas correspondientes.

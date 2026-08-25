@@ -155,6 +155,8 @@ if(isset($_SESSION["IniciarSesion"]) && $_SESSION["IniciarSesion"] == "ok")
          $_GET["ruta"] == "inventarios" ||
          $_GET["ruta"] == "habitaciones" ||
          $_GET["ruta"] == "preguntas" ||
+         $_GET["ruta"] == "tareas" ||
+         $_GET["ruta"] == "servicio" ||
          $_GET["ruta"] == "recepcion" ||
          $_GET["ruta"] == "reservas" ||
          $_GET["ruta"] == "mantenimiento" ||
@@ -199,10 +201,11 @@ if(isset($_SESSION["IniciarSesion"]) && $_SESSION["IniciarSesion"] == "ok")
 <script src="views/js/ventas.js?v=<?php echo @filemtime(__DIR__ . "/js/ventas.js"); ?>"></script>
 <script src="views/js/habitaciones.js?v=<?php echo @filemtime(__DIR__ . "/js/habitaciones.js"); ?>"></script>
 <script src="views/js/preguntas.js?v=<?php echo @filemtime(__DIR__ . "/js/preguntas.js"); ?>"></script>
+<script src="views/js/tareas.js?v=<?php echo @filemtime(__DIR__ . "/js/tareas.js"); ?>"></script>
+<script src="views/js/servicio.js?v=<?php echo @filemtime(__DIR__ . "/js/servicio.js"); ?>"></script>
 <script src="views/js/recepcion.js?v=<?php echo @filemtime(__DIR__ . "/js/recepcion.js"); ?>"></script>
 <script src="views/js/reservas.js?v=<?php echo @filemtime(__DIR__ . "/js/reservas.js"); ?>"></script>
 <script src="views/js/mantenimiento.js?v=<?php echo @filemtime(__DIR__ . "/js/mantenimiento.js"); ?>"></script>
-<script src="views/js/ventas.js"></script>
 <script src="views/js/ganancias.js"></script>
 <script src="views/js/recargas.js"></script>
 <script src="views/js/clientes.js"></script>

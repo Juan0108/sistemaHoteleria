@@ -25,6 +25,7 @@ $ctlHabitacion = new ControladorHabitaciones();
       </div>
 
       <div class="box-body">
+        <div class="hab-tabla-wrap">
          <table class="table table-bordered table-striped tablaHabitaciones">
            <thead>
              <tr>
@@ -38,6 +39,7 @@ $ctlHabitacion = new ControladorHabitaciones();
              </tr>
            </thead>
          </table>
+        </div>
       </div>
     </div>
   </section>
@@ -172,6 +174,13 @@ $ctlHabitacion = new ControladorHabitaciones();
   .tablaHabitaciones .btn-group{ display:inline-flex; gap:6px; }
   .tablaHabitaciones .btn-group .btn{ border-radius:8px !important; }
 
+  .hab-tabla-wrap{
+    overflow-x:auto;
+    border:1px solid #eee3d2;
+    border-radius:10px;
+  }
+  .hab-tabla-wrap .tablaHabitaciones{ margin-bottom:0; }
+
   .dataTables_wrapper select,
   .dataTables_wrapper input[type="search"]{
     border-radius:8px;
@@ -205,7 +214,7 @@ $ctlHabitacion = new ControladorHabitaciones();
 <div id="modalAgregarHabitacion" class="modal fade" role="dialog">
   <div class="modal-dialog">
     <div class="modal-content">
-      <form role="form" method="post" enctype="multipart/form-data">
+      <form role="form" method="post" enctype="multipart/form-data" autocomplete="off">
 
       <div class="modal-header" style="background:#3f342e; color:white">
         <button type="button" class="close" data-dismiss="modal" style="color:white; opacity:1;">&times;</button>
@@ -220,7 +229,7 @@ $ctlHabitacion = new ControladorHabitaciones();
                 <td>
                   <div class="input-group">
                     <span class="input-group-addon"><i class="fa fa-hashtag"></i></span>
-                    <input type="text" class="form-control input-sm" name="nuevoNumero" placeholder="Número de Habitación" required>
+                    <input type="text" class="form-control input-sm" name="nuevoNumero" placeholder="Número de Habitación" autocomplete="off" required>
                   </div>
                 </td>
                 <td>

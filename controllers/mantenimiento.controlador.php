@@ -23,10 +23,11 @@ class ControladorMantenimiento{
 
 	const ICONO_PIEZA_DEFECTO = "fa-wrench";
 
-	// Estatus del tablero (deben coincidir con cat_estatus 15/16/17)
+	// Estatus del tablero (deben coincidir con cat_estatus 15/16/17/18)
 	const ESTATUS_PENDIENTE = 15;
 	const ESTATUS_PROCESO   = 16;
 	const ESTATUS_RESUELTO  = 17;
+	const ESTATUS_ELIMINADO = 18;
 
 	static public function crtObtenerIdHotelSesion(){
 		return ControladorHabitaciones::crtObtenerIdHotelSesion();
@@ -47,37 +48,6 @@ class ControladorMantenimiento{
 
 	static public function crtObtenerMotivos(){
 		return ModeloMantenimiento::MdlObtenerMotivosMantenimiento();
-	}
-
-	// Detalle para el popup "Detalle" de la tarjeta.
-	static public function crtObtenerDetalle($id_mantenimiento){
-		$id_hotel = self::crtObtenerIdHotelSesion();
-
-		if($id_hotel === null){
-			return null;
-		}
-
-		$fila = ModeloMantenimiento::MdlObtenerDetalleMantenimiento($id_mantenimiento, $id_hotel);
-
-		if(!$fila){
-			return null;
-		}
-
-		$nombreEncargado = trim(($fila["Nombre"] ?? "") . " " . ($fila["Apaterno"] ?? "") . " " . ($fila["Amaterno"] ?? ""));
-
-		return [
-			"encargado"           => $nombreEncargado !== "" ? $nombreEncargado : "Sin asignar",
-			"fechaRegistro"       => date("d/m/Y g:i a", strtotime($fila["Fecha_Registro"])),
-			"fechaInicioEstimado" => $fila["Fecha_InicioEstimado"] ? date("d/m/Y", strtotime($fila["Fecha_InicioEstimado"])) : null,
-			"fechaFinEstimado"    => $fila["Fecha_FinEstimado"] ? date("d/m/Y", strtotime($fila["Fecha_FinEstimado"])) : null,
-			"fechaResuelto"       => $fila["Fecha_Resuelto"] ? date("d/m/Y g:i a", strtotime($fila["Fecha_Resuelto"])) : null,
-			"vecesReabierta"      => (int) $fila["Veces_Reabierta"],
-			"notaReapertura"      => $fila["NotaReapertura"] ?: null,
-			"pieza"               => $fila["Pieza"],
-			"proveedor"           => $fila["Proveedor"] ?: null,
-			"foto"                => $fila["Foto"] ?: null,
-			"fotoResuelto"        => $fila["Foto_Resuelto"] ?: null,
-		];
 	}
 
 	// Guarda el motivo de "por qué se volvió a reabrir" (llamado desde
@@ -179,8 +149,6 @@ class ControladorMantenimiento{
 			$html .= '</span>';
 		}
 
-		$html .=     '<button type="button" class="mtto-btn-detalle btnDetalleMtto" idMantenimiento="' . $idMtto . '"><i class="fa fa-list-alt"></i> Detalle</button>';
-
 		$html .=     '<div class="mtto-pieza">';
 		$html .=       '<span class="mtto-pieza-icono"><i class="fa ' . $icono . '"></i></span>';
 		$html .=       '<span class="mtto-pieza-nombre">' . htmlspecialchars($item["PiezaNombre"]) . '</span>';
@@ -200,8 +168,9 @@ class ControladorMantenimiento{
 		$html .=       '<span class="mtto-dato"><i class="fa fa-money"></i> $' . number_format((float) $item["CostoReparacion"], 2) . '</span>';
 		$html .=     '</div>';
 		$html .=     '<div class="mtto-bitacoras">';
-		$html .=       '<button type="button" class="mtto-btn-bitacora btnBitacoraIncidencias" idMantenimiento="' . $idMtto . '" title="Bitácora de incidencias"><i class="fa fa-book"></i></button>';
-		$html .=       '<button type="button" class="mtto-btn-bitacora mtto-btn-bitacora-abonos btnBitacoraAbonos" idMantenimiento="' . $idMtto . '" title="Bitácora de abonos"><i class="fa fa-book"></i></button>';
+		$estatusColumna = ["pendiente" => "Pendiente", "proceso" => "En Proceso", "resuelto" => "Resuelto"][$columna] ?? "Otro";
+		$html .=       '<button type="button" class="mtto-btn-bitacora btnBitacoraIncidencias" idMantenimiento="' . $idMtto . '" data-estatus="' . htmlspecialchars($estatusColumna) . '" title="Bitácora de incidencias"><i class="fa fa-book"></i></button>';
+		$html .=       '<button type="button" class="mtto-btn-bitacora mtto-btn-bitacora-abonos btnBitacoraAbonos" idMantenimiento="' . $idMtto . '" data-estatus="' . htmlspecialchars($estatusColumna) . '" title="Bitácora de abonos"><i class="fa fa-book"></i></button>';
 		$html .=     '</div>';
 		$html .=   '</div>'; // /mtto-col-der
 
@@ -331,6 +300,7 @@ class ControladorMantenimiento{
 		self::ESTATUS_PENDIENTE => "Pendiente",
 		self::ESTATUS_PROCESO   => "En Proceso",
 		self::ESTATUS_RESUELTO  => "Resuelto",
+		self::ESTATUS_ELIMINADO => "Eliminado",
 	];
 
 	// Bitácora de incidencias de la habitación: foto + fecha de cada
@@ -380,6 +350,7 @@ class ControladorMantenimiento{
 				"monto"           => (float) $fila["Monto"],
 				"foto"            => $fila["Foto"] ?: null,
 				"descripcion"     => $fila["Descripcion"],
+				"estatus"         => self::NOMBRES_ESTATUS[(int) $fila["Id_Estatus"]] ?? "Otro",
 				"usuario"         => $nombreUsuario !== "" ? $nombreUsuario : "Sin asignar",
 			];
 		}
@@ -387,34 +358,165 @@ class ControladorMantenimiento{
 		return $bitacora;
 	}
 
-	// Bitácora de incidencias eliminadas del hotel: historial global (motivo + fecha),
-	// sin importar en qué columna/incidencia estaba cuando se eliminó.
-	static public function crtObtenerBitacoraEliminadas(){
+	// Historial de TRANSICIONES de una habitación, para la pestaña "Bitácora": un renglón
+	// por cada cambio de estatus (creada, pasó a proceso, se resolvió, se reabrió con su
+	// nota, etc.) de CUALQUIERA de sus incidencias, sin sobreescribir nada.
+	static public function crtObtenerHistorialTransicionesHabitacion($id_habitacion){
+		$id_habitacion = (int) $id_habitacion;
+
+		if($id_habitacion <= 0){
+			return null;
+		}
+
 		$id_hotel = self::crtObtenerIdHotelSesion();
 
 		if($id_hotel === null){
 			return null;
 		}
 
-		$filas = ModeloMantenimiento::MdlObtenerBitacoraEliminadas($id_hotel);
+		$filas = ModeloMantenimiento::MdlObtenerHistorialTransicionesHabitacion($id_habitacion, $id_hotel);
+
+		$historial = [];
+		foreach($filas as $fila){
+			$historial[] = [
+				"idMantenimiento" => (int) $fila["Id_Mantenimiento"],
+				"fecha"           => date("d/m/Y g:i a", strtotime($fila["Fecha"])),
+				"fechaIso"        => $fila["Fecha"],
+				"estatus"         => self::NOMBRES_ESTATUS[(int) $fila["Id_Estatus"]] ?? "Otro",
+				"descripcion"     => $fila["Descripcion"],
+				"pieza"           => $fila["Pieza"],
+				"nota"            => $fila["Nota"] ?: null,
+				"foto"            => $fila["Foto"] ?: null,
+			];
+		}
+
+		return $historial;
+	}
+
+	// Arma un renglón del historial de incidencias a partir de la fila cruda del SP. Compartido
+	// entre la vista por habitación y la de todo el hotel (esta última trae además el nombre
+	// de la habitación, ya que mezcla varias).
+	static private function crtArmarFilaHistorialIncidencia($fila, $mapaMotivos){
+		$idEstatus = (int) $fila["Id_Estatus"];
+
+		$item = [
+			"idMantenimiento" => (int) $fila["Id_Mantenimiento"],
+			"descripcion"     => $fila["Descripcion"],
+			"proveedor"       => $fila["Proveedor"] ?: null,
+			"foto"            => $fila["Foto"] ?: null,
+			"fotoResuelto"    => $fila["Foto_Resuelto"] ?: null,
+			"fechaRegistro"   => date("d/m/Y g:i a", strtotime($fila["Fecha_Registro"])),
+			"fechaRegistroIso" => $fila["Fecha_Registro"],
+			"fechaResuelto"   => $fila["Fecha_Resuelto"] ? date("d/m/Y g:i a", strtotime($fila["Fecha_Resuelto"])) : null,
+			"fechaEliminado"  => $fila["Fecha_Eliminado"] ? date("d/m/Y g:i a", strtotime($fila["Fecha_Eliminado"])) : null,
+			"estatus"         => self::NOMBRES_ESTATUS[$idEstatus] ?? "Otro",
+			"vecesReabierta"  => (int) $fila["Veces_Reabierta"],
+			"motivoEliminado" => $idEstatus === self::ESTATUS_ELIMINADO
+				? ($mapaMotivos[(int) $fila["Id_MotivoEliminacion"]] ?? "Sin especificar")
+				: null,
+		];
+
+		if(array_key_exists("TipoHabitacion", $fila) || array_key_exists("NumeroHabitacion", $fila)){
+			$item["habitacion"] = $fila["TipoHabitacion"] ?: $fila["NumeroHabitacion"];
+		}
+
+		return $item;
+	}
+
+	// Info completa capturada al registrar una incidencia (pieza, proveedor, descripción,
+	// fechas estimadas, foto, costo, quién la registró), para el pop up de detalle que se
+	// abre desde la pestaña Bitácora.
+	static public function crtObtenerInfoRegistroIncidencia($id_mantenimiento){
+		$id_mantenimiento = (int) $id_mantenimiento;
+
+		if($id_mantenimiento <= 0){
+			return null;
+		}
+
+		$id_hotel = self::crtObtenerIdHotelSesion();
+
+		if($id_hotel === null){
+			return null;
+		}
+
+		$fila = ModeloMantenimiento::MdlObtenerInfoRegistroIncidencia($id_mantenimiento, $id_hotel);
+
+		if(!$fila){
+			return null;
+		}
+
+		return [
+			"habitacion"          => $fila["TipoHabitacion"] ?: $fila["NumeroHabitacion"],
+			"tipoMantenimiento"   => $fila["TipoMantenimientoNombre"],
+			"pieza"               => $fila["Pieza"],
+			"proveedor"           => $fila["Proveedor"] ?: null,
+			"descripcion"         => $fila["Descripcion"],
+			"foto"                => $fila["Foto"] ?: null,
+			"fechaRegistro"       => date("d/m/Y g:i a", strtotime($fila["Fecha_Registro"])),
+			"fechaInicioEstimado" => $fila["Fecha_InicioEstimado"] ? date("d/m/Y", strtotime($fila["Fecha_InicioEstimado"])) : null,
+			"fechaFinEstimado"    => $fila["Fecha_FinEstimado"] ? date("d/m/Y", strtotime($fila["Fecha_FinEstimado"])) : null,
+			"costo"               => (float) $fila["CostoReparacion"],
+			"usuario"             => trim($fila["NombreUsuario"]) !== "" ? $fila["NombreUsuario"] : "Sin asignar",
+			"estatus"             => self::NOMBRES_ESTATUS[(int) $fila["Id_Estatus"]] ?? "Otro",
+			"fechaResuelto"       => $fila["Fecha_Resuelto"] ? date("d/m/Y g:i a", strtotime($fila["Fecha_Resuelto"])) : null,
+			"vecesReabierta"      => (int) $fila["Veces_Reabierta"],
+			"notaReapertura"      => $fila["NotaReapertura"] ?: null,
+		];
+	}
+
+	// Historial de INCIDENCIAS (tickets) de una habitación, para la pestaña "Historial": un
+	// renglón por cada incidencia que ha tenido esa habitación, sin importar su estatus
+	// (pendiente, en proceso, resuelta o eliminada).
+	static public function crtObtenerHistorialIncidenciasHabitacion($id_habitacion){
+		$id_habitacion = (int) $id_habitacion;
+
+		if($id_habitacion <= 0){
+			return null;
+		}
+
+		$id_hotel = self::crtObtenerIdHotelSesion();
+
+		if($id_hotel === null){
+			return null;
+		}
+
+		$filas = ModeloMantenimiento::MdlObtenerHistorialIncidenciasHabitacion($id_habitacion, $id_hotel);
 
 		$mapaMotivos = [];
 		foreach(self::crtObtenerMotivos() as $motivo){
 			$mapaMotivos[(int) $motivo["Id_MotivoMantenimiento"]] = $motivo["Nombre"];
 		}
 
-		$bitacora = [];
+		$historial = [];
 		foreach($filas as $fila){
-			$bitacora[] = [
-				"idMantenimiento" => (int) $fila["Id_Mantenimiento"],
-				"habitacion"      => $fila["TipoHabitacion"] ?: $fila["NumeroHabitacion"],
-				"descripcion"     => $fila["Descripcion"],
-				"fecha"           => $fila["Fecha_Eliminado"] ? date("d/m/Y g:i a", strtotime($fila["Fecha_Eliminado"])) : "—",
-				"motivo"          => $mapaMotivos[(int) $fila["Id_MotivoEliminacion"]] ?? "Sin especificar",
-			];
+			$historial[] = self::crtArmarFilaHistorialIncidencia($fila, $mapaMotivos);
 		}
 
-		return $bitacora;
+		return $historial;
+	}
+
+	// Igual que la anterior, pero de TODO el hotel (todas las habitaciones juntas). Se usa en
+	// la pestaña "Historial" mientras no se haya elegido una habitación en el filtro.
+	static public function crtObtenerHistorialIncidenciasHotel(){
+		$id_hotel = self::crtObtenerIdHotelSesion();
+
+		if($id_hotel === null){
+			return null;
+		}
+
+		$filas = ModeloMantenimiento::MdlObtenerHistorialIncidenciasHotel($id_hotel);
+
+		$mapaMotivos = [];
+		foreach(self::crtObtenerMotivos() as $motivo){
+			$mapaMotivos[(int) $motivo["Id_MotivoMantenimiento"]] = $motivo["Nombre"];
+		}
+
+		$historial = [];
+		foreach($filas as $fila){
+			$historial[] = self::crtArmarFilaHistorialIncidencia($fila, $mapaMotivos);
+		}
+
+		return $historial;
 	}
 
 	// Registrar un abono (llamado desde ajax/mantenimiento-abono-insertar.ajax.php)

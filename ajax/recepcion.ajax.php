@@ -5,6 +5,9 @@ session_start();
 require_once "../controllers/habitaciones.controlador.php";
 require_once "../models/habitaciones.modelo.php";
 require_once "../models/reservaciones.modelo.php";
+require_once "../models/mantenimiento.modelo.php";
+require_once "../controllers/servicio.controlador.php";
+require_once "../models/servicio.modelo.php";
 
 class RecepcionAjax
 {
@@ -78,6 +81,10 @@ class RecepcionAjax
 				"nombreCliente": "'.$this->jsonEscape($Habitaciones[$i]["NombreCliente"]).'",
 				"horasExtras": '.(int) $Habitaciones[$i]["HorasExtras"].',
 				"horaAnticipada": '.(int) $Habitaciones[$i]["HoraAnticipada"].',
+				"enMantenimiento": '.(!empty($Habitaciones[$i]["EnMantenimiento"]) ? "true" : "false").',
+				"mantenimientoDescripciones": '.json_encode($Habitaciones[$i]["MantenimientoDescripciones"] ?? [], JSON_UNESCAPED_UNICODE).',
+				"enServicio": '.(!empty($Habitaciones[$i]["EnServicio"]) ? "true" : "false").',
+				"servicioInicio": "'.$this->jsonEscape($Habitaciones[$i]["ServicioInicio"] ?? "").'",
 				"puedeCheckin": '.($Habitaciones[$i]["PuedeCheckin"] ? "true" : "false").',
 				"puedeCheckout": '.($Habitaciones[$i]["PuedeCheckout"] ? "true" : "false").',
 				"reservasProximas": '.(int) $Habitaciones[$i]["ReservasProximas"].',

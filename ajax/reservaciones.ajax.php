@@ -200,13 +200,14 @@ class ReservacionesAjax
 
 		$id_reservacion = isset($_GET["id_reservacion"]) ? $_GET["id_reservacion"] : "";
 		$Consumo = ControladorReservaciones::crtObtenerConsumoReservacion($id_reservacion);
+		$Hospedaje = ControladorReservaciones::crtObtenerHospedajeReservacion($id_reservacion);
 
 		$datosJason = '{"data":[';
-		$total = 0;
+		$totalConsumo = 0;
 
 		for ($i = 0; $i < count($Consumo); $i++){
 			$subtotal = (float) $Consumo[$i]["Total"];
-			$total += $subtotal;
+			$totalConsumo += $subtotal;
 
 			$datosJason .= '{
 				"producto": "'.$this->jsonEscape($Consumo[$i]["Producto"]).'",
@@ -220,7 +221,17 @@ class ReservacionesAjax
 			$datosJason = substr($datosJason, 0, -1);
 		}
 
-		$datosJason .= '], "total": '.number_format($total, 2, '.', '').'}';
+		$hospedaje = $Hospedaje ? (float) $Hospedaje["PrecioReservacion"] : 0;
+		$horasExtras = $Hospedaje ? (int) $Hospedaje["HorasExtras"] : 0;
+		$horaAnticipada = $Hospedaje ? (int) $Hospedaje["HoraAnticipada"] : 0;
+		$total = $hospedaje + $totalConsumo;
+
+		$datosJason .= '],
+			"hospedaje": '.number_format($hospedaje, 2, '.', '').',
+			"horasExtras": '.$horasExtras.',
+			"horaAnticipada": '.$horaAnticipada.',
+			"totalConsumo": '.number_format($totalConsumo, 2, '.', '').',
+			"total": '.number_format($total, 2, '.', '').'}';
 
 		echo $datosJason;
 	}

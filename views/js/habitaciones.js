@@ -4,6 +4,8 @@ $('.tablaHabitaciones').DataTable({
 	"deferRender": true,
 	"retrieve": true,
 	"processing": true,
+	"scrollY": "460px",
+	"scrollCollapse": true,
 	"language": {
 		"sProcessing":     "Procesando...",
 		"sLengthMenu":     "Mostrar _MENU_ registros",
@@ -185,10 +187,29 @@ $(document).on("input", "#nuevoPrecio, #editarPrecio", function(){
 	this.value = formatearPrecioEntrada(this.value);
 });
 
-$(document).on("submit", "#modalAgregarHabitacion form, #modalEditarHabitacion form", function(){
+$(document).on("submit", "#modalAgregarHabitacion form, #modalEditarHabitacion form", function(e){
+
+	// Evita el doble clic en "Guardar": el formulario se envía como POST normal (recarga
+	// la página) y con una foto de por medio la subida tarda, así que sin esto un segundo
+	// clic antes de que la página navegue manda la misma habitación dos veces y la segunda
+	// llega como "ya existe". Se bloquea con preventDefault (no deshabilitando el botón:
+	// un botón deshabilitado se excluye del POST y el primer envío nunca llegaría).
+	if ($(this).data("enviando")){
+		e.preventDefault();
+		return false;
+	}
+	$(this).data("enviando", true);
+
 	$(this).find('input[name="nuevoPrecio"], input[name="editarPrecio"]').each(function(){
 		this.value = desformatearPrecioEntrada(this.value);
 	});
+
+	// Spinner en el botón: dobla como aviso de "se está guardando" (con foto de por
+	// medio puede tardar unos segundos) y como refuerzo visual de que el clic sí se
+	// registró, para que no parezca que el sistema no respondió. No se deshabilita el
+	// botón (eso lo excluiría del POST); la bandera "enviando" de arriba ya bloquea
+	// cualquier clic de más.
+	$(this).find('button[type="submit"]').html('<i class="fa fa-spinner fa-spin"></i> Guardando…');
 });
 
 

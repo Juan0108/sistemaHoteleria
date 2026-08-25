@@ -32,7 +32,7 @@ class TablaHabitaciones
 			  		$Boton = "<div class='btn-group'><button class='btn btnEditarHabitacion' idHabitacion='".$Habitaciones[$i]["Id_Habitacion"]."' data-toggle='modal' data-target='#modalEditarHabitacion'><i class='fa fa-pencil'></i></button> <button class='btn btnSuspenderHabitacion' idHabitacion='".$Habitaciones[$i]["Id_Habitacion"]."'><i class='fa fa-times'></i></button></div>";
 
 			  		$datosJason .= '[
-					      "'.$Habitaciones[$i]["Id_Habitacion"].'",
+					      "'.($i + 1).'",
 					      "'.$this->jsonEscape($Habitaciones[$i]["NumeroHabitacion"]).'",
 					      "'.$this->jsonEscape($Habitaciones[$i]["TipoHabitacion"]).'",
 					      "'.$Habitaciones[$i]["Capacidad"].'",

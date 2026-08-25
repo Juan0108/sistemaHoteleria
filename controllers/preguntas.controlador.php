@@ -3,7 +3,13 @@
 class ControladorPreguntas{
 
 	static public function crtObtenerPreguntas(){
-		return ModeloPreguntas::MdlObtenerPreguntas();
+		$id_hotel = ControladorHabitaciones::crtObtenerIdHotelSesion();
+
+		if($id_hotel === null){
+			return [];
+		}
+
+		return ModeloPreguntas::MdlObtenerPreguntas($id_hotel);
 	}
 
 	static public function crtInsertarPregunta($pregunta){
@@ -17,7 +23,13 @@ class ControladorPreguntas{
 			return ["ok" => false, "mensaje" => "La pregunta no puede tener más de 255 caracteres."];
 		}
 
-		$resultado = ModeloPreguntas::MdlInsertarPregunta($pregunta);
+		$id_hotel = ControladorHabitaciones::crtObtenerIdHotelSesion();
+
+		if($id_hotel === null){
+			return ["ok" => false, "mensaje" => "Tu negocio no tiene un hotel registrado, contacta a soporte técnico."];
+		}
+
+		$resultado = ModeloPreguntas::MdlInsertarPregunta($pregunta, $id_hotel);
 
 		if(!$resultado){
 			return ["ok" => false, "mensaje" => "No se pudo guardar la pregunta."];
@@ -36,9 +48,15 @@ class ControladorPreguntas{
 			return ["ok" => false, "mensaje" => "No se pudo identificar la pregunta."];
 		}
 
+		$id_hotel = ControladorHabitaciones::crtObtenerIdHotelSesion();
+
+		if($id_hotel === null){
+			return ["ok" => false, "mensaje" => "Tu negocio no tiene un hotel registrado, contacta a soporte técnico."];
+		}
+
 		$id_estatus_nuevo = ($id_estatus_actual === 1) ? 2 : 1;
 
-		$resultado = ModeloPreguntas::MdlCambiarEstatusPregunta($id_pregunta, $id_estatus_nuevo);
+		$resultado = ModeloPreguntas::MdlCambiarEstatusPregunta($id_pregunta, $id_estatus_nuevo, $id_hotel);
 		$afectados = $resultado ? (int) $resultado["Afectados"] : 0;
 
 		if($afectados === 0){
@@ -48,10 +66,9 @@ class ControladorPreguntas{
 		return ["ok" => true, "idEstatus" => $id_estatus_nuevo];
 	}
 
-	// Solo el texto de las preguntas activas, sin exponer el Id: el banco de preguntas se
-	// comparte entre todos los hoteles, así que el checkout nunca debe depender del id.
+	// Solo el texto de las preguntas activas del hotel de la sesión, sin exponer el Id.
 	static public function crtObtenerPreguntasActivasTexto(){
-		$preguntas = ModeloPreguntas::MdlObtenerPreguntas();
+		$preguntas = self::crtObtenerPreguntas();
 
 		$textos = [];
 
@@ -85,7 +102,13 @@ class ControladorPreguntas{
 			return ["ok" => false, "mensaje" => "Estatus inválido."];
 		}
 
-		$resultado = ModeloPreguntas::MdlEditarPregunta($id_pregunta, $pregunta, $id_estatus);
+		$id_hotel = ControladorHabitaciones::crtObtenerIdHotelSesion();
+
+		if($id_hotel === null){
+			return ["ok" => false, "mensaje" => "Tu negocio no tiene un hotel registrado, contacta a soporte técnico."];
+		}
+
+		$resultado = ModeloPreguntas::MdlEditarPregunta($id_pregunta, $pregunta, $id_estatus, $id_hotel);
 		$afectados = $resultado ? (int) $resultado["Afectados"] : 0;
 
 		if($afectados === 0){

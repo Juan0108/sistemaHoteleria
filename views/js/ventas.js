@@ -48,6 +48,13 @@ $(document).ready(function(){
  =============================================*/
 $(document).ready(function(){
 
+    // Este widget solo vive en el dashboard de Ventas (#usuario y #line-chart-ventas
+    // están ahí). En cualquier otra página no hay nada que pintar, y sin este corte
+    // el id de usuario llega como el texto "undefined" y el servidor truena.
+    if ($("#usuario").length === 0 || $("#line-chart-ventas").length === 0){
+        return;
+    }
+
     var _IdUsuario = $("#usuario").val();
  	var datos = new FormData();
  	datos.append("id",_IdUsuario);
@@ -90,6 +97,12 @@ $(document).ready(function(){
 //Grafica Ventas //
  =============================================*/
 $(document).ready(function(){
+
+    // Mismo motivo que la gráfica de ventas mensuales: este widget solo vive en el
+    // dashboard de Ventas, donde sí existen #usuario y #bar-chart.
+    if ($("#usuario").length === 0 || $("#bar-chart").length === 0){
+        return;
+    }
 
 	var _IdUsuario = $("#usuario").val();
  	var datos = new FormData();

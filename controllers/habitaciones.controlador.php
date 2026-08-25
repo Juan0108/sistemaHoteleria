@@ -60,6 +60,8 @@ class ControladorHabitaciones{
 		unset($hab);
 
 		self::crtAplicarConteoReservasProximas($resultado, $id_hotel);
+		self::crtAplicarMantenimiento($resultado, $id_hotel);
+		self::crtAplicarServicio($resultado, $id_hotel);
 
 		return $resultado;
 	}
@@ -76,6 +78,41 @@ class ControladorHabitaciones{
 
 		foreach($resultado as &$hab){
 			$hab["ReservasProximas"] = $conteoPorHabitacion[(int) $hab["Id_Habitacion"]] ?? 0;
+		}
+		unset($hab);
+	}
+
+	
+	static private function crtAplicarMantenimiento(&$resultado, $id_hotel){
+		$mantenimientos = ModeloMantenimiento::MdlObtenerHabitacionesEnMantenimiento($id_hotel);
+
+		// Una habitación puede tener varias incidencias activas a la vez: se agrupan todas
+		// sus descripciones para el tooltip del badge en Recepción.
+		$descripcionesPorHabitacion = [];
+		foreach($mantenimientos as $fila){
+			$descripcionesPorHabitacion[(int) $fila["Id_Habitacion"]][] = $fila["Descripcion"];
+		}
+
+		foreach($resultado as &$hab){
+			$descripciones = $descripcionesPorHabitacion[(int) $hab["Id_Habitacion"]] ?? [];
+
+			$hab["EnMantenimiento"] = count($descripciones) > 0;
+			$hab["MantenimientoDescripciones"] = $descripciones;
+		}
+		unset($hab);
+	}
+
+	// Agrega "EnServicio" a cada habitación con un servicio de Intendencia en proceso ahora
+	// mismo, para el badge de aviso en Recepción. Se permite tener servicio en proceso aunque
+	// la habitación esté Ocupada (limpieza de rutina con huésped adentro).
+	static private function crtAplicarServicio(&$resultado, $id_hotel){
+		$servicios = ControladorServicio::crtObtenerHabitacionesEnServicio($id_hotel);
+
+		foreach($resultado as &$hab){
+			$serv = $servicios[(int) $hab["Id_Habitacion"]] ?? null;
+
+			$hab["EnServicio"] = $serv !== null;
+			$hab["ServicioInicio"] = $serv["Fecha_Inicio"] ?? null;
 		}
 		unset($hab);
 	}
@@ -110,11 +147,13 @@ class ControladorHabitaciones{
 		$resultado = self::crtFusionarHabitacionesConReservaciones($habitaciones, $reservaciones, true);
 
 		self::crtAplicarConteoReservasProximas($resultado, $id_hotel);
+		self::crtAplicarMantenimiento($resultado, $id_hotel);
+		self::crtAplicarServicio($resultado, $id_hotel);
 
 		return $resultado;
 	}
 
-	
+
 	static public function crtObtenerHabitacionesReserva($anio, $mes){
 		$id_hotel = self::crtObtenerIdHotelSesion();
 
@@ -331,6 +370,30 @@ class ControladorHabitaciones{
 		return $resultado;
 	}
 
+	// Traduce por qué move_uploaded_file() falló, para que el mensaje al usuario diga
+	// algo accionable (archivo muy pesado, carpeta sin permisos, etc.) en vez de un
+	// "no pudo subirse" genérico que no ayuda a diagnosticar.
+	static private function crtMotivoFallaSubida($codigoError, $dirPath){
+		switch($codigoError){
+			case UPLOAD_ERR_INI_SIZE:
+			case UPLOAD_ERR_FORM_SIZE:
+				return "el archivo pesa más de lo permitido por el servidor";
+			case UPLOAD_ERR_PARTIAL:
+				return "la subida se interrumpió a la mitad";
+			case UPLOAD_ERR_NO_TMP_DIR:
+			case UPLOAD_ERR_CANT_WRITE:
+				return "el servidor no pudo escribir el archivo temporal";
+			case UPLOAD_ERR_EXTENSION:
+				return "una extensión del servidor bloqueó la subida";
+		}
+
+		if(!is_writable($dirPath)){
+			return "la carpeta de fotos no tiene permisos de escritura";
+		}
+
+		return "";
+	}
+
 	static public function crtInsertarHabitacion()
 	{
 		if(isset($_POST["nuevaHabitacion"])){
@@ -396,11 +459,12 @@ class ControladorHabitaciones{
 								});
 							</script>';
 						}else{
+							$motivo = self::crtMotivoFallaSubida($_FILES["nuevaFoto"]["error"], $dirPath);
 							echo '<script>
 								Swal.fire({
 								icon: "warning",
 								title : "Sistema PosDit",
-								text: "¡La habitación se guardó, pero la foto no pudo subirse, intenta editarla de nuevo!",
+								text: "¡La habitación se guardó, pero la foto no pudo subirse'.($motivo !== "" ? " (".$motivo.")" : "").', intenta editarla de nuevo!",
 								showConfirmButton: true,
 								confirmButtonText: "Cerrar"
 								});
@@ -526,11 +590,12 @@ class ControladorHabitaciones{
 							});
 						</script>';
 					}else{
+						$motivo = self::crtMotivoFallaSubida($_FILES["editarFoto"]["error"], $dirPath);
 						echo '<script>
 							Swal.fire({
 							icon: "warning",
 							title : "Sistema PosDit",
-							text: "¡La habitación se modificó, pero la foto no pudo subirse, intenta editarla de nuevo!",
+							text: "¡La habitación se modificó, pero la foto no pudo subirse'.($motivo !== "" ? " (".$motivo.")" : "").', intenta editarla de nuevo!",
 							showConfirmButton: true,
 							confirmButtonText: "Cerrar"
 							});

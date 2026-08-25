@@ -1,6 +1,34 @@
 /*=============================================
  Recepción: calendario y refresco de las tarjetas de habitaciones
  =============================================*/
+// Corta un texto cada 3 palabras con un salto de línea, para que los tooltips (como el de
+// mantenimiento) no salgan como una sola línea larguísima.
+function cortarCada3PalabrasRecepcion(texto){
+	var palabras = String(texto || "").trim().split(/\s+/);
+	var grupos = [];
+
+	for (var i = 0; i < palabras.length; i += 3){
+		grupos.push(palabras.slice(i, i + 3).join(" "));
+	}
+
+	return grupos.join("\n");
+}
+
+// Une las descripciones de todas las incidencias activas de una habitación (puede tener más
+// de una a la vez), numerándolas y cortando cada una cada 3 palabras.
+function armarTooltipMantenimientoRecepcion(descripciones){
+	if (!descripciones || descripciones.length === 0){
+		return "En mantenimiento";
+	}
+
+	var bloques = descripciones.map(function(descripcion, indice){
+		var prefijo = descripciones.length > 1 ? (indice + 1) + ") " : "";
+		return prefijo + cortarCada3PalabrasRecepcion(descripcion);
+	});
+
+	return bloques.join("\n\n");
+}
+
 function escaparHtmlRecepcion(valor){
 	valor = valor == null ? "" : String(valor);
 	return valor
@@ -27,6 +55,24 @@ function pintarTarjetasRecepcion(habitaciones, mensajeVacio){
 		var cliente = '';
 		var horasExtra = '';
 		var tieneHorasExtra = parseInt(hab.horasExtras, 10) > 0;
+		var badgeMantenimiento = '';
+		if (hab.enMantenimiento){
+			var _tituloMtto = armarTooltipMantenimientoRecepcion(hab.mantenimientoDescripciones);
+
+			badgeMantenimiento = '<span class="hc-badge-mantenimiento" title="' + escaparHtmlRecepcion(_tituloMtto) + '">' +
+				'<img src="views/img/Iconos/mantenimiento.jpg" alt="Mantenimiento">' +
+			'</span>';
+		}
+
+		var badgeServicio = '';
+		if (hab.enServicio){
+			var _tituloServ = "En limpieza (Intendencia)";
+			if (hab.servicioInicio) _tituloServ += "\nInicio: " + formatearFechaHora(hab.servicioInicio);
+
+			badgeServicio = '<span class="hc-badge-servicio" title="' + escaparHtmlRecepcion(_tituloServ) + '">' +
+			'<img src="views/img/Iconos/limpieza.png" alt="Limpieza">' +
+			'</span>';
+		}
 
 		if (hab.nombreCliente){
 			cliente = '<div class="hc-cliente"><i class="fa fa-user-o"></i> ' + escaparHtmlRecepcion(hab.nombreCliente) + '</div>';
@@ -117,7 +163,7 @@ function pintarTarjetasRecepcion(habitaciones, mensajeVacio){
 						'<span class="hc-status-pill estado-' + hab.estadoClase + '" title="' + escaparHtmlRecepcion(hab.tituloPill) + '">' +
 							'<i class="fa ' + hab.estadoIcono + '"></i> ' + hab.estadoTexto +
 						'</span>' +
-						'<div class="hc-badges">' + horasExtra + '</div>' +
+						'<div class="hc-badges">' + horasExtra + badgeMantenimiento + badgeServicio + '</div>' +
 					'</div>' +
 					htmlReservasProximas +
 					htmlVerReservas +
@@ -647,6 +693,11 @@ $(document).on("click", ".hc-icon-btn.checkout", function(){
 	$("#coPreguntasCuerpo").html('<tr><td class="text-center text-muted" style="padding:15px;">Cargando…</td></tr>');
 	$("#coConsumoCuerpo").html('<tr><td colspan="4" class="text-center text-muted" style="padding:15px;">Cargando…</td></tr>');
 	$("#coConsumoTotal").text("0.00");
+	$("#coHospedaje").text("0.00");
+	$("#coHorasInfo").hide().text("");
+	$("#coTotalPagar").text("0.00").data("total", 0);
+	$("#coMontoRecibido").val("");
+	$("#coCambio").text("0.00");
 
 	$("#modalCheckOut").modal("show");
 
@@ -709,12 +760,42 @@ $(document).on("click", ".hc-icon-btn.checkout", function(){
 				});
 			}
 
-			$("#coConsumoTotal").text(formatearPrecio(respuesta.total || 0));
+			$("#coConsumoTotal").text(formatearPrecio(respuesta.totalConsumo || 0));
+			$("#coHospedaje").text(formatearPrecio(respuesta.hospedaje || 0));
+
+			var _horasExtras = parseInt(respuesta.horasExtras, 10) || 0;
+			var _horaAnticipada = parseInt(respuesta.horaAnticipada, 10) || 0;
+
+			if (_horasExtras > 0 || _horaAnticipada > 0){
+				var _notas = [];
+				if (_horasExtras > 0) _notas.push(_horasExtras + " hora(s) extra");
+				if (_horaAnticipada > 0) _notas.push(_horaAnticipada + " hora(s) anticipada(s)");
+				$("#coHorasInfo").text(_notas.join(" · ")).show();
+			}else{
+				$("#coHorasInfo").hide().text("");
+			}
+
+			var _total = Number(respuesta.total) || 0;
+			$("#coTotalPagar").text(formatearPrecio(_total)).data("total", _total);
+			calcularCambioCheckOut();
 		},
 		error: function(){
 			$("#coConsumoCuerpo").html('<tr><td colspan="4" class="text-center text-muted" style="padding:15px;">No se pudo cargar el consumo.</td></tr>');
 		}
 	});
+});
+
+function calcularCambioCheckOut(){
+
+	var _total = Number($("#coTotalPagar").data("total")) || 0;
+	var _recibido = Number($("#coMontoRecibido").val()) || 0;
+	var _cambio = _recibido - _total;
+
+	$("#coCambio").text(formatearPrecio(_cambio > 0 ? _cambio : 0));
+}
+
+$(document).on("input", "#coMontoRecibido", function(){
+	calcularCambioCheckOut();
 });
 
 $(document).on("click", "#coConfirmar", function(){

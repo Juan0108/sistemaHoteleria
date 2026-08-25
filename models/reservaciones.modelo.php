@@ -128,6 +128,16 @@ class ModeloReservaciones{
 	}
 
 	// Consumo (ventas ligadas vía Tb_Consumo) de una estadía, desglosado por producto.
+	// Precio pactado de la habitación (PrecioReservacion) y conteo de horas extra/anticipada,
+	// para el resumen de cobro del modal de Check Out. Limitado al hotel de la sesión.
+	static public function MdlObtenerReservacionParaCheckout($id_reservacion, $id_hotel){
+		$stmt = Conexion::conectar()->prepare("CALL ObtenerReservacionParaCheckout(:id_reservacion, :id_hotel)");
+		$stmt->bindParam(":id_reservacion", $id_reservacion);
+		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
+		$stmt->execute();
+		return $stmt->fetch();
+	}
+
 	static public function MdlObtenerConsumoReservacion($id_reservacion){
 		$stmt = Conexion::conectar()->prepare("CALL ObtenerConsumoReservacion(:id_reservacion)");
 		$stmt->bindParam(":id_reservacion", $id_reservacion);

@@ -6,9 +6,9 @@ header('Content-Type: application/json');
 require_once "../controllers/mantenimiento.controlador.php";
 require_once "../models/mantenimiento.modelo.php";
 
-class DetalleMantenimientoAjax
+class InfoRegistroAjax
 {
-	public function ajaxDetalle()
+	public function ajaxInfo()
 	{
 		$id_mantenimiento = isset($_REQUEST["idMantenimiento"]) ? (int) $_REQUEST["idMantenimiento"] : 0;
 
@@ -21,10 +21,10 @@ class DetalleMantenimientoAjax
 			return;
 		}
 
-		$detalle = ControladorMantenimiento::crtObtenerDetalle($id_mantenimiento);
+		$info = ControladorMantenimiento::crtObtenerInfoRegistroIncidencia($id_mantenimiento);
 
-		if($detalle === null){
-			http_response_code(404);
+		if($info === null){
+			http_response_code(400);
 			echo json_encode([
 				"status" => "error",
 				"message" => "No se encontró la incidencia"
@@ -34,10 +34,10 @@ class DetalleMantenimientoAjax
 
 		echo json_encode([
 			"status" => "success",
-			"data" => $detalle
-		]);
+			"data" => $info
+		], JSON_UNESCAPED_UNICODE);
 	}
 }
 
-$detalle = new DetalleMantenimientoAjax();
-$detalle->ajaxDetalle();
+$ajax = new InfoRegistroAjax();
+$ajax->ajaxInfo();

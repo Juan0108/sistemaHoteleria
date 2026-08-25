@@ -12,6 +12,31 @@ $TiposHabitacionRecepcion = array_values(array_unique(array_map(
 )));
 sort($TiposHabitacionRecepcion);
 
+// Corta un texto cada 3 palabras con un salto de línea, para que los tooltips (como el de
+// mantenimiento) no salgan como una sola línea larguísima.
+function cortarCada3PalabrasRecepcion($texto){
+	$palabras = preg_split('/\s+/', trim((string) $texto));
+	$grupos = array_chunk($palabras, 3);
+
+	return implode("\n", array_map(function($grupo){ return implode(" ", $grupo); }, $grupos));
+}
+
+// Une las descripciones de todas las incidencias activas de una habitación (puede tener más
+// de una a la vez), numerándolas y cortando cada una cada 3 palabras.
+function armarTooltipMantenimientoRecepcion($descripciones){
+	if(count($descripciones) === 0){
+		return "En mantenimiento";
+	}
+
+	$bloques = [];
+	foreach($descripciones as $indice => $descripcion){
+		$prefijo = count($descripciones) > 1 ? ($indice + 1) . ") " : "";
+		$bloques[] = $prefijo . cortarCada3PalabrasRecepcion($descripcion);
+	}
+
+	return implode("\n\n", $bloques);
+}
+
 ?>
 <div class="content-wrapper">
 
@@ -32,17 +57,17 @@ sort($TiposHabitacionRecepcion);
         <i class="fa fa-refresh fa-spin"></i>
       </div>
       <div class="box-header with-border">
-        <div class="input-group input-group-sm recepcion-fecha-group" style="width:200px;">
+        <div class="input-group input-group-sm recepcion-fecha-group">
           <span class="input-group-addon"><i class="fa fa-calendar"></i></span>
           <input type="text" class="form-control recepcion-datepicker" id="recepcionFecha"
                  value="<?php echo $fechaHoy; ?>" data-min-date="<?php echo $fechaMinima; ?>" readonly>
         </div>
-        <div class="input-group input-group-sm recepcion-busqueda-group" style="width:280px; margin-left:10px;">
+        <div class="input-group input-group-sm recepcion-busqueda-group">
           <span class="input-group-addon"><i class="fa fa-search"></i></span>
           <input type="text" class="form-control" id="recepcionBusqueda"
                  placeholder="Buscar folio o cliente">
         </div>
-        <div class="input-group input-group-sm recepcion-tipo-group" style="width:200px; margin-left:10px;">
+        <div class="input-group input-group-sm recepcion-tipo-group">
           <span class="input-group-addon"><i class="fa fa-bed"></i></span>
           <select class="form-control" id="recepcionTipo">
             <option value="">Todos los tipos</option>
@@ -108,6 +133,23 @@ sort($TiposHabitacionRecepcion);
                       <?php if ($horaAnticipada > 0): ?>
                         <span class="hc-hora-anticipada" title="Llegada anticipada">
                           <i class="fa fa-history"></i> Anticipada <?php echo $horaAnticipada; ?>h
+                        </span>
+                      <?php endif; ?>
+                      <?php if (!empty($hab["EnMantenimiento"])): ?>
+                        <?php $tituloMtto = armarTooltipMantenimientoRecepcion($hab["MantenimientoDescripciones"]); ?>
+                        <span class="hc-badge-mantenimiento" title="<?php echo htmlspecialchars($tituloMtto); ?>">
+                          <img src="views/img/Iconos/mantenimiento.jpg" alt="Mantenimiento">
+                        </span>
+                      <?php endif; ?>
+                      <?php if (!empty($hab["EnServicio"])): ?>
+                        <?php
+                          $tituloServ = "En limpieza (Intendencia)";
+                          if (!empty($hab["ServicioInicio"])) {
+                            $tituloServ .= "\nInicio: " . date("d/m/Y g:i a", strtotime($hab["ServicioInicio"]));
+                          }
+                        ?>
+                        <span class="hc-badge-servicio" title="<?php echo htmlspecialchars($tituloServ); ?>">
+                          <img src="views/img/Iconos/limpieza.png" alt="Limpieza">
                         </span>
                       <?php endif; ?>
                     </div>
@@ -277,6 +319,19 @@ sort($TiposHabitacionRecepcion);
             </table>
           </div>
           <div class="co-consumo-total">Total consumo: $<span id="coConsumoTotal">0.00</span></div>
+        </div>
+
+        <div class="co-seccion">
+          <h5 class="co-seccion-titulo">Cobro</h5>
+          <div class="co-cobro-linea">Hospedaje: $<span id="coHospedaje">0.00</span></div>
+          <div class="co-cobro-linea" id="coHorasInfo" style="display:none;"></div>
+          <div class="co-cobro-linea co-cobro-total">Total a pagar: $<span id="coTotalPagar">0.00</span></div>
+
+          <div class="cv-campo" style="margin-top:14px;">
+            <label for="coMontoRecibido">Monto recibido</label>
+            <input type="text" inputmode="decimal" class="form-control" id="coMontoRecibido" placeholder="0.00" autocomplete="off">
+          </div>
+          <div class="co-cobro-linea co-cobro-cambio">Cambio: $<span id="coCambio">0.00</span></div>
         </div>
       </div>
       <div class="modal-footer">
@@ -541,45 +596,49 @@ sort($TiposHabitacionRecepcion);
     display:flex;
     align-items:center;
     flex-wrap:wrap;
+    gap:10px;
   }
 
-  .recepcion-busqueda-group .input-group-addon{
-    border-top-left-radius:8px;
-    border-bottom-left-radius:8px;
-    background:#f2ede6;
-    color:#81412d;
-    border-color:#e4d9c8;
+  .recepcion-box .box-header .input-group{
+    display:flex;
+    margin:0;
   }
-  .recepcion-busqueda-group .form-control{
-    border-top-right-radius:8px;
-    border-bottom-right-radius:8px;
-    border-color:#e4d9c8;
-  }
+  .recepcion-box .box-header .input-group .form-control{ flex:1 1 auto; }
 
-  .recepcion-fecha-group .input-group-addon{
-    border-top-left-radius:8px;
-    border-bottom-left-radius:8px;
-    background:#f2ede6;
-    color:#81412d;
-    border-color:#e4d9c8;
-  }
-  .recepcion-fecha-group .form-control{
-    border-top-right-radius:8px;
-    border-bottom-right-radius:8px;
-    border-color:#e4d9c8;
-  }
+  .recepcion-fecha-group{ flex:0 1 200px; min-width:160px; }
+  .recepcion-busqueda-group{ flex:1 1 280px; min-width:200px; max-width:340px; }
+  .recepcion-tipo-group{ flex:0 1 200px; min-width:160px; }
 
+  .recepcion-busqueda-group .input-group-addon,
+  .recepcion-fecha-group .input-group-addon,
   .recepcion-tipo-group .input-group-addon{
+    width:34px;
+    flex:0 0 auto;
+    text-align:center;
     border-top-left-radius:8px;
     border-bottom-left-radius:8px;
     background:#f2ede6;
     color:#81412d;
     border-color:#e4d9c8;
   }
+  .recepcion-busqueda-group .form-control,
+  .recepcion-fecha-group .form-control,
   .recepcion-tipo-group .form-control{
     border-top-right-radius:8px;
     border-bottom-right-radius:8px;
     border-color:#e4d9c8;
+  }
+
+  @media (max-width: 700px){
+    .recepcion-box .box-header{ flex-direction:column; align-items:stretch; }
+    .recepcion-fecha-group,
+    .recepcion-busqueda-group,
+    .recepcion-tipo-group{
+      flex:1 1 auto;
+      width:100%;
+      max-width:100%;
+      min-width:0;
+    }
   }
 
   #modalDetalleHabitacion .modal-content{
@@ -811,6 +870,36 @@ sort($TiposHabitacionRecepcion);
     color:#2f5f7a;
     white-space:nowrap;
   }
+  .hc-badge-mantenimiento{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:22px;
+    height:22px;
+    cursor:default;
+  }
+  .hc-badge-mantenimiento img{
+    width:100%;
+    height:100%;
+    object-fit:contain;
+  }
+  .hc-badge-servicio{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:22px;
+    height:22px;
+    border-radius:999px;
+    font-size:11px;
+    background:#dcebf1;
+    color:#2f5f7a;
+    cursor:default;
+  }
+  .hc-badge-servicio img{
+    width:65%;
+    height:65%;
+    object-fit:contain;
+  }
   .hc-reservas-proximas{
     display:inline-flex;
     align-items:center;
@@ -1033,5 +1122,24 @@ sort($TiposHabitacionRecepcion);
     color:#3f342e;
     margin-top:8px;
     font-size:14px;
+  }
+  .co-cobro-linea{
+    text-align:right;
+    color:#5c4a3a;
+    font-size:14px;
+    margin-top:4px;
+  }
+  .co-cobro-total{
+    font-weight:800;
+    color:#3f342e;
+    font-size:16px;
+    border-top:1px solid #eee3d2;
+    padding-top:8px;
+    margin-top:8px;
+  }
+  .co-cobro-cambio{
+    font-weight:800;
+    color:#4c8c5a;
+    font-size:16px;
   }
 </style>
