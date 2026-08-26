@@ -303,8 +303,9 @@ class ControladorMantenimiento{
 		self::ESTATUS_ELIMINADO => "Eliminado",
 	];
 
-	// Bitácora de incidencias de la habitación: foto + fecha de cada
-	// incidencia que ha tenido, sin importar desde qué tarjeta se abrió.
+	// Bitácora de UNA incidencia específica: su flujo completo de transiciones
+	// (agregada -> pendiente -> proceso -> resuelto -> reabierta, etc.), nunca las
+	// otras incidencias de la misma habitación.
 	static public function crtObtenerBitacoraIncidencias($id_mantenimiento){
 		$id_hotel = self::crtObtenerIdHotelSesion();
 
@@ -318,7 +319,7 @@ class ControladorMantenimiento{
 		foreach($filas as $fila){
 			$bitacora[] = [
 				"idMantenimiento" => (int) $fila["Id_Mantenimiento"],
-				"fecha"           => date("d/m/Y g:i a", strtotime($fila["Fecha_Registro"])),
+				"fecha"           => date("d/m/Y g:i a", strtotime($fila["Fecha"])),
 				"foto"            => $fila["Foto"] ?: null,
 				"fotoResuelto"    => $fila["Foto_Resuelto"] ?: null,
 				"descripcion"     => $fila["Descripcion"],

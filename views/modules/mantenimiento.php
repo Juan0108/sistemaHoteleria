@@ -324,7 +324,9 @@ $motivosMtto = ControladorMantenimiento::crtObtenerMotivos();
 
 	/* Modales Bitácora de Incidencias / Bitácora de Abonos */
 	#modalBitacoraIncidencias .modal-content, #modalBitacoraAbonos .modal-content, #modalInfoRegistroMtto .modal-content{ border-radius:16px; overflow:hidden; }
-	.mtto-tabla-wrap{ border:1px solid #eee3d2; border-radius:10px; overflow-x:auto; }
+	.mtto-tabla-wrap{ border:1px solid #eee3d2; border-radius:10px; overflow-x:auto; overflow-y:visible; }
+	.mtto-tabla-wrap-incidencias{ max-height:254px; overflow-y:auto; }
+	.mtto-tabla-wrap-incidencias .mtto-bitacora-tabla thead th{ position:sticky; top:0; z-index:1; }
 	.mtto-bitacora-tabla{ width:100%; border-collapse:collapse; background:#fff; }
 	.mtto-bitacora-tabla thead th{ background:#3f342e; color:#fff; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.3px; padding:10px 12px; }
 	.mtto-bitacora-tabla td{ padding:10px 12px; font-size:13px; color:#3f342e; border-top:1px solid #eee3d2; }
@@ -553,7 +555,7 @@ $motivosMtto = ControladorMantenimiento::crtObtenerMotivos();
 
 <!-- Modal Bitácora de Incidencias -->
 <div id="modalBitacoraIncidencias" class="modal fade" role="dialog">
-	<div class="modal-dialog">
+	<div class="modal-dialog modal-lg">
 		<div class="modal-content">
 			<div class="modal-header" style="background:#3f342e; color:white">
 				<button type="button" class="close" data-dismiss="modal" style="color:white; opacity:1;">&times;</button>
@@ -570,7 +572,7 @@ $motivosMtto = ControladorMantenimiento::crtObtenerMotivos();
 
 <!-- Modal Bitácora de Abonos -->
 <div id="modalBitacoraAbonos" class="modal fade" role="dialog">
-	<div class="modal-dialog">
+	<div class="modal-dialog modal-lg">
 		<div class="modal-content">
 			<div class="modal-header" style="background:#3f342e; color:white">
 				<button type="button" class="close" data-dismiss="modal" style="color:white; opacity:1;">&times;</button>

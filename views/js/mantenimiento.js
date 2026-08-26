@@ -231,7 +231,6 @@ function claseEstatusBitacoraMtto(estatus){
 $(document).on("click", ".btnBitacoraIncidencias", function(){
 
 	var _idMantenimiento = $(this).attr("idMantenimiento");
-	var _estatusTarjeta = $(this).attr("data-estatus");
 
 	$("#mttoBitacoraIncidenciasContenido").html('<p class="text-muted text-center" style="padding:20px;">Cargando…</p>');
 	$("#modalBitacoraIncidencias").modal("show");
@@ -248,25 +247,23 @@ $(document).on("click", ".btnBitacoraIncidencias", function(){
 				return;
 			}
 
-			// Solo incidencias con el mismo estatus que la tarjeta desde la que se abrió
-			// (nunca mezclar Eliminadas ni otros estatus distintos al asignado).
-			var lista = respuesta.data.filter(function(i){
-				return i.estatus === _estatusTarjeta;
-			});
+			// El flujo completo de ESTA incidencia (agregada -> pendiente -> proceso ->
+			// resuelto -> reabierta, etc.), nunca las otras incidencias de la habitación.
+			var lista = respuesta.data;
 
 			if (lista.length === 0) {
-				$("#mttoBitacoraIncidenciasContenido").html('<p class="mtto-bitacora-vacio">Esta habitación no tiene más incidencias con este mismo estatus.</p>');
+				$("#mttoBitacoraIncidenciasContenido").html('<p class="mtto-bitacora-vacio">Esta incidencia no tiene historial registrado.</p>');
 				return;
 			}
 
-			var html = '<div class="mtto-tabla-wrap"><table class="mtto-bitacora-tabla"><thead><tr>' +
+			var html = '<div class="mtto-tabla-wrap mtto-tabla-wrap-incidencias"><table class="mtto-bitacora-tabla"><thead><tr>' +
 				'<th>Fecha</th><th>Descripción</th><th>Proveedor</th><th>Estatus</th><th>Foto</th><th>Foto resultado</th>' +
 				'</tr></thead><tbody>';
 
 			lista.forEach(function(i){
 				html += '<tr>' +
 					'<td>' + escaparHtmlMtto(i.fecha) + '</td>' +
-					'<td>' + escaparHtmlMtto(i.descripcion) + '</td>' +
+					'<td>' + celdaTruncadaMtto(i.descripcion) + '</td>' +
 					'<td>' + (i.proveedor ? escaparHtmlMtto(i.proveedor) : '<span class="mtto-bitacora-vacio">Sin especificar</span>') + '</td>' +
 					'<td><span class="mtto-bitacora-estatus ' + claseEstatusBitacoraMtto(i.estatus) + '">' + escaparHtmlMtto(i.estatus) + '</span></td>' +
 					'<td>' + (i.foto ? ('<button type="button" class="mtto-bitacora-ver-foto btnVerFotoBitacora" data-foto="' + escaparHtmlMtto(i.foto) + '" data-titulo="Foto de la incidencia">Ver foto</button>') : '<span class="mtto-bitacora-vacio">Sin foto</span>') + '</td>' +
