@@ -112,6 +112,44 @@ class ControladorMantenimiento{
 		return ["status" => "success"];
 	}
 
+	// Restaura una incidencia eliminada por error, de vuelta a su último estatus antes de
+	// eliminarse. La foto es obligatoria: sirve de evidencia de por qué se está restaurando.
+	static public function crtRestaurarMantenimiento($id_mantenimiento, $archivoFoto){
+		$id_hotel = self::crtObtenerIdHotelSesion();
+
+		if($id_hotel === null){
+			return ["status" => "error", "message" => "No se encontró el hotel de tu negocio"];
+		}
+
+		if(!is_array($archivoFoto) || empty($archivoFoto["tmp_name"])){
+			return ["status" => "error", "message" => "Debes adjuntar una foto para restaurar la incidencia"];
+		}
+
+		if($archivoFoto["size"] > 3 * 1024 * 1024){
+			return ["status" => "error", "message" => "La foto no puede pesar más de 3MB"];
+		}
+
+		$dirPathAbsoluto = dirname(__DIR__) . "/views/img/Mantenimiento/";
+		if(!is_dir($dirPathAbsoluto)){
+			mkdir($dirPathAbsoluto, 0755, true);
+		}
+		$nombreImagen = time() . "_" . $archivoFoto["name"];
+
+		if(!move_uploaded_file($archivoFoto["tmp_name"], $dirPathAbsoluto . $nombreImagen)){
+			return ["status" => "error", "message" => "No se pudo guardar la foto"];
+		}
+
+		$fotoDestino = "views/img/Mantenimiento/" . $nombreImagen;
+
+		$respuesta = ModeloMantenimiento::MdlRestaurarMantenimiento($id_mantenimiento, $id_hotel, $fotoDestino);
+
+		if(!$respuesta || (int) $respuesta["Afectados"] <= 0){
+			return ["status" => "error", "message" => "No se pudo restaurar la incidencia"];
+		}
+
+		return ["status" => "success", "message" => "Incidencia restaurada correctamente"];
+	}
+
 	// HTML de una tarjeta del tablero. Vive aquí (no en la vista) para poder
 	// reutilizarse también desde ajax/mantenimiento-cambiar-estatus.ajax.php:
 	// cuando una tarjeta cambia de columna, el servidor regresa su HTML ya
@@ -315,8 +353,14 @@ class ControladorMantenimiento{
 
 		$filas = ModeloMantenimiento::MdlObtenerBitacoraIncidencias($id_mantenimiento, $id_hotel);
 
+		$mapaMotivos = [];
+		foreach(self::crtObtenerMotivos() as $motivo){
+			$mapaMotivos[(int) $motivo["Id_MotivoMantenimiento"]] = $motivo["Nombre"];
+		}
+
 		$bitacora = [];
 		foreach($filas as $fila){
+			$idEstatus = (int) $fila["Id_Estatus"];
 			$bitacora[] = [
 				"idMantenimiento" => (int) $fila["Id_Mantenimiento"],
 				"fecha"           => date("d/m/Y g:i a", strtotime($fila["Fecha"])),
@@ -324,7 +368,12 @@ class ControladorMantenimiento{
 				"fotoResuelto"    => $fila["Foto_Resuelto"] ?: null,
 				"descripcion"     => $fila["Descripcion"],
 				"proveedor"       => $fila["Proveedor"] ?: null,
-				"estatus"         => self::NOMBRES_ESTATUS[(int) $fila["Id_Estatus"]] ?? "Otro",
+				"estatus"         => self::NOMBRES_ESTATUS[$idEstatus] ?? "Otro",
+				"motivoEliminado" => $idEstatus === self::ESTATUS_ELIMINADO
+					? ($mapaMotivos[(int) $fila["Id_MotivoEliminacion"]] ?? "Sin especificar")
+					: null,
+				"nota" => $fila["Nota"] ?: null,
+				"fotoAccion" => $fila["FotoAccion"] ?: null,
 			];
 		}
 
@@ -359,41 +408,6 @@ class ControladorMantenimiento{
 		return $bitacora;
 	}
 
-	// Historial de TRANSICIONES de una habitación, para la pestaña "Bitácora": un renglón
-	// por cada cambio de estatus (creada, pasó a proceso, se resolvió, se reabrió con su
-	// nota, etc.) de CUALQUIERA de sus incidencias, sin sobreescribir nada.
-	static public function crtObtenerHistorialTransicionesHabitacion($id_habitacion){
-		$id_habitacion = (int) $id_habitacion;
-
-		if($id_habitacion <= 0){
-			return null;
-		}
-
-		$id_hotel = self::crtObtenerIdHotelSesion();
-
-		if($id_hotel === null){
-			return null;
-		}
-
-		$filas = ModeloMantenimiento::MdlObtenerHistorialTransicionesHabitacion($id_habitacion, $id_hotel);
-
-		$historial = [];
-		foreach($filas as $fila){
-			$historial[] = [
-				"idMantenimiento" => (int) $fila["Id_Mantenimiento"],
-				"fecha"           => date("d/m/Y g:i a", strtotime($fila["Fecha"])),
-				"fechaIso"        => $fila["Fecha"],
-				"estatus"         => self::NOMBRES_ESTATUS[(int) $fila["Id_Estatus"]] ?? "Otro",
-				"descripcion"     => $fila["Descripcion"],
-				"pieza"           => $fila["Pieza"],
-				"nota"            => $fila["Nota"] ?: null,
-				"foto"            => $fila["Foto"] ?: null,
-			];
-		}
-
-		return $historial;
-	}
-
 	// Arma un renglón del historial de incidencias a partir de la fila cruda del SP. Compartido
 	// entre la vista por habitación y la de todo el hotel (esta última trae además el nombre
 	// de la habitación, ya que mezcla varias).
@@ -419,6 +433,7 @@ class ControladorMantenimiento{
 
 		if(array_key_exists("TipoHabitacion", $fila) || array_key_exists("NumeroHabitacion", $fila)){
 			$item["habitacion"] = $fila["TipoHabitacion"] ?: $fila["NumeroHabitacion"];
+			$item["idHabitacion"] = isset($fila["Id_Habitacion"]) ? (int) $fila["Id_Habitacion"] : null;
 		}
 
 		return $item;

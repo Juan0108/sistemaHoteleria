@@ -9,54 +9,6 @@ $tiposMtto = ControladorMantenimiento::crtObtenerTipos();
 $motivosMtto = ControladorMantenimiento::crtObtenerMotivos();
 
 ?>
-<div class="mtto-reload-overlay mtto-reload-visible" id="mttoReloadOverlay">
-	<i class="fa fa-refresh fa-spin mtto-reload-spinner"></i>
-</div>
-<script>
-(function(){
-
-	// Mismo mecanismo que usa Crear venta (cv-reload-overlay): se muestra al
-	// recargar (F5) o justo antes de que el navegador navegue a la página
-	// nueva, y se oculta solo cuando esa página termina de cargar. Independiente
-	// de jQuery y del resto de los scripts (que cargan al final del body) para
-	// que nunca se quede pegado si algo más falla.
-	//
-	// Con F5 (sobre todo con todo ya en caché del navegador) la página puede
-	// cargar tan rápido que el overlay se oculta casi al instante y no da
-	// tiempo de percibirlo. _inicio guarda cuándo arrancó este script para
-	// forzar un mínimo de tiempo visible, sin importar qué tan rápido cargue.
-	var _oculto = false;
-	var _inicio = Date.now();
-	var _minimoVisibleMs = 400;
-
-	function ocultarOverlayRecargaMtto(){
-		if(_oculto) return;
-
-		var _faltante = _minimoVisibleMs - (Date.now() - _inicio);
-
-		if(_faltante > 0){
-			setTimeout(ocultarOverlayRecargaMtto, _faltante);
-			return;
-		}
-
-		_oculto = true;
-		var _overlay = document.getElementById("mttoReloadOverlay");
-		if(_overlay) _overlay.classList.remove("mtto-reload-visible");
-	}
-
-	document.addEventListener("DOMContentLoaded", ocultarOverlayRecargaMtto);
-	window.addEventListener("load", ocultarOverlayRecargaMtto);
-	setTimeout(ocultarOverlayRecargaMtto, 6000);
-
-	window.addEventListener("beforeunload", function(){
-		_oculto = false;
-		var _overlay = document.getElementById("mttoReloadOverlay");
-		if(_overlay) _overlay.classList.add("mtto-reload-visible");
-	});
-
-})();
-</script>
-
 <div class="content-wrapper mtto-wrapper">
 
 	<section class="content-header">
@@ -74,9 +26,11 @@ $motivosMtto = ControladorMantenimiento::crtObtenerMotivos();
 			<div class="mtto-rule"></div>
 		</div>
 
+		<div class="box mtto-box">
+		<div class="box-body">
+
 		<ul class="nav nav-tabs mtto-nav-tabs" role="tablist">
 			<li role="presentation" class="active"><a href="#mttoTabIncidencias" role="tab" data-toggle="tab"><i class="fa fa-list-alt"></i> Incidencias</a></li>
-			<li role="presentation"><a href="#mttoTabBitacora" role="tab" data-toggle="tab"><i class="fa fa-book"></i> Bitácora</a></li>
 			<li role="presentation"><a href="#mttoTabHistorial" role="tab" data-toggle="tab"><i class="fa fa-history"></i> Historial</a></li>
 		</ul>
 
@@ -128,6 +82,7 @@ $motivosMtto = ControladorMantenimiento::crtObtenerMotivos();
 						<div class="mtto-columna-header">
 							<span class="mtto-columna-punto"></span>
 							Resuelto
+						<span class="mtto-columna-subtitulo">(últimos 30 días)</span>
 							<div class="mtto-columna-header-der">
 								<span class="mtto-columna-contador"><?php echo count($tablero["resuelto"]); ?></span>
 							</div>
@@ -140,35 +95,6 @@ $motivosMtto = ControladorMantenimiento::crtObtenerMotivos();
 						</div>
 					</div>
 
-				</div>
-
-			</div>
-
-			<div role="tabpanel" class="tab-pane" id="mttoTabBitacora">
-
-				<div class="mtto-tab-toolbar">
-					<div class="input-group input-group-sm mtto-filtro-group" style="width:220px;">
-						<span class="input-group-addon"><i class="fa fa-hotel"></i></span>
-						<select id="mttoBitacoraHabitacion" class="form-control">
-							<option value="">-- Selecciona una habitación --</option>
-							<?php foreach($habitacionesMtto as $hab): ?>
-								<option value="<?php echo (int) $hab["Id_Habitacion"]; ?>"><?php echo htmlspecialchars($hab["TipoHabitacion"] ?: $hab["NumeroHabitacion"]); ?></option>
-							<?php endforeach; ?>
-						</select>
-					</div>
-					<div class="input-group input-group-sm mtto-filtro-group" style="width:170px;">
-						<span class="input-group-addon"><i class="fa fa-calendar"></i></span>
-						<input type="date" id="mttoBitacoraDesde" class="form-control" title="Desde">
-					</div>
-					<div class="input-group input-group-sm mtto-filtro-group" style="width:170px;">
-						<span class="input-group-addon"><i class="fa fa-calendar"></i></span>
-						<input type="date" id="mttoBitacoraHasta" class="form-control" title="Hasta">
-					</div>
-					<button type="button" class="mtto-btn-limpiar-filtro" id="mttoBitacoraLimpiarFecha" title="Quitar filtro de fecha" ><i class="fa fa-times"></i> Limpiar fechas</button>
-				</div>
-
-				<div id="mttoBitacoraTabContenido">
-					<p class="mtto-bitacora-vacio">Selecciona una habitación para ver su bitácora.</p>
 				</div>
 
 			</div>
@@ -196,12 +122,15 @@ $motivosMtto = ControladorMantenimiento::crtObtenerMotivos();
 					<button type="button" class="mtto-btn-limpiar-filtro" id="mttoHistorialLimpiarFecha" title="Quitar filtro de fecha" ><i class="fa fa-times"></i> Limpiar fechas</button>
 				</div>
 
-				<div id="mttoHistorialTabContenido">
+				<div id="mttoHistorialTabContenido" class="mtto-grid">
 					<p class="text-muted text-center" style="padding:20px;">Cargando…</p>
 				</div>
 
 			</div>
 
+		</div>
+
+		</div>
 		</div>
 
 	</section>
@@ -214,6 +143,8 @@ $motivosMtto = ControladorMantenimiento::crtObtenerMotivos();
 	.mtto-encabezado{ margin-bottom:20px; }
 	.mtto-titulo{ font-weight:800; text-transform:uppercase; letter-spacing:.5px; margin:0 0 6px; font-size:28px; color:#3f342e; }
 	.mtto-rule{ width:60px; height:4px; border-radius:2px; background:#81412d; margin-bottom:18px; }
+
+	.mtto-box{ border-radius:16px; overflow:hidden; }
 
 	.mtto-btn-primary{ background:#81412d; border-color:#81412d; color:#fff; border-radius:8px; font-weight:600; padding:9px 18px; }
 	.mtto-btn-primary:hover, .mtto-btn-primary:focus{ background:#6e3625; border-color:#6e3625; color:#fff; }
@@ -231,8 +162,21 @@ $motivosMtto = ControladorMantenimiento::crtObtenerMotivos();
 	.mtto-tab-content{ padding-top:4px; }
 
 	.mtto-tab-toolbar{ display:flex; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:18px; }
-	.mtto-filtro-group .input-group-addon{ width:34px; flex:0 0 auto; text-align:center; background:#f4efe4; border-color:#e4d9c8; color:#81412d; }
-	.mtto-filtro-group .form-control{ border-color:#e4d9c8; }
+	.mtto-filtro-group .input-group-addon{
+		width:34px;
+		flex:0 0 auto;
+		text-align:center;
+		background:#f4efe4;
+		border-color:#e4d9c8;
+		color:#81412d;
+		border-top-left-radius:8px;
+		border-bottom-left-radius:8px;
+	}
+	.mtto-filtro-group .form-control{
+		border-color:#e4d9c8;
+		border-top-right-radius:8px;
+		border-bottom-right-radius:8px;
+	}
 
 	@media (max-width: 700px){
 		.mtto-tab-toolbar{ flex-direction:column; align-items:stretch; }
@@ -250,6 +194,7 @@ $motivosMtto = ControladorMantenimiento::crtObtenerMotivos();
 
 	.mtto-columna-header{ display:flex; align-items:center; gap:8px; font-weight:800; text-transform:uppercase; letter-spacing:.4px; font-size:13px; color:#3f342e; margin-bottom:12px; }
 	.mtto-columna-header-der{ margin-left:auto; display:flex; align-items:center; gap:8px; }
+	.mtto-columna-subtitulo{ font-weight:600; text-transform:none; letter-spacing:0; font-size:11px; color:#a3927c; }
 	.mtto-columna-contador{ background:#3f342e; color:#fff; border-radius:999px; font-size:11px; font-weight:700; padding:2px 9px; }
 	.mtto-columna-punto{ width:10px; height:10px; border-radius:50%; display:inline-block; }
 	.mtto-columna-pendiente .mtto-columna-punto{ background:#b96a37; }
@@ -324,7 +269,7 @@ $motivosMtto = ControladorMantenimiento::crtObtenerMotivos();
 
 	/* Modales Bitácora de Incidencias / Bitácora de Abonos */
 	#modalBitacoraIncidencias .modal-content, #modalBitacoraAbonos .modal-content, #modalInfoRegistroMtto .modal-content{ border-radius:16px; overflow:hidden; }
-	.mtto-tabla-wrap{ border:1px solid #eee3d2; border-radius:10px; overflow-x:auto; overflow-y:visible; }
+	.mtto-tabla-wrap{ border:1px solid #eee3d2; border-radius:10px; overflow-x:auto; overflow-y:hidden; }
 	.mtto-tabla-wrap-incidencias{ max-height:254px; overflow-y:auto; }
 	.mtto-tabla-wrap-incidencias .mtto-bitacora-tabla thead th{ position:sticky; top:0; z-index:1; }
 	.mtto-bitacora-tabla{ width:100%; border-collapse:collapse; background:#fff; }
@@ -344,6 +289,32 @@ $motivosMtto = ControladorMantenimiento::crtObtenerMotivos();
 	}
 	.mtto-bitacora-foto{ max-width:48px; max-height:48px; border-radius:6px; border:1px solid #eee3d2; object-fit:cover; }
 	.mtto-bitacora-ver-foto{ background:none; border:none; color:#81412d; font-size:12px; font-weight:700; padding:0; text-decoration:underline; }
+
+	/* Grid de Historial: Habitación > Incidencia, filas expandibles */
+	.mtto-grid-habitacion{ border:1px solid #eee3d2; border-radius:10px; margin-bottom:14px; overflow:hidden; background:#fff; }
+	.mtto-grid-header{
+		display:flex;
+		align-items:center;
+		gap:10px;
+		padding:12px 16px;
+		cursor:pointer;
+		user-select:none;
+	}
+	.mtto-grid-header-habitacion{ background:#3f342e; color:#fff; font-weight:700; }
+	.mtto-grid-header-incidencia{ background:#f8f4ea; border-top:1px solid #eee3d2; color:#3f342e; font-weight:600; }
+	.mtto-grid-header:hover{ filter:brightness(1.05); }
+	.mtto-grid-chevron{ transition:transform .15s ease; flex-shrink:0; width:14px; text-align:center; }
+	.mtto-grid-header[aria-expanded="true"] .mtto-grid-chevron{ transform:rotate(90deg); }
+	.mtto-grid-titulo{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+	.mtto-grid-fecha{ font-size:12px; opacity:.8; white-space:nowrap; }
+	.mtto-grid-incidencias{ padding:10px 16px 16px; }
+	.mtto-grid-incidencia{ border:1px solid #eee3d2; border-radius:8px; margin-top:10px; overflow:hidden; }
+	.mtto-grid-incidencia:first-child{ margin-top:0; }
+	.mtto-grid-detalle{ padding:14px; background:#fff; }
+	.mtto-grid-detalle-seccion{ font-weight:700; color:#3f342e; font-size:12px; text-transform:uppercase; letter-spacing:.3px; margin:14px 0 8px; }
+	.mtto-grid-detalle-seccion:first-child{ margin-top:0; }
+	.mtto-grid-vacio{ color:#8d7a68; font-style:italic; text-align:center; padding:20px; }
+	.mtto-grid-restaurar{ margin-bottom:14px; }
 	.mtto-bitacora-ver-foto:hover{ color:#6e3625; }
 	.mtto-bitacora-vacio{ color:#8d7a68; font-style:italic; text-align:center; padding:14px; }
 	.mtto-bitacora-estatus{ font-size:11px; font-weight:700; border-radius:999px; padding:2px 8px; white-space:nowrap; }
@@ -364,30 +335,6 @@ $motivosMtto = ControladorMantenimiento::crtObtenerMotivos();
 	#modalAgregarMantenimiento .btn-success:hover{ background:#6e3625; border-color:#6e3625; }
 	.mtto-btn-secondary{ background:#fff; border:1px solid #3f342e; color:#3f342e; border-radius:8px; }
 	.mtto-btn-secondary:hover, .mtto-btn-secondary:focus{ background:#f2ede6; border-color:#3f342e; color:#3f342e; }
-
-	/* Overlay de recarga (mismo diseño que usa Crear venta) */
-	.mtto-reload-overlay{
-		position:fixed;
-		inset:0;
-		background:rgba(255,255,255,.55);
-		z-index:99999;
-		display:flex;
-		align-items:center;
-		justify-content:center;
-		opacity:0;
-		visibility:hidden;
-		pointer-events:none;
-		transition:opacity .15s ease;
-	}
-	.mtto-reload-overlay.mtto-reload-visible{
-		opacity:1;
-		visibility:visible;
-		pointer-events:all;
-	}
-	.mtto-reload-spinner{
-		font-size:52px;
-		color:#3f342e;
-	}
 </style>
 
 <!-- Modal Registrar incidencia de mantenimiento -->

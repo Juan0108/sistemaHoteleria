@@ -117,14 +117,37 @@ class ModeloReservaciones{
 		return $stmt->fetch();
 	}
 
-	// Completa la estadía (Ocupado -> Completada, 20), liberando la habitación. No hace nada
-	// si la reservación ya no está en Ocupado o si no pertenece al hotel de la sesión.
-	static public function MdlCompletarCheckout($id_reservacion, $id_hotel){
-		$stmt = Conexion::conectar()->prepare("CALL CompletarCheckout(:id_reservacion, :id_hotel)");
+	// Completa la estadía (Ocupado -> Completada, 20), liberando la habitación, y guarda el
+	// tipo de pago + referencia capturados en el modal de Check Out. No hace nada si la
+	// reservación ya no está en Ocupado o si no pertenece al hotel de la sesión.
+	static public function MdlCompletarCheckout($id_reservacion, $id_hotel, $id_tipo_pago, $referencia){
+		$stmt = Conexion::conectar()->prepare("CALL CompletarCheckout(:id_reservacion, :id_hotel, :id_tipo_pago, :referencia)");
 		$stmt->bindParam(":id_reservacion", $id_reservacion);
 		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
+		$stmt->bindParam(":id_tipo_pago", $id_tipo_pago, PDO::PARAM_INT);
+		$stmt->bindParam(":referencia", $referencia);
 		$stmt->execute();
 		return $stmt->fetch();
+	}
+
+	// Guarda el tipo de pago + referencia de una reservación, sin tocar su estatus. Se usa
+	// al cancelar una estadía Ocupada (que también necesita registrar cómo se cobró),
+	// separado de CompletarCheckout porque ese sí cambia el estatus a Completada.
+	static public function MdlGuardarPagoReservacion($id_reservacion, $id_hotel, $id_tipo_pago, $referencia){
+		$stmt = Conexion::conectar()->prepare("CALL GuardarPagoReservacion(:id_reservacion, :id_hotel, :id_tipo_pago, :referencia)");
+		$stmt->bindParam(":id_reservacion", $id_reservacion);
+		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
+		$stmt->bindParam(":id_tipo_pago", $id_tipo_pago, PDO::PARAM_INT);
+		$stmt->bindParam(":referencia", $referencia);
+		$stmt->execute();
+		return $stmt->fetch();
+	}
+
+	// Catálogo de formas de pago para el modal de Check Out.
+	static public function MdlObtenerTiposDePago(){
+		$stmt = Conexion::conectar()->prepare("CALL ObtenerTiposDePago()");
+		$stmt->execute();
+		return $stmt->fetchAll();
 	}
 
 	// Consumo (ventas ligadas vía Tb_Consumo) de una estadía, desglosado por producto.

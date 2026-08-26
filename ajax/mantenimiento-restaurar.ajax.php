@@ -21,31 +21,14 @@ class RestaurarMantenimientoAjax
 			return;
 		}
 
-		$id_hotel = ControladorMantenimiento::crtObtenerIdHotelSesion();
+		$archivoFoto = $_FILES["foto"] ?? null;
+		$respuesta = ControladorMantenimiento::crtRestaurarMantenimiento($id_mantenimiento, $archivoFoto);
 
-		if($id_hotel === null){
+		if($respuesta["status"] !== "success"){
 			http_response_code(400);
-			echo json_encode([
-				"status" => "error",
-				"message" => "No se encontró el hotel de tu negocio"
-			]);
-			return;
 		}
 
-		$respuesta = ModeloMantenimiento::MdlRestaurarMantenimiento($id_mantenimiento, $id_hotel);
-
-		if($respuesta && (int) $respuesta["Afectados"] > 0){
-			echo json_encode([
-				"status" => "success",
-				"message" => "Incidencia restaurada correctamente"
-			]);
-		}else{
-			http_response_code(400);
-			echo json_encode([
-				"status" => "error",
-				"message" => "No se pudo restaurar la incidencia"
-			]);
-		}
+		echo json_encode($respuesta);
 	}
 }
 

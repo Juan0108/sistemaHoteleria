@@ -290,10 +290,11 @@ function armarTooltipMantenimientoRecepcion($descripciones){
     <div class="modal-content co-modal-content">
       <div class="modal-header" style="background:#3f342e; color:white">
         <button type="button" class="close" data-dismiss="modal" style="color:white; opacity:1;">&times;</button>
-        <h4 class="modal-title"><i class="fa fa-sign-out"></i> Check Out</h4>
+        <h4 class="modal-title" id="coModalTitulo"><i class="fa fa-sign-out"></i> Check Out</h4>
       </div>
       <div class="modal-body">
         <input type="hidden" id="coIdReservacion">
+        <input type="hidden" id="coIdMotivoCancelacion">
 
         <div class="co-seccion">
           <h5 class="co-seccion-titulo">Preguntas</h5>
@@ -323,11 +324,20 @@ function armarTooltipMantenimientoRecepcion($descripciones){
 
         <div class="co-seccion">
           <h5 class="co-seccion-titulo">Cobro</h5>
-          <div class="co-cobro-linea">Hospedaje: $<span id="coHospedaje">0.00</span></div>
-          <div class="co-cobro-linea" id="coHorasInfo" style="display:none;"></div>
-          <div class="co-cobro-linea co-cobro-total">Total a pagar: $<span id="coTotalPagar">0.00</span></div>
+          <span id="coTotalPagar" style="display:none;">0.00</span>
 
           <div class="cv-campo" style="margin-top:14px;">
+            <label for="coTipoPago">Tipo de pago</label>
+            <select class="form-control" id="coTipoPago">
+              <option value="">-- Selecciona una opción --</option>
+            </select>
+          </div>
+          <div class="cv-campo" id="coReferenciaGrupo" style="margin-top:10px; display:none;">
+            <label for="coReferencia">Referencia</label>
+            <input type="text" class="form-control" id="coReferencia" placeholder="Número de autorización, folio, etc." autocomplete="off" minlength="5">
+          </div>
+
+          <div class="co-monto-recibido-grupo">
             <label for="coMontoRecibido">Monto recibido</label>
             <input type="text" inputmode="decimal" class="form-control" id="coMontoRecibido" placeholder="0.00" autocomplete="off">
           </div>
@@ -336,7 +346,7 @@ function armarTooltipMantenimientoRecepcion($descripciones){
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-default" data-dismiss="modal">Salir</button>
-        <button type="button" class="btn" id="coConfirmar" style="background:#4c8c5a; border-color:#4c8c5a; color:#fff;"><i class="fa fa-check"></i> Confirmar Check Out</button>
+        <button type="button" class="btn" id="coConfirmar" style="background:#4c8c5a; border-color:#4c8c5a; color:#fff;"><i class="fa fa-check"></i> <span id="coConfirmarTexto">Confirmar Check Out</span></button>
       </div>
     </div>
   </div>
@@ -1128,6 +1138,33 @@ function armarTooltipMantenimientoRecepcion($descripciones){
     color:#5c4a3a;
     font-size:14px;
     margin-top:4px;
+  }
+  .co-monto-recibido-grupo{
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    gap:10px;
+    margin-top:14px;
+  }
+  .co-monto-recibido-grupo label{
+    margin:0;
+    color:#5c4a3a;
+    font-size:14px;
+    font-weight:700;
+  }
+  .co-monto-recibido-grupo .form-control{
+    width:130px;
+    text-align:right;
+  }
+  #modalCheckOut .cv-campo .form-control,
+  #modalCheckOut .co-monto-recibido-grupo .form-control{
+    border-radius:8px;
+    border-color:#e4d9c8;
+  }
+  #modalCheckOut .cv-campo .form-control:focus,
+  #modalCheckOut .co-monto-recibido-grupo .form-control:focus{
+    border-color:#81412d;
+    box-shadow:none;
   }
   .co-cobro-total{
     font-weight:800;

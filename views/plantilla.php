@@ -130,6 +130,105 @@ if (isset($_SESSION["IniciarSesion"]) && $_SESSION["IniciarSesion"] == "ok" && i
 <!-- Cuerpo Documento -->
 <body class="hold-transition skin-blue sidebar-collapse sidebar-mini<?php echo (isset($_SESSION["IniciarSesion"]) && $_SESSION["IniciarSesion"] == "ok") ? "" : " login-page"; ?>">
 
+<style>
+  /* Spinner global: cambio de pantalla (clic en un link), recarga (F5) y cualquier
+     petición AJAX de cualquier módulo (búsquedas, filtros, guardados, etc.). */
+  .global-load-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(255,255,255,.55);
+    z-index:999999;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    opacity:0;
+    visibility:hidden;
+    pointer-events:none;
+    transition:opacity .15s ease;
+  }
+  .global-load-overlay.global-load-visible{
+    opacity:1;
+    visibility:visible;
+    pointer-events:all;
+  }
+  .global-load-spinner{
+    font-size:52px;
+    color:#3f342e;
+  }
+</style>
+
+<div class="global-load-overlay global-load-visible" id="globalLoadOverlay">
+  <i class="fa fa-refresh fa-spin global-load-spinner"></i>
+</div>
+<script>
+(function(){
+
+  // Cuenta cuántas "razones" hay para seguir mostrando el spinner (la carga de esta
+  // misma página, más cualquier petición AJAX en curso), y solo lo oculta cuando ya
+  // no queda ninguna. Independiente de jQuery para que la parte de navegación/recarga
+  // nunca se quede pegada si algo más en la página falla; jQuery se usa solo para
+  // engancharse a los eventos globales de AJAX.
+  var contador = 1; // 1 = "esta página todavía se está terminando de cargar"
+  var _cargaInicialResuelta = false;
+  var _inicioCarga = Date.now();
+  var _minimoVisibleMs = 400;
+
+  function pintar(){
+    var _overlay = document.getElementById("globalLoadOverlay");
+    if(!_overlay) return;
+    if(contador > 0) _overlay.classList.add("global-load-visible");
+    else _overlay.classList.remove("global-load-visible");
+  }
+
+  function iniciar(){
+    contador++;
+    pintar();
+  }
+
+  function terminar(){
+    contador = Math.max(0, contador - 1);
+    pintar();
+  }
+
+  // Con todo ya en caché del navegador la página puede cargar tan rápido que el
+  // overlay se oculte casi al instante y no dé tiempo de percibirlo; se fuerza un
+  // mínimo de tiempo visible, sin importar qué tan rápido cargue.
+  function resolverCargaInicial(){
+    if(_cargaInicialResuelta) return;
+    _cargaInicialResuelta = true;
+
+    var _faltante = _minimoVisibleMs - (Date.now() - _inicioCarga);
+
+    if(_faltante > 0){
+      setTimeout(terminar, _faltante);
+    }else{
+      terminar();
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", resolverCargaInicial);
+  window.addEventListener("load", resolverCargaInicial);
+  setTimeout(resolverCargaInicial, 6000); // failsafe: nunca se queda pegado
+
+  // Antes de navegar a otra pantalla (clic en un link, submit que redirige, F5).
+  window.addEventListener("beforeunload", function(){
+    contador = 1;
+    pintar();
+  });
+
+  window.mostrarSpinnerGlobal = iniciar;
+  window.ocultarSpinnerGlobal = terminar;
+
+  // jQuery ya está cargado (viene en el <head>, antes de este <body>). Cualquier
+  // $.ajax() de cualquier módulo (búsquedas, filtros, guardados...) prende el
+  // spinner, salvo que se llame explícitamente con { global: false }.
+  if(window.jQuery){
+    jQuery(document).ajaxStart(iniciar).ajaxStop(terminar);
+  }
+
+})();
+</script>
+
 <?php
 
 if(isset($_SESSION["IniciarSesion"]) && $_SESSION["IniciarSesion"] == "ok")

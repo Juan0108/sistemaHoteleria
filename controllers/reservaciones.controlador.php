@@ -282,8 +282,10 @@ class ControladorReservaciones{
 	}
 
 	// Completa el Check Out de una reservación Ocupada (pasa a Id_Estatus=20, Completada),
-	// liberando la habitación.
-	static public function crtCompletarCheckout($id_reservacion){
+	// liberando la habitación, guarda el tipo de pago + referencia capturados en el modal, y
+	// carga el precio del hospedaje como un renglón real de Tb_Consumo (producto virtual
+	// "Hospedaje", mismo patrón que "HrsExtra"/"HRSANTICIPADA").
+	static public function crtCompletarCheckout($id_reservacion, $id_tipo_pago, $referencia){
 		$id_hotel = ControladorHabitaciones::crtObtenerIdHotelSesion();
 
 		if($id_hotel === null){
@@ -291,19 +293,113 @@ class ControladorReservaciones{
 		}
 
 		$id_reservacion = trim((string) $id_reservacion);
+		$id_tipo_pago = (int) $id_tipo_pago;
+		$referencia = trim((string) $referencia);
 
 		if($id_reservacion === ""){
 			return ["ok" => false, "mensaje" => "Falta la reservación."];
 		}
 
-		$resultado = ModeloReservaciones::MdlCompletarCheckout($id_reservacion, $id_hotel);
+		if($id_tipo_pago <= 0){
+			return ["ok" => false, "mensaje" => "Selecciona un tipo de pago."];
+		}
+
+		if($referencia !== "" && mb_strlen($referencia) < 5){
+			return ["ok" => false, "mensaje" => "La referencia debe tener al menos 5 caracteres."];
+		}
+
+		// Se necesita el precio de hospedaje y el cliente ANTES de mover el estatus, porque
+		// una vez Completada, ObtenerReservacionParaCheckout ya no la va a encontrar.
+		$reservacion = ModeloReservaciones::MdlObtenerReservacionParaCheckout($id_reservacion, $id_hotel);
+
+		$resultado = ModeloReservaciones::MdlCompletarCheckout($id_reservacion, $id_hotel, $id_tipo_pago, $referencia);
 		$afectados = $resultado ? (int) $resultado["Afectados"] : 0;
 
 		if($afectados === 0){
 			return ["ok" => false, "mensaje" => "Esta reservación ya no está en estado Ocupado."];
 		}
 
+		self::crtCargarHospedajeComoConsumo($id_reservacion, $reservacion);
+
 		return ["ok" => true, "mensaje" => "Check out completado correctamente."];
+	}
+
+	// Carga el precio del hospedaje como un renglón real de Tb_Consumo (producto virtual
+	// "Hospedaje", mismo patrón que "HrsExtra"/"HRSANTICIPADA"). Compartido entre Check Out
+	// normal y la cancelación de una estadía Ocupada (ambos necesitan cobrar el hospedaje).
+	private static function crtCargarHospedajeComoConsumo($id_reservacion, $reservacion){
+		if(!$reservacion || (float) $reservacion["PrecioReservacion"] <= 0){
+			return;
+		}
+
+		$idUsuario = $_SESSION["IdUsuario"] ?? null;
+		$producto = ModeloInventarios::MdlObtenerInventario($idUsuario, "Hospedaje");
+
+		if(!$producto || !isset($producto["Id_Inventario"])){
+			return;
+		}
+
+		$ticketResp = ModeloVentas::MdlObtenerNuevoTicket($idUsuario);
+		$ticket = $ticketResp ? (int) $ticketResp["NuevoTicket"] : 0;
+
+		if($ticket <= 0){
+			return;
+		}
+
+		ModeloVentas::MdlInsertarVenta(
+			(int) $producto["Id_Inventario"],
+			1,
+			$ticket,
+			$idUsuario,
+			(float) $reservacion["PrecioReservacion"],
+			(int) $reservacion["Id_Cliente"],
+			$id_reservacion
+		);
+	}
+
+	// Cancela la estadía Ocupada de una habitación Y hace, además, el Check Out: guarda el
+	// tipo de pago/referencia y cobra el hospedaje como consumo, igual que un Check Out
+	// normal (una estadía cancelada a medio camino sigue debiendo esa cuenta).
+	static public function crtCancelarEstadiaConCheckout($id_reservacion, $id_motivo, $id_tipo_pago, $referencia){
+		$id_hotel = ControladorHabitaciones::crtObtenerIdHotelSesion();
+
+		if($id_hotel === null){
+			return ["ok" => false, "mensaje" => "Tu negocio no tiene un hotel registrado, contacta a soporte técnico."];
+		}
+
+		$id_reservacion = trim((string) $id_reservacion);
+		$id_tipo_pago = (int) $id_tipo_pago;
+		$referencia = trim((string) $referencia);
+
+		if($id_reservacion === ""){
+			return ["ok" => false, "mensaje" => "Falta la reservación."];
+		}
+
+		if($id_tipo_pago <= 0){
+			return ["ok" => false, "mensaje" => "Selecciona un tipo de pago."];
+		}
+
+		if($referencia !== "" && mb_strlen($referencia) < 5){
+			return ["ok" => false, "mensaje" => "La referencia debe tener al menos 5 caracteres."];
+		}
+
+		// Se necesita ANTES de cancelar, igual que en el Check Out normal.
+		$reservacion = ModeloReservaciones::MdlObtenerReservacionParaCheckout($id_reservacion, $id_hotel);
+
+		$resultadoCancelacion = self::crtCancelarReservacion($id_reservacion, $id_motivo);
+
+		if(!$resultadoCancelacion["ok"]){
+			return $resultadoCancelacion;
+		}
+
+		ModeloReservaciones::MdlGuardarPagoReservacion($id_reservacion, $id_hotel, $id_tipo_pago, $referencia);
+		self::crtCargarHospedajeComoConsumo($id_reservacion, $reservacion);
+
+		return [
+			"ok" => true,
+			"mensaje" => "Estadía cancelada y check out completado.",
+			"folio" => $resultadoCancelacion["folio"],
+		];
 	}
 
 	// Consumo desglosado (productos vendidos ligados a la estadía) para el modal de Check Out.
@@ -315,6 +411,11 @@ class ControladorReservaciones{
 		}
 
 		return ModeloReservaciones::MdlObtenerConsumoReservacion($id_reservacion);
+	}
+
+	// Catálogo de formas de pago para el modal de Check Out.
+	static public function crtObtenerTiposDePago(){
+		return ModeloReservaciones::MdlObtenerTiposDePago();
 	}
 
 	// Precio de hospedaje pactado + horas extra/anticipada de la estadía, para el resumen de

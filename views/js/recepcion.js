@@ -656,6 +656,14 @@ $(document).on("click", ".hc-icon-btn.cancelar", function(){
 					return;
 				}
 
+				// Una estadía Ocupada todavía tiene una cuenta que cobrar (hospedaje +
+				// consumo), así que además de la validación del motivo se necesita hacer el
+				// Check Out: se reutiliza el mismo modal, con el motivo ya elegido guardado.
+				if (esOcupada){
+					abrirModalCheckOut(idReservacion, resultado.value);
+					return;
+				}
+
 				mostrarCargaRecepcion();
 
 				$.ajax({
@@ -684,22 +692,50 @@ $(document).on("click", ".hc-icon-btn.cancelar", function(){
 
 /*=============================================
  Check Out (preguntas + consumo de la estadía)
- =============================================*/
-$(document).on("click", ".hc-icon-btn.checkout", function(){
 
-	var idReservacion = $(this).data("idReservacion");
+ El mismo modal se reutiliza para "Cancelar estadía" de una habitación Ocupada: además de
+ la validación de la cancelación (motivo), ese caso también necesita cobrar el hospedaje
+ y capturar el pago, igual que un Check Out normal. idMotivoCancelacion viene vacío en un
+ Check Out normal; cuando trae un valor, #coConfirmar cancela la estadía en vez de
+ completarla.
+ =============================================*/
+function abrirModalCheckOut(idReservacion, idMotivoCancelacion){
 
 	$("#coIdReservacion").val(idReservacion);
+	$("#coIdMotivoCancelacion").val(idMotivoCancelacion || "");
 	$("#coPreguntasCuerpo").html('<tr><td class="text-center text-muted" style="padding:15px;">Cargando…</td></tr>');
 	$("#coConsumoCuerpo").html('<tr><td colspan="4" class="text-center text-muted" style="padding:15px;">Cargando…</td></tr>');
 	$("#coConsumoTotal").text("0.00");
-	$("#coHospedaje").text("0.00");
-	$("#coHorasInfo").hide().text("");
 	$("#coTotalPagar").text("0.00").data("total", 0);
 	$("#coMontoRecibido").val("");
 	$("#coCambio").text("0.00");
+	$("#coTipoPago").val("");
+	$("#coReferencia").val("");
+	$("#coReferenciaGrupo").hide();
+
+	if (idMotivoCancelacion){
+		$("#coModalTitulo").html('<i class="fa fa-sign-out"></i> Cancelar estadía (Check Out)');
+		$("#coConfirmarTexto").text("Confirmar cancelación");
+	}else{
+		$("#coModalTitulo").html('<i class="fa fa-sign-out"></i> Check Out');
+		$("#coConfirmarTexto").text("Confirmar Check Out");
+	}
 
 	$("#modalCheckOut").modal("show");
+
+	$.ajax({
+		url: "ajax/reservaciones.ajax.php",
+		method: "GET",
+		data: { accion: "tiposDePago" },
+		dataType: "json",
+		success: function(respuesta){
+			var $select = $("#coTipoPago");
+			$select.find("option[value!='']").remove();
+			(respuesta.data || []).forEach(function(tipo){
+				$select.append('<option value="' + tipo.id + '">' + escaparHtmlRecepcion(tipo.pago) + '</option>');
+			});
+		}
+	});
 
 	$.ajax({
 		url: "ajax/preguntas.ajax.php",
@@ -745,7 +781,21 @@ $(document).on("click", ".hc-icon-btn.checkout", function(){
 			var $cuerpo = $("#coConsumoCuerpo");
 			$cuerpo.empty();
 
-			if (consumo.length === 0){
+			// El hospedaje se muestra como un renglón más de esta tabla (no aparte); al
+			// confirmar el check out, el servidor lo registra como un consumo real.
+			var _hospedaje = Number(respuesta.hospedaje) || 0;
+			if (_hospedaje > 0){
+				$cuerpo.append(
+					'<tr>' +
+						'<td>Hospedaje</td>' +
+						'<td>1</td>' +
+						'<td>$' + formatearPrecio(_hospedaje) + '</td>' +
+						'<td>$' + formatearPrecio(_hospedaje) + '</td>' +
+					'</tr>'
+				);
+			}
+
+			if (consumo.length === 0 && _hospedaje <= 0){
 				$cuerpo.append('<tr><td colspan="4" class="text-center text-muted" style="padding:15px;">Sin consumo registrado.</td></tr>');
 			}else{
 				consumo.forEach(function(item){
@@ -760,20 +810,7 @@ $(document).on("click", ".hc-icon-btn.checkout", function(){
 				});
 			}
 
-			$("#coConsumoTotal").text(formatearPrecio(respuesta.totalConsumo || 0));
-			$("#coHospedaje").text(formatearPrecio(respuesta.hospedaje || 0));
-
-			var _horasExtras = parseInt(respuesta.horasExtras, 10) || 0;
-			var _horaAnticipada = parseInt(respuesta.horaAnticipada, 10) || 0;
-
-			if (_horasExtras > 0 || _horaAnticipada > 0){
-				var _notas = [];
-				if (_horasExtras > 0) _notas.push(_horasExtras + " hora(s) extra");
-				if (_horaAnticipada > 0) _notas.push(_horaAnticipada + " hora(s) anticipada(s)");
-				$("#coHorasInfo").text(_notas.join(" · ")).show();
-			}else{
-				$("#coHorasInfo").hide().text("");
-			}
+			$("#coConsumoTotal").text(formatearPrecio((respuesta.totalConsumo || 0) + _hospedaje));
 
 			var _total = Number(respuesta.total) || 0;
 			$("#coTotalPagar").text(formatearPrecio(_total)).data("total", _total);
@@ -783,28 +820,73 @@ $(document).on("click", ".hc-icon-btn.checkout", function(){
 			$("#coConsumoCuerpo").html('<tr><td colspan="4" class="text-center text-muted" style="padding:15px;">No se pudo cargar el consumo.</td></tr>');
 		}
 	});
+}
+
+$(document).on("click", ".hc-icon-btn.checkout", function(){
+	abrirModalCheckOut($(this).data("idReservacion"), null);
 });
 
 function calcularCambioCheckOut(){
 
 	var _total = Number($("#coTotalPagar").data("total")) || 0;
-	var _recibido = Number($("#coMontoRecibido").val()) || 0;
+	var _recibido = desformatearPrecio($("#coMontoRecibido").val()) || 0;
 	var _cambio = _recibido - _total;
 
 	$("#coCambio").text(formatearPrecio(_cambio > 0 ? _cambio : 0));
 }
 
+// Le añade la coma de miles mientras se escribe (igual que Crear Venta), sin dejar de
+// aceptar el punto decimal.
 $(document).on("input", "#coMontoRecibido", function(){
+
+	var _valor = $(this).val().replace(/[^\d.]/g, "");
+
+	var _puntoIndice = _valor.indexOf(".");
+	if (_puntoIndice !== -1){
+		_valor = _valor.slice(0, _puntoIndice + 1) + _valor.slice(_puntoIndice + 1).replace(/\./g, "");
+	}
+
+	var _partes = _valor.split(".");
+	_partes[0] = _partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+	if (_partes.length > 1){
+		_partes[1] = _partes[1].slice(0, 2);
+	}
+
+	$(this).val(_partes.join("."));
+
 	calcularCambioCheckOut();
+});
+
+// La Referencia no aplica para pago en Efectivo; para cualquier otro tipo (tarjeta,
+// transferencia) sí es obligatoria.
+$(document).on("change", "#coTipoPago", function(){
+	var _esEfectivo = $(this).find("option:selected").text().trim() === "Efectivo";
+	$("#coReferenciaGrupo").toggle(!_esEfectivo);
+	if (_esEfectivo) $("#coReferencia").val("");
 });
 
 $(document).on("click", "#coConfirmar", function(){
 
 	var idReservacion = $("#coIdReservacion").val();
+	var idMotivoCancelacion = $("#coIdMotivoCancelacion").val();
+	var _esCancelacion = !!idMotivoCancelacion;
+	var idTipoPago = $("#coTipoPago").val();
+	var _esEfectivo = $("#coTipoPago option:selected").text().trim() === "Efectivo";
+	var referencia = $.trim($("#coReferencia").val());
+
+	if (!idTipoPago){
+		Swal.fire({ icon: "warning", title: "Falta el tipo de pago", text: "Selecciona cómo se realizó el pago." });
+		return;
+	}
+
+	if (!_esEfectivo && referencia.length < 5){
+		Swal.fire({ icon: "warning", title: "Referencia incompleta", text: "Captura una referencia de al menos 5 caracteres." });
+		return;
+	}
 
 	Swal.fire({
 		icon: "question",
-		title: "¿Confirmar Check Out?",
+		title: _esCancelacion ? "¿Confirmar cancelación de la estadía?" : "¿Confirmar Check Out?",
 		text: "La habitación quedará disponible.",
 		showCancelButton: true,
 		confirmButtonText: "Sí, confirmar",
@@ -818,18 +900,39 @@ $(document).on("click", "#coConfirmar", function(){
 
 		mostrarCargaRecepcion();
 
+		var _datos = _esCancelacion
+			? {
+				accion: "cancelarConCheckout",
+				id_reservacion: idReservacion,
+				id_motivo: idMotivoCancelacion,
+				id_tipo_pago: idTipoPago,
+				referencia: referencia
+			}
+			: {
+				accion: "checkout",
+				id_reservacion: idReservacion,
+				id_tipo_pago: idTipoPago,
+				referencia: referencia
+			};
+
 		$.ajax({
 			url: "ajax/reservaciones.ajax.php",
 			method: "POST",
-			data: { accion: "checkout", id_reservacion: idReservacion },
+			data: _datos,
 			dataType: "json",
 			success: function(respuesta){
 				if (respuesta.ok){
 					$("#modalCheckOut").modal("hide");
-					Swal.fire({ icon: "success", title: "Check out completado", timer: 1500, showConfirmButton: false });
+					Swal.fire({
+						icon: "success",
+						title: _esCancelacion ? "Estadía cancelada" : "Check out completado",
+						text: _esCancelacion && respuesta.folio ? "Folio de cancelación: " + respuesta.folio : undefined,
+						timer: 2500,
+						showConfirmButton: false
+					});
 					refrescarRecepcion();
 				}else{
-					Swal.fire({ icon: "error", title: "No se pudo completar", text: respuesta.mensaje });
+					Swal.fire({ icon: "error", title: _esCancelacion ? "No se pudo cancelar" : "No se pudo completar", text: respuesta.mensaje });
 				}
 			},
 			error: function(){
@@ -838,6 +941,16 @@ $(document).on("click", "#coConfirmar", function(){
 			complete: ocultarCargaRecepcion
 		});
 	});
+});
+
+// Refuerzo: además de resetearse al ABRIR el modal (arriba), también se resetea al
+// CERRARSE (se haya confirmado el check out o no), para que nunca quede "Referencia"
+// visible de una elección anterior si el modal se vuelve a abrir.
+$("#modalCheckOut").on("hidden.bs.modal", function(){
+	$("#coTipoPago").val("");
+	$("#coReferencia").val("");
+	$("#coReferenciaGrupo").hide();
+	$("#coIdMotivoCancelacion").val("");
 });
 
 /*=============================================

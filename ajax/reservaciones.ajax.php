@@ -188,12 +188,49 @@ class ReservacionesAjax
 	public function checkout(){
 
 		$id_reservacion = isset($_POST["id_reservacion"]) ? $_POST["id_reservacion"] : "";
-		$respuesta = ControladorReservaciones::crtCompletarCheckout($id_reservacion);
+		$id_tipo_pago = isset($_POST["id_tipo_pago"]) ? $_POST["id_tipo_pago"] : 0;
+		$referencia = isset($_POST["referencia"]) ? $_POST["referencia"] : "";
+		$respuesta = ControladorReservaciones::crtCompletarCheckout($id_reservacion, $id_tipo_pago, $referencia);
 
 		$ok = $respuesta["ok"] ? "true" : "false";
 		$mensaje = isset($respuesta["mensaje"]) ? $this->jsonEscape($respuesta["mensaje"]) : "";
 
 		echo '{"ok": '.$ok.', "mensaje": "'.$mensaje.'"}';
+	}
+
+	// Cancela una estadía Ocupada Y hace el Check Out (cobro de hospedaje + tipo de pago),
+	// desde el mismo modal de Check Out cuando se cancela una habitación Ocupada.
+	public function cancelarConCheckout(){
+
+		$id_reservacion = isset($_POST["id_reservacion"]) ? $_POST["id_reservacion"] : "";
+		$id_motivo = isset($_POST["id_motivo"]) ? $_POST["id_motivo"] : 0;
+		$id_tipo_pago = isset($_POST["id_tipo_pago"]) ? $_POST["id_tipo_pago"] : 0;
+		$referencia = isset($_POST["referencia"]) ? $_POST["referencia"] : "";
+		$respuesta = ControladorReservaciones::crtCancelarEstadiaConCheckout($id_reservacion, $id_motivo, $id_tipo_pago, $referencia);
+
+		$ok = $respuesta["ok"] ? "true" : "false";
+		$mensaje = isset($respuesta["mensaje"]) ? $this->jsonEscape($respuesta["mensaje"]) : "";
+		$folio = isset($respuesta["folio"]) ? (int) $respuesta["folio"] : 0;
+
+		echo '{"ok": '.$ok.', "mensaje": "'.$mensaje.'", "folio": '.$folio.'}';
+	}
+
+	public function tiposDePago(){
+		$tipos = ControladorReservaciones::crtObtenerTiposDePago();
+
+		$datosJason = '{"data":[';
+		for ($i = 0; $i < count($tipos); $i++){
+			$datosJason .= '{
+				"id": '.(int) $tipos[$i]["Id_TipoDePago"].',
+				"pago": "'.$this->jsonEscape($tipos[$i]["Pago"]).'"
+			},';
+		}
+		if (count($tipos) > 0) {
+			$datosJason = substr($datosJason, 0, -1);
+		}
+		$datosJason .= ']}';
+
+		echo $datosJason;
 	}
 
 	public function consumo(){
@@ -261,8 +298,12 @@ if ($Accion === "buscarClientes") {
 	$Ajax->checkin();
 } elseif ($Accion === "checkout") {
 	$Ajax->checkout();
+} elseif ($Accion === "cancelarConCheckout") {
+	$Ajax->cancelarConCheckout();
 } elseif ($Accion === "consumo") {
 	$Ajax->consumo();
+} elseif ($Accion === "tiposDePago") {
+	$Ajax->tiposDePago();
 } elseif ($Accion === "validarLlegadaAnticipada") {
 	$Ajax->validarLlegadaAnticipada();
 } elseif ($Accion === "motivosCancelacion") {

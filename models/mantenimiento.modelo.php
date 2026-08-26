@@ -86,10 +86,11 @@ class ModeloMantenimiento{
 
 	// Restaura una incidencia eliminada por error, de vuelta a su último estatus antes de
 	// borrarse (Pendiente/En proceso/Resuelto).
-	static public function MdlRestaurarMantenimiento($id_mantenimiento, $id_hotel){
-		$stmt = Conexion::conectar()->prepare("CALL RestaurarMantenimiento(:id_mantenimiento, :id_hotel)");
+	static public function MdlRestaurarMantenimiento($id_mantenimiento, $id_hotel, $foto){
+		$stmt = Conexion::conectar()->prepare("CALL RestaurarMantenimiento(:id_mantenimiento, :id_hotel, :foto)");
 		$stmt->bindParam(":id_mantenimiento", $id_mantenimiento, PDO::PARAM_INT);
 		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
+		$stmt->bindParam(":foto", $foto);
 		$stmt->execute();
 		return $stmt->fetch();
 	}
@@ -145,14 +146,6 @@ class ModeloMantenimiento{
 
 	// Historial de TRANSICIONES (un renglón por cada cambio de estatus, sin sobreescribir
 	// nada) de todas las incidencias de una habitación. Para la pestaña "Bitácora".
-	static public function MdlObtenerHistorialTransicionesHabitacion($id_habitacion, $id_hotel){
-		$stmt = Conexion::conectar()->prepare("CALL ObtenerHistorialTransicionesHabitacion(:id_habitacion, :id_hotel)");
-		$stmt->bindParam(":id_habitacion", $id_habitacion, PDO::PARAM_INT);
-		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
-		$stmt->execute();
-		return $stmt->fetchAll();
-	}
-
 	// Info completa capturada al registrar una incidencia (pieza, proveedor, descripción,
 	// fechas estimadas, foto, costo), para el pop up de detalle en la pestaña Bitácora.
 	static public function MdlObtenerInfoRegistroIncidencia($id_mantenimiento, $id_hotel){

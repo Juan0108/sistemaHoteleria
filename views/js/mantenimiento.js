@@ -256,7 +256,12 @@ $(document).on("click", ".btnBitacoraIncidencias", function(){
 				return;
 			}
 
-			var html = '<div class="mtto-tabla-wrap mtto-tabla-wrap-incidencias"><table class="mtto-bitacora-tabla"><thead><tr>' +
+			// El scroll solo se activa con más de 5 registros (con menos, forzar
+			// overflow:auto de todos modos puede pintar una scrollbar fantasma por
+			// redondeo de subpíxeles del navegador).
+			var _claseScrollIncidencias = lista.length > 5 ? " mtto-tabla-wrap-incidencias" : "";
+
+			var html = '<div class="mtto-tabla-wrap' + _claseScrollIncidencias + '"><table class="mtto-bitacora-tabla"><thead><tr>' +
 				'<th>Fecha</th><th>Descripción</th><th>Proveedor</th><th>Estatus</th><th>Foto</th><th>Foto resultado</th>' +
 				'</tr></thead><tbody>';
 
@@ -315,11 +320,12 @@ $(document).on("click", ".btnVerFotoBitacora", function(){
 /*=============================================
  Bitácora de abonos de la habitación
  =============================================*/
-function mttoRenderizarTablaAbonos(lista, mensajeVacio){
+// Devuelve el HTML de la tabla de abonos, o null si la lista viene vacía (para que
+// cada llamador decida su propio mensaje de "sin abonos").
+function mttoConstruirTablaAbonosHtml(lista){
 
 	if (lista.length === 0) {
-		$("#mttoBitacoraAbonosContenido").html('<p class="mtto-bitacora-vacio">' + mensajeVacio + '</p>');
-		return;
+		return null;
 	}
 
 	var html = '<div class="mtto-tabla-wrap"><table class="mtto-bitacora-tabla"><thead><tr>' +
@@ -332,15 +338,19 @@ function mttoRenderizarTablaAbonos(lista, mensajeVacio){
 			'<td>' + formatearMontoMtto(a.monto) + '</td>' +
 			'<td>' + escaparHtmlMtto(a.descripcion) + '</td>' +
 			'<td>' + escaparHtmlMtto(a.usuario) + '</td>' +
-			'<td>' + (a.foto ? ('<button type="button" class="mtto-bitacora-ver-foto btnVerFotoBitacora" data-foto="' + escaparHtmlMtto(a.foto) + '" data-titulo="Foto del ticket">Ver foto</button>') : '<span class="mtto-bitacora-vacio">Sin foto</span>') + '</td>' +
+			'<td>' + (a.foto ? ('<button type="button" class="mtto-bitacora-ver-foto btnVerFotoBitacora" data-foto="' + escaparHtmlMtto(a.foto) + '" data-titulo="Foto del ticket">Ver foto<\button>') : '<span class="mtto-bitacora-vacio">Sin foto</span>') + '</td>' +
 			'</tr>';
 	});
 
 	html += '</tbody></table></div>';
 
-	$("#mttoBitacoraAbonosContenido").html(html);
+	return html;
 }
 
+function mttoRenderizarTablaAbonos(lista, mensajeVacio){
+	var html = mttoConstruirTablaAbonosHtml(lista);
+	$("#mttoBitacoraAbonosContenido").html(html || ('<p class="mtto-bitacora-vacio">' + mensajeVacio + '</p>'));
+}
 $(document).on("click", ".btnBitacoraAbonos", function(){
 
 	var _idMantenimiento = $(this).attr("idMantenimiento");
@@ -689,12 +699,6 @@ $(document).on("click", ".btnEliminarMtto", function(){
 	});
 });
 
-/*=============================================
- Tab Bitácora: historial de TRANSICIONES de una habitación (no sobreescribe nada,
- un renglón por cada cambio de estatus de cualquiera de sus incidencias).
- =============================================*/
-var mttoBitacoraListaActual = [];
-
 // Compara solo la parte de fecha (YYYY-MM-DD) de un valor ISO contra el rango de los
 // inputs "Desde"/"Hasta" (vacíos = sin límite de ese lado).
 function mttoEnRangoFecha(fechaIso, $desde, $hasta){
@@ -710,91 +714,6 @@ function mttoEnRangoFecha(fechaIso, $desde, $hasta){
 	return true;
 }
 
-function mttoRenderizarBitacora(){
-
-	var $contenido = $("#mttoBitacoraTabContenido");
-	var $desde = $("#mttoBitacoraDesde");
-	var $hasta = $("#mttoBitacoraHasta");
-
-	var lista = mttoBitacoraListaActual.filter(function(i){
-		return mttoEnRangoFecha(i.fechaIso, $desde, $hasta);
-	});
-
-	if (lista.length === 0){
-		$contenido.html('<p class="mtto-bitacora-vacio">' + (mttoBitacoraListaActual.length === 0 ? "Esta habitación no tiene movimientos registrados todavía." : "Ningún movimiento cae en ese rango de fechas.") + '</p>');
-		return;
-	}
-
-	var html = '<div class="mtto-tabla-wrap"><table class="mtto-bitacora-tabla"><thead><tr>' +
-		'<th>Fecha</th><th>Incidencia</th><th>Estatus</th><th>Nota de reapertura</th><th>Foto</th><th>Acciones</th>' +
-		'</tr></thead><tbody>';
-
-	lista.forEach(function(i){
-		html += '<tr>' +
-			'<td>' + escaparHtmlMtto(i.fecha) + '</td>' +
-			'<td>' + escaparHtmlMtto(i.pieza) + '</td>' +
-			'<td><span class="mtto-bitacora-estatus ' + claseEstatusBitacoraMtto(i.estatus) + '">' + escaparHtmlMtto(i.estatus) + '</span></td>' +
-			'<td>' + (i.nota ? escaparHtmlMtto(i.nota) : '<span class="mtto-bitacora-vacio">—</span>') + '</td>' +
-			'<td>' + (i.foto ? ('<button type="button" class="mtto-bitacora-ver-foto btnVerFotoBitacora" data-foto="' + escaparHtmlMtto(i.foto) + '" data-titulo="Foto">Ver foto</button>') : '<span class="mtto-bitacora-vacio">Sin foto</span>') + '</td>' +
-			'<td>' +
-				'<button type="button" class="mtto-btn-ver-info btnVerInfoIncidenciaMtto" idMantenimiento="' + i.idMantenimiento + '"><i class="fa fa-info-circle"></i> Ver info</button> ' +
-				'<button type="button" class="mtto-btn-abonos btnVerAbonosBitacora" idMantenimiento="' + i.idMantenimiento + '"><i class="fa fa-money"></i> Ver abonos</button>' +
-			'</td>' +
-			'</tr>';
-	});
-
-	html += '</tbody></table></div>';
-
-	$contenido.html(html);
-}
-
-$(document).on("change", "#mttoBitacoraHabitacion", function(){
-
-	var _idHabitacion = $(this).val();
-	var $contenido = $("#mttoBitacoraTabContenido");
-
-	if (!_idHabitacion){
-		mttoBitacoraListaActual = [];
-		$contenido.html('<p class="mtto-bitacora-vacio">Selecciona una habitación para ver su bitácora.</p>');
-		return;
-	}
-
-	$contenido.html('<p class="text-muted text-center" style="padding:20px;">Cargando…</p>');
-
-	$.ajax({
-		url: "ajax/mantenimiento-historial-transiciones.ajax.php",
-		method: "GET",
-		data: { idHabitacion: _idHabitacion },
-		dataType: "json",
-		success: function(respuesta){
-
-			if (!respuesta || respuesta.status !== "success"){
-				$contenido.html('<p class="mtto-bitacora-vacio">No se pudo cargar la bitácora.</p>');
-				return;
-			}
-
-			mttoBitacoraListaActual = respuesta.data;
-			mttoRenderizarBitacora();
-		},
-		error: function(){
-			$contenido.html('<p class="mtto-bitacora-vacio">No se pudo cargar la bitácora.</p>');
-		}
-	});
-});
-
-$(document).on("change", "#mttoBitacoraDesde, #mttoBitacoraHasta", function(){
-	if (mttoBitacoraListaActual.length){
-		mttoRenderizarBitacora();
-	}
-});
-
-$(document).on("click", "#mttoBitacoraLimpiarFecha", function(){
-	$("#mttoBitacoraDesde").val("");
-	$("#mttoBitacoraHasta").val("");
-	if (mttoBitacoraListaActual.length){
-		mttoRenderizarBitacora();
-	}
-});
 
 /*=============================================
  Pop up "Ver info": datos capturados al registrar la incidencia (tab Bitácora)
@@ -861,7 +780,12 @@ $(document).on("click", ".btnVerInfoIncidenciaMtto", function(){
 				]);
 			}
 
-			var html = '<div class="mtto-tabla-wrap mtto-tabla-wrap-info"><table class="mtto-bitacora-tabla">' +
+			// El scroll solo se activa con más de 4 filas (con menos, forzar
+			// overflow:auto de todos modos puede pintar una scrollbar fantasma por
+			// redondeo de subpíxeles del navegador).
+			var _claseScrollInfo = _filas.length > 4 ? " mtto-tabla-wrap-info" : "";
+
+			var html = '<div class="mtto-tabla-wrap' + _claseScrollInfo + '"><table class="mtto-bitacora-tabla">' +
 				'<thead><tr>' +
 					_titulos.map(function(t){ return '<th>' + t + '</th>'; }).join("") +
 				'</tr></thead>' +
@@ -880,11 +804,80 @@ $(document).on("click", ".btnVerInfoIncidenciaMtto", function(){
 });
 
 /*=============================================
- Tab Historial: TODOS los tickets de una habitación (pendientes, en proceso,
- resueltos y eliminados), un renglón por incidencia.
+ Tab Historial: grid de Habitación > Incidencia con filas expandibles. Al expandir una
+ incidencia se carga (una sola vez) su flujo completo de estatus y sus abonos.
  =============================================*/
 var mttoHistorialListaActual = [];
 var mttoHistorialIdHabitacionActual = "";
+
+// Agrupa la lista plana de incidencias por habitación, preservando el orden de llegada.
+// Agrupa por Id_Habitacion (no por el nombre/tipo): dos habitaciones distintas pueden
+// compartir el mismo TipoHabitacion (p.ej. dos cuartos "Individual") y no deben mezclarse.
+function mttoAgruparPorHabitacionMtto(lista){
+	var grupos = [];
+	var indice = {};
+
+	lista.forEach(function(i){
+		var clave = (i.idHabitacion != null) ? i.idHabitacion : "__actual__";
+		if (!(clave in indice)){
+			indice[clave] = { idHabitacion: i.idHabitacion, nombre: i.habitacion || null, incidencias: [] };
+			grupos.push(indice[clave]);
+		}
+		indice[clave].incidencias.push(i);
+	});
+
+	return grupos;
+}
+
+// Tabla de flujo de UNA incidencia (columnas del boceto: Fecha, Descripción, Proveedor,
+// Estatus, Motivo de eliminación, Foto incidencia, Foto resultado, Acciones).
+function mttoConstruirFlujoIncidenciaHtml(lista){
+
+	if (lista.length === 0) {
+		return null;
+	}
+
+	var html = '<div class="mtto-tabla-wrap"><table class="mtto-bitacora-tabla"><thead><tr>' +
+		'<th>Fecha</th><th>Descripción</th><th>Proveedor</th><th>Estatus</th><th>Nota</th><th>Motivo de eliminación</th><th>Foto de la acción</th><th>Foto incidencia</th><th>Foto resultado</th>' +
+		'</tr></thead><tbody>';
+
+	lista.forEach(function(i, indice){
+		// "Foto incidencia" y "Foto resultado" viven en columnas fijas de la incidencia (no
+		// por transición), así que solo tiene sentido mostrarlas en el renglón al que
+		// cronológicamente corresponden: el registro inicial y el momento en que se resolvió.
+		// En cualquier otro renglón se deja "—" (no "Sin foto", para no dar a entender que a
+		// esa transición específica le faltó una foto que nunca le tocaba tener).
+		var _esRegistroInicial = indice === 0;
+		var _esResuelto = i.estatus === "Resuelto";
+
+		html += '<tr>' +
+			'<td>' + escaparHtmlMtto(i.fecha) + '</td>' +
+			'<td>' + celdaTruncadaMtto(i.descripcion) + '</td>' +
+			'<td>' + (i.proveedor ? escaparHtmlMtto(i.proveedor) : '<span class="mtto-bitacora-vacio">Sin especificar</span>') + '</td>' +
+			'<td><span class="mtto-bitacora-estatus ' + claseEstatusBitacoraMtto(i.estatus) + '">' + escaparHtmlMtto(i.estatus) + '</span></td>' +
+			'<td>' + (i.nota ? celdaTruncadaMtto(i.nota) : '<span class="mtto-bitacora-vacio">—</span>') + '</td>' +
+			'<td>' + (i.motivoEliminado ? escaparHtmlMtto(i.motivoEliminado) : '<span class="mtto-bitacora-vacio">—</span>') + '</td>' +
+			'<td>' + (i.fotoAccion ? ('<button type="button" class="mtto-bitacora-ver-foto btnVerFotoBitacora" data-foto="' + escaparHtmlMtto(i.fotoAccion) + '" data-titulo="Foto de esta acción">Ver foto</button>') : '<span class="mtto-bitacora-vacio">Sin foto</span>') + '</td>' +
+			'<td>' + (!_esRegistroInicial ? '<span class="mtto-bitacora-vacio">—</span>' : (i.foto ? ('<button type="button" class="mtto-bitacora-ver-foto btnVerFotoBitacora" data-foto="' + escaparHtmlMtto(i.foto) + '" data-titulo="Foto de la incidencia">Ver foto</button>') : '<span class="mtto-bitacora-vacio">Sin foto</span>')) + '</td>' +
+			'<td>' + (!_esResuelto ? '<span class="mtto-bitacora-vacio">—</span>' : (i.fotoResuelto ? ('<button type="button" class="mtto-bitacora-ver-foto btnVerFotoBitacora" data-foto="' + escaparHtmlMtto(i.fotoResuelto) + '" data-titulo="Foto de cómo quedó resuelta la incidencia">Ver foto</button>') : '<span class="mtto-bitacora-vacio">Sin foto</span>')) + '</td>' +
+			'</tr>';
+	});
+
+	html += '</tbody></table></div>';
+
+	return html;
+}
+
+// Todas las habitaciones existentes (id + nombre), leídas del propio combo de filtro,
+// para poder "mapear" las que no tienen ninguna incidencia registrada todavía.
+function mttoObtenerRosterHabitacionesMtto(){
+	var roster = [];
+	$("#mttoHistorialHabitacion option").each(function(){
+		var _valor = $(this).val();
+		if (_valor) roster.push({ id: _valor, nombre: $(this).text() });
+	});
+	return roster;
+}
 
 function mttoRenderizarHistorial(){
 
@@ -896,44 +889,148 @@ function mttoRenderizarHistorial(){
 		return mttoEnRangoFecha(i.fechaRegistroIso, $desde, $hasta);
 	});
 
-	if (lista.length === 0){
+	// Sin ningún filtro tocado (ni habitación ni fechas) se mapean TODAS las habitaciones
+	// existentes, aunque no tengan incidencias todavía; en cuanto se filtra por habitación
+	// o por fecha, solo tiene sentido mostrar lo que realmente cae en ese filtro.
+	var _sinFiltros = !mttoHistorialIdHabitacionActual && !$desde.val() && !$hasta.val();
+
+	if (lista.length === 0 && !_sinFiltros){
 		var _vacioBase = mttoHistorialIdHabitacionActual ? "Esta habitación no tiene incidencias registradas." : "Todavía no hay incidencias registradas.";
-		$contenido.html('<p class="mtto-bitacora-vacio">' + (mttoHistorialListaActual.length === 0 ? _vacioBase : "Ninguna incidencia cae en ese rango de fechas.") + '</p>');
+		$contenido.html('<p class="mtto-grid-vacio">' + (mttoHistorialListaActual.length === 0 ? _vacioBase : "Ninguna incidencia cae en ese rango de fechas.") + '</p>');
 		return;
 	}
 
-	// Si ya se filtró por una habitación específica, no tiene caso repetir esa
-	// columna en cada renglón; solo se muestra cuando se ve todo el hotel junto.
-	var _mostrarColHabitacion = !mttoHistorialIdHabitacionActual;
+	// Cuando ya se filtró por una habitación específica, el nombre no viene en cada fila
+	// (ya está implícito), así que se toma del texto seleccionado en el combo.
+	var _nombreHabitacionFiltro = mttoHistorialIdHabitacionActual ? $("#mttoHistorialHabitacion option:selected").text() : null;
+	var grupos = mttoAgruparPorHabitacionMtto(lista);
 
-	var html = '<div class="mtto-tabla-wrap"><table class="mtto-bitacora-tabla"><thead><tr>' +
-		(_mostrarColHabitacion ? '<th>Habitación</th>' : '') +
-		'<th>Registrada</th><th>Descripción</th><th>Proveedor</th><th>Estatus</th><th>Reaberturas</th>' +
-		'<th>Resuelta</th><th>Eliminada</th><th>Motivo eliminación</th><th>Foto</th><th>Foto resultado</th><th>Acciones</th>' +
-		'</tr></thead><tbody>';
+	if (_sinFiltros){
+		var _idsConDatos = {};
+		grupos.forEach(function(g){ _idsConDatos[g.idHabitacion] = true; });
 
-	lista.forEach(function(i){
-		var _esEliminada = i.estatus === "Eliminado";
-		html += '<tr>' +
-			(_mostrarColHabitacion ? ('<td>' + (i.habitacion ? escaparHtmlMtto(i.habitacion) : '<span class="mtto-bitacora-vacio">—</span>') + '</td>') : '') +
-			'<td>' + escaparHtmlMtto(i.fechaRegistro) + '</td>' +
-			'<td>' + escaparHtmlMtto(i.descripcion) + '</td>' +
-			'<td>' + (i.proveedor ? escaparHtmlMtto(i.proveedor) : '<span class="mtto-bitacora-vacio">Sin especificar</span>') + '</td>' +
-			'<td><span class="mtto-bitacora-estatus ' + claseEstatusBitacoraMtto(i.estatus) + '">' + escaparHtmlMtto(i.estatus) + '</span></td>' +
-			'<td>' + i.vecesReabierta + '</td>' +
-			'<td>' + (i.fechaResuelto ? escaparHtmlMtto(i.fechaResuelto) : '<span class="mtto-bitacora-vacio">—</span>') + '</td>' +
-			'<td>' + (i.fechaEliminado ? escaparHtmlMtto(i.fechaEliminado) : '<span class="mtto-bitacora-vacio">—</span>') + '</td>' +
-			'<td>' + (i.motivoEliminado ? escaparHtmlMtto(i.motivoEliminado) : '<span class="mtto-bitacora-vacio">—</span>') + '</td>' +
-			'<td>' + (i.foto ? ('<button type="button" class="mtto-bitacora-ver-foto btnVerFotoBitacora" data-foto="' + escaparHtmlMtto(i.foto) + '" data-titulo="Foto de la incidencia">Ver foto</button>') : '<span class="mtto-bitacora-vacio">Sin foto</span>') + '</td>' +
-			'<td>' + (i.fotoResuelto ? ('<button type="button" class="mtto-bitacora-ver-foto btnVerFotoBitacora" data-foto="' + escaparHtmlMtto(i.fotoResuelto) + '" data-titulo="Foto de cómo quedó resuelta la incidencia">Ver foto</button>') : '<span class="mtto-bitacora-vacio">Sin foto</span>') + '</td>' +
-			'<td>' + (_esEliminada ? ('<button type="button" class="mtto-btn-restaurar btnRestaurarMtto" idMantenimiento="' + i.idMantenimiento + '"><i class="fa fa-undo"></i> Restaurar</button>') : '<span class="mtto-bitacora-vacio">—</span>') + '</td>' +
-			'</tr>';
+		mttoObtenerRosterHabitacionesMtto().forEach(function(hab){
+			if (!_idsConDatos[hab.id]){
+				grupos.push({ idHabitacion: hab.id, nombre: hab.nombre, incidencias: [] });
+			}
+		});
+	}
+
+	if (grupos.length === 0){
+		$contenido.html('<p class="mtto-grid-vacio">No hay habitaciones registradas.</p>');
+		return;
+	}
+
+	var html = '';
+	var _numGrupo = 0;
+
+	grupos.forEach(function(grupo){
+		_numGrupo++;
+		var _nombreGrupo = grupo.nombre || _nombreHabitacionFiltro || "Habitación";
+		var _idGrupo = "mttoGridHab" + _numGrupo;
+		var _totalIncidencias = grupo.incidencias.length;
+
+		html += '<div class="mtto-grid-habitacion">' +
+			'<div class="mtto-grid-header mtto-grid-header-habitacion" data-toggle="collapse" data-target="#' + _idGrupo + '" aria-expanded="false">' +
+				'<span class="mtto-grid-chevron"><i class="fa fa-chevron-right"></i></span>' +
+				'<span class="mtto-grid-titulo">Habitación &rarr; ' + escaparHtmlMtto(_nombreGrupo) + '</span>' +
+				'<span class="mtto-grid-fecha">' + (_totalIncidencias === 0 ? 'Sin incidencias' : (_totalIncidencias + (_totalIncidencias === 1 ? ' incidencia' : ' incidencias'))) + '</span>' +
+			'</div>' +
+			'<div class="collapse" id="' + _idGrupo + '">' +
+				'<div class="mtto-grid-incidencias">';
+
+		if (_totalIncidencias === 0){
+			html += '<p class="mtto-grid-vacio">Esta habitación no tiene incidencias registradas.</p>';
+		}
+
+		grupo.incidencias.forEach(function(inc){
+			var _idIncidencia = _idGrupo + "_" + inc.idMantenimiento;
+
+			html += '<div class="mtto-grid-incidencia">' +
+				'<div class="mtto-grid-header mtto-grid-header-incidencia" data-toggle="collapse" data-target="#' + _idIncidencia + '" aria-expanded="false" data-id-mantenimiento="' + inc.idMantenimiento + '" data-estatus="' + escaparHtmlMtto(inc.estatus) + '" data-cargado="0">' +
+					'<span class="mtto-grid-chevron"><i class="fa fa-chevron-right"></i></span>' +
+					'<span class="mtto-grid-titulo">Incidencia &rarr; ' + escaparHtmlMtto(inc.descripcion) + '</span>' +
+					'<span class="mtto-bitacora-estatus ' + claseEstatusBitacoraMtto(inc.estatus) + '">' + escaparHtmlMtto(inc.estatus) + '</span>' +
+					'<span class="mtto-grid-fecha">' + escaparHtmlMtto(inc.fechaRegistro) + '</span>' +
+				'</div>' +
+				'<div class="collapse" id="' + _idIncidencia + '">' +
+					'<div class="mtto-grid-detalle">' +
+						'<p class="text-muted text-center" style="padding:10px;">Cargando…</p>' +
+					'</div>' +
+				'</div>' +
+			'</div>';
+		});
+
+		html += '</div></div></div>';
 	});
-
-	html += '</tbody></table></div>';
 
 	$contenido.html(html);
 }
+
+// Al expandir por primera vez una incidencia, carga su flujo de estatus y sus abonos
+// (una sola vez; ya cargado se queda en el DOM aunque se vuelva a colapsar/expandir).
+$(document).on("click", ".mtto-grid-header-incidencia", function(){
+
+	var $header = $(this);
+
+	if ($header.attr("data-cargado") === "1"){
+		return;
+	}
+
+	var _idMantenimiento = $header.data("idMantenimiento");
+	var _estatusActual = $header.attr("data-estatus");
+	var $detalle = $($header.attr("data-target")).find(".mtto-grid-detalle");
+
+	$header.attr("data-cargado", "1");
+
+	$.ajax({
+		url: "ajax/mantenimiento-bitacora-incidencias.ajax.php",
+		method: "GET",
+		data: { idMantenimiento: _idMantenimiento },
+		dataType: "json"
+	}).then(function(respuestaFlujo){
+
+		var _htmlFlujo = (respuestaFlujo && respuestaFlujo.status === "success")
+			? (mttoConstruirFlujoIncidenciaHtml(respuestaFlujo.data) || '<p class="mtto-grid-vacio">Esta incidencia no tiene historial registrado.</p>')
+			: '<p class="mtto-grid-vacio">No se pudo cargar el flujo de esta incidencia.</p>';
+
+		return $.ajax({
+			url: "ajax/mantenimiento-bitacora-abonos.ajax.php",
+			method: "GET",
+			data: { idMantenimiento: _idMantenimiento },
+			dataType: "json"
+		}).then(function(respuestaAbonos){
+
+			var _htmlAbonos;
+
+			if (respuestaAbonos && respuestaAbonos.status === "success"){
+				var _abonos = respuestaAbonos.data.filter(function(a){
+					return String(a.idMantenimiento) === String(_idMantenimiento);
+				});
+				_htmlAbonos = mttoConstruirTablaAbonosHtml(_abonos) || '<p class="mtto-grid-vacio">Esta incidencia no tiene abonos registrados.</p>';
+			}else{
+				_htmlAbonos = '<p class="mtto-grid-vacio">No se pudieron cargar los abonos.</p>';
+			}
+
+			// El botón "Restaurar" se decide por el estatus ACTUAL de la incidencia (el de
+			// la tarjeta/encabezado), nunca por una fila vieja del flujo: una incidencia que
+			// ya avanzó de vuelta a Pendiente/Proceso/Resuelto no está eliminada ahora mismo,
+			// aunque su historial todavía muestre un renglón "Eliminado" de cuando lo estuvo.
+			var _htmlRestaurar = (_estatusActual === "Eliminado")
+				? '<div class="mtto-grid-restaurar"><button type="button" class="mtto-btn-restaurar btnRestaurarMtto" idMantenimiento="' + _idMantenimiento + '"><i class="fa fa-undo"></i> Restaurar incidencia</button></div>'
+				: '';
+
+			$detalle.html(
+				_htmlRestaurar +
+				'<div class="mtto-grid-detalle-seccion">Flujo de la incidencia</div>' + _htmlFlujo +
+				'<div class="mtto-grid-detalle-seccion">Abonos</div>' + _htmlAbonos
+			);
+		});
+	}).catch(function(){
+		$detalle.html('<p class="mtto-grid-vacio">No se pudo cargar la información de esta incidencia.</p>');
+		$header.attr("data-cargado", "0");
+	});
+});
 
 function mttoCargarHistorial(idHabitacion){
 
@@ -997,23 +1094,38 @@ $(document).on("click", ".btnRestaurarMtto", function(){
 	var _idMantenimiento = $(this).attr("idMantenimiento");
 
 	Swal.fire({
-		title: "Sistema PosDit",
-		text: "¿Restaurar esta incidencia? Volverá a su último estatus antes de eliminarse.",
+		title: "Restaurar incidencia",
+		text: "Volverá a su último estatus antes de eliminarse. Sube una foto como evidencia para poder restaurarla.",
 		icon: "question",
+		input: "file",
+		inputAttributes: { "accept": "image/*", "aria-label": "Foto de evidencia" },
 		showCancelButton: true,
 		confirmButtonColor: "#4c8c5a",
 		cancelButtonColor: "#3f342e",
-		confirmButtonText: "Sí, restaurar",
-		cancelButtonText: "Cancelar"
+		confirmButtonText: "Restaurar",
+		cancelButtonText: "Cancelar",
+		preConfirm: function(archivo){
+			if (!archivo){
+				Swal.showValidationMessage("Debes subir una foto para restaurar la incidencia.");
+			}
+			return archivo;
+		}
 	}).then(function(result){
-		if (!result.isConfirmed) {
+		if (!result.isConfirmed || !result.value) {
 			return;
 		}
+
+		var datos = new FormData();
+		datos.append("idMantenimiento", _idMantenimiento);
+		datos.append("foto", result.value);
 
 		$.ajax({
 			url: "ajax/mantenimiento-restaurar.ajax.php",
 			method: "POST",
-			data: { idMantenimiento: _idMantenimiento },
+			data: datos,
+			cache: false,
+			contentType: false,
+			processData: false,
 			dataType: "json",
 			success: function(respuesta){
 				if (respuesta && respuesta.status === "success") {
