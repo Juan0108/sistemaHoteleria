@@ -66,6 +66,7 @@ $Habitaciones = $ctlReservas->crtObtenerHabitacionesReserva($anioActual, $mesAct
         <div class="reserva-legend">
           <span><i class="reserva-dot reserva-dot-ocupada"></i> Ocupada</span>
           <span><i class="reserva-dot reserva-dot-reservada"></i> Reservada</span>
+          <span><i class="reserva-dot reserva-dot-completada"></i> Finalizada</span>
           <span><i class="reserva-dot reserva-dot-cancelada-estadia"></i> Estadía cancelada</span>
           <span><i class="reserva-dot reserva-dot-cancelada-reserva"></i> Reserva cancelada</span>
         </div>
@@ -222,9 +223,10 @@ $Habitaciones = $ctlReservas->crtObtenerHabitacionesReserva($anioActual, $mesAct
     border-radius:8px;
   }
   .reserva-barra.estado-ocupada{ background:#81412d; }
-  .reserva-barra.estado-reservada{ background:#b96a37; }
+  .reserva-barra.estado-reservada{ background:#C97C64; }
+  .reserva-barra.estado-completada{ background:#635E5B; }
 
-  
+
   .reserva-barra.estado-cancelada-estadia{
     background:repeating-linear-gradient(45deg, #9c8a76, #9c8a76 6px, #b3a48f 6px, #b3a48f 12px);
   }
@@ -252,7 +254,8 @@ $Habitaciones = $ctlReservas->crtObtenerHabitacionesReserva($anioActual, $mesAct
     display:inline-block;
   }
   .reserva-dot-ocupada{ background:#81412d; }
-  .reserva-dot-reservada{ background:#b96a37; }
+  .reserva-dot-reservada{ background:#C97C64; }
+  .reserva-dot-completada{ background:#635E5B; }
   .reserva-dot-cancelada-estadia{ background:repeating-linear-gradient(45deg, #9c8a76, #9c8a76 3px, #b3a48f 3px, #b3a48f 6px); }
   .reserva-dot-cancelada-reserva{ background:repeating-linear-gradient(-45deg, #c9a184, #c9a184 3px, #dbbca3 3px, #dbbca3 6px); }
 </style>

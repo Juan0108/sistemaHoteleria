@@ -1,10 +1,8 @@
-function mostrarCargaServicio(){
-	$("#servOverlay").show();
-}
+// El spinner de carga ahora es global (ver plantilla.php), así que este overlay local ya
+// no se muestra para no encimarse visualmente con el global.
+function mostrarCargaServicio(){}
 
-function ocultarCargaServicio(){
-	$("#servOverlay").hide();
-}
+function ocultarCargaServicio(){}
 
 function escaparHtmlServicio(valor){
 	valor = valor == null ? "" : String(valor);
@@ -117,7 +115,10 @@ function servConsultarActivoYMostrarPaso(idHabitacion){
 
 $(document).ready(function(){
 
-	if ($("#modalRealizarTarea").length === 0){
+	// El modal de "Iniciar limpieza" no se renderiza para el perfil Administrador (no debe
+	// ver ni usar esa acción), pero el historial y sus filtros sí deben seguir funcionando
+	// para ese perfil — por eso el guard usa la tabla de historial, no el modal.
+	if ($("#servHistorialCuerpo").length === 0){
 		return;
 	}
 
@@ -132,6 +133,8 @@ $(document).ready(function(){
 		$("#servPasoInicio").hide();
 		$("#servPasoChecklist").hide();
 		$("#servFinalizar").hide();
+		$("#servFotoInicio").val("");
+		$("#servFotoInicioPreview").hide().attr("src", "");
 
 		$("#modalRealizarTarea").modal("show");
 	});
@@ -149,16 +152,46 @@ $(document).ready(function(){
 		servConsultarActivoYMostrarPaso(idHabitacion);
 	});
 
+	$(document).on("change", "#servFotoInicio", function(){
+
+		var archivo = this.files && this.files[0];
+
+		if (!archivo){
+			$("#servFotoInicioPreview").hide().attr("src", "");
+			return;
+		}
+
+		var lector = new FileReader();
+		lector.onload = function(e){
+			$("#servFotoInicioPreview").attr("src", e.target.result).show();
+		};
+		lector.readAsDataURL(archivo);
+	});
+
 	$(document).on("click", "#servComenzar", function(){
 
 		var idHabitacion = $("#servIdHabitacion").val();
+		var archivo = $("#servFotoInicio")[0].files[0];
+
+		if (!archivo){
+			Swal.fire({ icon: "warning", title: "Falta la foto inicial", text: "Sube una foto antes de comenzar la limpieza." });
+			return;
+		}
+
+		var datos = new FormData();
+		datos.append("accion", "iniciar");
+		datos.append("id_habitacion", idHabitacion);
+		datos.append("fotoInicio", archivo);
 
 		mostrarCargaServicio();
 
 		$.ajax({
 			url: "ajax/servicio.ajax.php",
 			method: "POST",
-			data: { accion: "iniciar", id_habitacion: idHabitacion },
+			data: datos,
+			cache: false,
+			contentType: false,
+			processData: false,
 			dataType: "json",
 			success: function(respuesta){
 				if (respuesta.ok){
@@ -237,6 +270,7 @@ $(document).ready(function(){
 				if (respuesta.ok){
 					$("#modalRealizarTarea").modal("hide");
 					Swal.fire({ icon: "success", title: "Servicio finalizado", timer: 1500, showConfirmButton: false });
+					servCargarHistorial();
 				}else{
 					Swal.fire({ icon: "error", title: "No se pudo finalizar", text: respuesta.mensaje });
 				}
@@ -259,5 +293,101 @@ $(document).ready(function(){
 		$("#servFinalizar").hide();
 		$("#servEvidencia").val("");
 		$("#servEvidenciaPreview").hide().attr("src", "");
+		$("#servFotoInicio").val("");
+		$("#servFotoInicioPreview").hide().attr("src", "");
 	});
+
+	$(document).on("click", ".servVerFoto", function(){
+		$("#servFotoModalTitulo").html('<i class="fa fa-camera"></i> ' + escaparHtmlServicio($(this).data("titulo") || "Foto"));
+		$("#servFotoModalImg").attr("src", $(this).data("foto"));
+		$("#modalFotoServicio").modal("show");
+	});
+
+	$(document).on("change", "#servFiltroHabitacion, #servFiltroFechaDesde, #servFiltroFechaHasta", function(){
+		servAplicarFiltros();
+	});
+
+	$(document).on("click", "#servLimpiarFiltros", function(){
+		$("#servFiltroFechaDesde").val("");
+		$("#servFiltroFechaHasta").val("");
+		servAplicarFiltros();
+	});
+
+	servCargarHistorial();
 });
+
+// Tabla de limpiezas ya finalizadas, debajo del botón "Iniciar limpieza".
+var servHistorialCompleto = [];
+
+function servAplicarFiltros(){
+
+	var idHabitacion = $("#servFiltroHabitacion").val();
+	var fechaDesde = $("#servFiltroFechaDesde").val();
+	var fechaHasta = $("#servFiltroFechaHasta").val();
+
+	var filtrado = servHistorialCompleto.filter(function(s){
+
+		if (idHabitacion && String(s.idHabitacion) !== String(idHabitacion)){
+			return false;
+		}
+
+		if (fechaDesde && (!s.fechaInicioRaw || s.fechaInicioRaw < fechaDesde)){
+			return false;
+		}
+
+		if (fechaHasta && (!s.fechaInicioRaw || s.fechaInicioRaw > fechaHasta)){
+			return false;
+		}
+
+		return true;
+	});
+
+	servPintarHistorial(filtrado);
+}
+
+function servPintarHistorial(lista){
+
+	var $cuerpo = $("#servHistorialCuerpo");
+	$cuerpo.empty();
+
+	if (lista.length === 0){
+		$cuerpo.append('<tr><td colspan="8" class="text-center text-muted" style="padding:15px;">Todavía no hay limpiezas registradas.</td></tr>');
+		return;
+	}
+
+	lista.forEach(function(s, indice){
+		$cuerpo.append(
+			'<tr>' +
+				'<td>' + (indice + 1) + '</td>' +
+				'<td>' + escaparHtmlServicio(s.habitacion) + '</td>' +
+				'<td>' + escaparHtmlServicio(s.usuario) + '</td>' +
+				'<td>' + (s.fechaInicio ? escaparHtmlServicio(s.fechaInicio) : '<span class="serv-sin-dato">—</span>') + '</td>' +
+				'<td>' + (s.fotoInicio ? ('<button type="button" class="serv-ver-foto servVerFoto" data-foto="' + escaparHtmlServicio(s.fotoInicio) + '" data-titulo="Foto inicial">Ver foto</button>') : '<span class="serv-sin-dato">Sin foto</span>') + '</td>' +
+				'<td>' + (s.fechaFin ? escaparHtmlServicio(s.fechaFin) : '<span class="serv-sin-dato">—</span>') + '</td>' +
+				'<td>' + (s.fotoResultado ? ('<button type="button" class="serv-ver-foto servVerFoto" data-foto="' + escaparHtmlServicio(s.fotoResultado) + '" data-titulo="Foto resultado">Ver foto</button>') : '<span class="serv-sin-dato">Sin foto</span>') + '</td>' +
+				'<td>' + (s.tareasRealizadas ? escaparHtmlServicio(s.tareasRealizadas) : '<span class="serv-sin-dato">Ninguna</span>') + '</td>' +
+			'</tr>'
+		);
+	});
+}
+
+function servCargarHistorial(){
+
+	if ($("#servHistorialCuerpo").length === 0){
+		return;
+	}
+
+	$.ajax({
+		url: "ajax/servicio.ajax.php",
+		method: "GET",
+		data: { accion: "historial" },
+		dataType: "json",
+		success: function(respuesta){
+			servHistorialCompleto = respuesta.data || [];
+			servAplicarFiltros();
+		},
+		error: function(){
+			$("#servHistorialCuerpo").html('<tr><td colspan="8" class="text-center text-muted" style="padding:15px;">No se pudo cargar el historial.</td></tr>');
+		}
+	});
+}

@@ -262,7 +262,7 @@ $(document).on("click", ".btnBitacoraIncidencias", function(){
 			var _claseScrollIncidencias = lista.length > 5 ? " mtto-tabla-wrap-incidencias" : "";
 
 			var html = '<div class="mtto-tabla-wrap' + _claseScrollIncidencias + '"><table class="mtto-bitacora-tabla"><thead><tr>' +
-				'<th>Fecha</th><th>Descripción</th><th>Proveedor</th><th>Estatus</th><th>Foto</th><th>Foto resultado</th>' +
+				'<th>Fecha</th><th>Descripción</th><th>Proveedor</th><th>Estatus</th><th>Foto</th>' +
 				'</tr></thead><tbody>';
 
 			lista.forEach(function(i){
@@ -271,8 +271,7 @@ $(document).on("click", ".btnBitacoraIncidencias", function(){
 					'<td>' + celdaTruncadaMtto(i.descripcion) + '</td>' +
 					'<td>' + (i.proveedor ? escaparHtmlMtto(i.proveedor) : '<span class="mtto-bitacora-vacio">Sin especificar</span>') + '</td>' +
 					'<td><span class="mtto-bitacora-estatus ' + claseEstatusBitacoraMtto(i.estatus) + '">' + escaparHtmlMtto(i.estatus) + '</span></td>' +
-					'<td>' + (i.foto ? ('<button type="button" class="mtto-bitacora-ver-foto btnVerFotoBitacora" data-foto="' + escaparHtmlMtto(i.foto) + '" data-titulo="Foto de la incidencia">Ver foto</button>') : '<span class="mtto-bitacora-vacio">Sin foto</span>') + '</td>' +
-					'<td>' + (i.fotoResuelto ? ('<button type="button" class="mtto-bitacora-ver-foto btnVerFotoBitacora" data-foto="' + escaparHtmlMtto(i.fotoResuelto) + '" data-titulo="Foto de cómo quedó resuelta la incidencia">Ver foto</button>') : '<span class="mtto-bitacora-vacio">Sin foto</span>') + '</td>' +
+					'<td>' + (i.foto ? ('<button type="button" class="mtto-bitacora-ver-foto btnVerFotoBitacora" data-foto="' + escaparHtmlMtto(i.foto) + '" data-titulo="Foto de esta acción">Ver foto</button>') : '<span class="mtto-bitacora-vacio">Sin foto</span>') + '</td>' +
 					'</tr>';
 			});
 
@@ -338,7 +337,7 @@ function mttoConstruirTablaAbonosHtml(lista){
 			'<td>' + formatearMontoMtto(a.monto) + '</td>' +
 			'<td>' + escaparHtmlMtto(a.descripcion) + '</td>' +
 			'<td>' + escaparHtmlMtto(a.usuario) + '</td>' +
-			'<td>' + (a.foto ? ('<button type="button" class="mtto-bitacora-ver-foto btnVerFotoBitacora" data-foto="' + escaparHtmlMtto(a.foto) + '" data-titulo="Foto del ticket">Ver foto<\button>') : '<span class="mtto-bitacora-vacio">Sin foto</span>') + '</td>' +
+			'<td>' + (a.foto ? ('<button type="button" class="mtto-bitacora-ver-foto btnVerFotoBitacora" data-foto="' + escaparHtmlMtto(a.foto) + '" data-titulo="Foto del ticket">Ver foto</button>') : '<span class="mtto-bitacora-vacio">Sin foto</span>') + '</td>' +
 			'</tr>';
 	});
 
@@ -498,15 +497,41 @@ $(document).on("change", "input[name='nuevaFechaInicioMtto']", function(){
 /*=============================================
  Cambiar estatus (Iniciar / Marcar resuelto / Reabrir)
  =============================================*/
-function enviarCambioEstatusMtto(idMantenimiento, idEstatus, notaReapertura, fotoResuelto){
-	var _datosEnvio;
+// Igual que el formateo de montos usado en Recepción: agrega comas de miles mientras se
+// escribe, sin dejar de aceptar el punto decimal.
+function formatearMontoMtto(valor){
+	valor = String(valor).replace(/[^\d.]/g, "");
 
-	if (fotoResuelto) {
+	var _puntoIndice = valor.indexOf(".");
+	if (_puntoIndice !== -1) {
+		valor = valor.slice(0, _puntoIndice + 1) + valor.slice(_puntoIndice + 1).replace(/\./g, "");
+	}
+
+	var _partes = valor.split(".");
+	_partes[0] = _partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+	if (_partes.length > 1) {
+		_partes[1] = _partes[1].slice(0, 2);
+	}
+
+	return _partes.join(".");
+}
+
+function enviarCambioEstatusMtto(idMantenimiento, idEstatus, notaReapertura, fotoResuelto, fotoReapertura, presupuestoReapertura){
+	var _datosEnvio;
+	var _llevaArchivo = !!(fotoResuelto || fotoReapertura);
+
+	if (_llevaArchivo) {
 		_datosEnvio = new FormData();
 		_datosEnvio.append("idMantenimiento", idMantenimiento);
 		_datosEnvio.append("idEstatus", idEstatus);
 		_datosEnvio.append("notaReapertura", notaReapertura || "");
-		_datosEnvio.append("fotoResuelto", fotoResuelto);
+		if (fotoResuelto) _datosEnvio.append("fotoResuelto", fotoResuelto);
+		if (fotoReapertura) _datosEnvio.append("fotoReapertura", fotoReapertura);
+		if (presupuestoReapertura) {
+			_datosEnvio.append("costoReapertura", presupuestoReapertura.costo);
+			_datosEnvio.append("fechaInicioReapertura", presupuestoReapertura.fechaInicio);
+			_datosEnvio.append("fechaFinReapertura", presupuestoReapertura.fechaFin);
+		}
 	} else {
 		_datosEnvio = { idMantenimiento: idMantenimiento, idEstatus: idEstatus, notaReapertura: notaReapertura || "" };
 	}
@@ -515,8 +540,8 @@ function enviarCambioEstatusMtto(idMantenimiento, idEstatus, notaReapertura, fot
 		url: "ajax/mantenimiento-cambiar-estatus.ajax.php",
 		method: "POST",
 		data: _datosEnvio,
-		processData: !fotoResuelto,
-		contentType: fotoResuelto ? false : "application/x-www-form-urlencoded; charset=UTF-8",
+		processData: !_llevaArchivo,
+		contentType: _llevaArchivo ? false : "application/x-www-form-urlencoded; charset=UTF-8",
 		dataType: "json",
 		success: function(respuesta){
 			if (respuesta && respuesta.status === "success") {
@@ -547,25 +572,96 @@ $(document).on("click", ".btnCambiarEstatus", function(){
 	var _idEstatus = $(this).attr("idEstatus");
 
 	if (typeof MTTO_ESTATUS_PENDIENTE !== "undefined" && String(_idEstatus) === String(MTTO_ESTATUS_PENDIENTE)) {
+		// Reabrir exige motivo Y una foto nueva (evidencia de por qué se reabre); esa foto
+		// se vuelve la foto activa de la incidencia, así que ya no tiene caso mostrar la
+		// foto de resultado vieja hasta que se vuelva a marcar Resuelto.
+		// El presupuesto (costo + fechas estimadas) del intento anterior ya no aplica a esta
+		// reparación nueva, así que se piden de nuevo aquí en vez de dejarlos con el dato
+		// viejo; las fechas no pueden ser anteriores a hoy.
+		var _hoyIso = new Date().toISOString().slice(0, 10);
+
 		Swal.fire({
 			title: "Sistema PosDit",
-			text: "¿Por qué se vuelve a reabrir esta incidencia?",
+			html:
+				'<div style="text-align:left;">' +
+					'<label style="font-weight:600; display:block; margin-bottom:6px;">¿Por qué se vuelve a reabrir esta incidencia?</label>' +
+					'<textarea id="mttoReaperturaMotivo" class="swal2-textarea" placeholder="Describe el motivo de la reapertura" style="display:block; resize:none; margin:0 0 16px;"></textarea>' +
+					'<label style="font-weight:600; display:block; margin-bottom:6px;">Foto nueva de la incidencia (obligatoria)</label>' +
+					'<input type="file" id="mttoReaperturaFoto" accept="image/*" class="swal2-file" style="margin:0 0 16px;">' +
+					'<label style="font-weight:600; display:block; margin-bottom:6px;">Costo estimado de esta reparación</label>' +
+					'<input type="text" inputmode="decimal" id="mttoReaperturaCosto" class="swal2-input" placeholder="0.00" style="margin:0 0 16px;">' +
+					'<div style="display:flex; gap:10px;">' +
+						'<div style="flex:1;">' +
+							'<label style="font-weight:600; display:block; margin-bottom:6px;">Inicio estimado</label>' +
+							'<input type="date" id="mttoReaperturaFechaInicio" class="swal2-input" style="margin:0;" min="' + _hoyIso + '">' +
+						'</div>' +
+						'<div style="flex:1;">' +
+							'<label style="font-weight:600; display:block; margin-bottom:6px;">Fin estimado</label>' +
+							'<input type="date" id="mttoReaperturaFechaFin" class="swal2-input" style="margin:0;" min="' + _hoyIso + '">' +
+						'</div>' +
+					'</div>' +
+				'</div>',
 			icon: "question",
-			input: "textarea",
-			inputPlaceholder: "Describe el motivo de la reapertura",
-			inputValidator: function(value){
-				if (!value || !value.trim()) {
-					return "Debes escribir el motivo de la reapertura";
-				}
-			},
 			showCancelButton: true,
 			confirmButtonColor: "#81412d",
 			cancelButtonColor: "#3f342e",
 			confirmButtonText: "Reabrir",
-			cancelButtonText: "Cancelar"
+			cancelButtonText: "Cancelar",
+			didOpen: function(){
+				// Formatea el costo con comas de miles mientras se escribe (igual que en el
+				// resto del sistema), y evita que "Fin estimado" quede antes de "Inicio".
+				document.getElementById("mttoReaperturaCosto").addEventListener("input", function(){
+					this.value = formatearMontoMtto(this.value);
+				});
+				document.getElementById("mttoReaperturaFechaInicio").addEventListener("change", function(){
+					document.getElementById("mttoReaperturaFechaFin").min = this.value || _hoyIso;
+				});
+			},
+			preConfirm: function(){
+				var _motivo = document.getElementById("mttoReaperturaMotivo").value.trim();
+				var _archivo = document.getElementById("mttoReaperturaFoto").files[0];
+				var _costo = desformatearPrecio(document.getElementById("mttoReaperturaCosto").value) || 0;
+				var _fechaInicio = document.getElementById("mttoReaperturaFechaInicio").value;
+				var _fechaFin = document.getElementById("mttoReaperturaFechaFin").value;
+
+				if (!_motivo) {
+					Swal.showValidationMessage("Debes escribir el motivo de la reapertura");
+					return false;
+				}
+				if (!_archivo) {
+					Swal.showValidationMessage("Debes adjuntar una foto para reabrir la incidencia");
+					return false;
+				}
+				if (_archivo.size > 3 * 1024 * 1024) {
+					Swal.showValidationMessage("La foto no puede pesar más de 3MB");
+					return false;
+				}
+				if (_costo <= 0) {
+					Swal.showValidationMessage("Captura el costo estimado de la reparación");
+					return false;
+				}
+				if (!_fechaInicio || !_fechaFin) {
+					Swal.showValidationMessage("Captura las fechas estimadas de la reparación");
+					return false;
+				}
+				if (_fechaInicio < _hoyIso || _fechaFin < _hoyIso) {
+					Swal.showValidationMessage("Las fechas estimadas no pueden ser anteriores a hoy");
+					return false;
+				}
+				if (_fechaFin < _fechaInicio) {
+					Swal.showValidationMessage("La fecha de fin estimada no puede ser anterior a la de inicio");
+					return false;
+				}
+
+				return {
+					motivo: _motivo,
+					foto: _archivo,
+					presupuesto: { costo: _costo, fechaInicio: _fechaInicio, fechaFin: _fechaFin }
+				};
+			}
 		}).then(function(result){
 			if (result.isConfirmed) {
-				enviarCambioEstatusMtto(_idMantenimiento, _idEstatus, result.value.trim());
+				enviarCambioEstatusMtto(_idMantenimiento, _idEstatus, result.value.motivo, null, result.value.foto, result.value.presupuesto);
 			}
 		});
 		return;
@@ -838,18 +934,13 @@ function mttoConstruirFlujoIncidenciaHtml(lista){
 	}
 
 	var html = '<div class="mtto-tabla-wrap"><table class="mtto-bitacora-tabla"><thead><tr>' +
-		'<th>Fecha</th><th>Descripción</th><th>Proveedor</th><th>Estatus</th><th>Nota</th><th>Motivo de eliminación</th><th>Foto de la acción</th><th>Foto incidencia</th><th>Foto resultado</th>' +
+		'<th>Fecha</th><th>Descripción</th><th>Proveedor</th><th>Estatus</th><th>Restauradas</th><th>Motivo de eliminación</th><th>Foto</th>' +
 		'</tr></thead><tbody>';
 
-	lista.forEach(function(i, indice){
-		// "Foto incidencia" y "Foto resultado" viven en columnas fijas de la incidencia (no
-		// por transición), así que solo tiene sentido mostrarlas en el renglón al que
-		// cronológicamente corresponden: el registro inicial y el momento en que se resolvió.
-		// En cualquier otro renglón se deja "—" (no "Sin foto", para no dar a entender que a
-		// esa transición específica le faltó una foto que nunca le tocaba tener).
-		var _esRegistroInicial = indice === 0;
-		var _esResuelto = i.estatus === "Resuelto";
-
+	lista.forEach(function(i){
+		// La foto es la propia de ESTE renglón/evento (guardada en el historial al
+		// registrar, reabrir, resolver o restaurar) — ya no una columna fija de la
+		// incidencia, así que cada transición muestra exactamente su propia evidencia.
 		html += '<tr>' +
 			'<td>' + escaparHtmlMtto(i.fecha) + '</td>' +
 			'<td>' + celdaTruncadaMtto(i.descripcion) + '</td>' +
@@ -857,9 +948,7 @@ function mttoConstruirFlujoIncidenciaHtml(lista){
 			'<td><span class="mtto-bitacora-estatus ' + claseEstatusBitacoraMtto(i.estatus) + '">' + escaparHtmlMtto(i.estatus) + '</span></td>' +
 			'<td>' + (i.nota ? celdaTruncadaMtto(i.nota) : '<span class="mtto-bitacora-vacio">—</span>') + '</td>' +
 			'<td>' + (i.motivoEliminado ? escaparHtmlMtto(i.motivoEliminado) : '<span class="mtto-bitacora-vacio">—</span>') + '</td>' +
-			'<td>' + (i.fotoAccion ? ('<button type="button" class="mtto-bitacora-ver-foto btnVerFotoBitacora" data-foto="' + escaparHtmlMtto(i.fotoAccion) + '" data-titulo="Foto de esta acción">Ver foto</button>') : '<span class="mtto-bitacora-vacio">Sin foto</span>') + '</td>' +
-			'<td>' + (!_esRegistroInicial ? '<span class="mtto-bitacora-vacio">—</span>' : (i.foto ? ('<button type="button" class="mtto-bitacora-ver-foto btnVerFotoBitacora" data-foto="' + escaparHtmlMtto(i.foto) + '" data-titulo="Foto de la incidencia">Ver foto</button>') : '<span class="mtto-bitacora-vacio">Sin foto</span>')) + '</td>' +
-			'<td>' + (!_esResuelto ? '<span class="mtto-bitacora-vacio">—</span>' : (i.fotoResuelto ? ('<button type="button" class="mtto-bitacora-ver-foto btnVerFotoBitacora" data-foto="' + escaparHtmlMtto(i.fotoResuelto) + '" data-titulo="Foto de cómo quedó resuelta la incidencia">Ver foto</button>') : '<span class="mtto-bitacora-vacio">Sin foto</span>')) + '</td>' +
+			'<td>' + (i.foto ? ('<button type="button" class="mtto-bitacora-ver-foto btnVerFotoBitacora" data-foto="' + escaparHtmlMtto(i.foto) + '" data-titulo="Foto de esta acción">Ver foto</button>') : '<span class="mtto-bitacora-vacio">Sin foto</span>') + '</td>' +
 			'</tr>';
 	});
 

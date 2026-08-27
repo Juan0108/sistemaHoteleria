@@ -143,6 +143,19 @@ class ModeloReservaciones{
 		return $stmt->fetch();
 	}
 
+	// Registra UNA línea de pago (de las N que puede tener un Check Out dividido) en el
+	// detalle Tb_PagosReservacion. Se llama una vez por cada método de pago capturado.
+	static public function MdlInsertarPagoReservacion($id_reservacion, $id_hotel, $id_tipo_pago, $monto, $referencia){
+		$stmt = Conexion::conectar()->prepare("CALL InsertarPagoReservacion(:id_reservacion, :id_hotel, :id_tipo_pago, :monto, :referencia)");
+		$stmt->bindParam(":id_reservacion", $id_reservacion);
+		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
+		$stmt->bindParam(":id_tipo_pago", $id_tipo_pago, PDO::PARAM_INT);
+		$stmt->bindParam(":monto", $monto);
+		$stmt->bindParam(":referencia", $referencia);
+		$stmt->execute();
+		return $stmt->fetch();
+	}
+
 	// Catálogo de formas de pago para el modal de Check Out.
 	static public function MdlObtenerTiposDePago(){
 		$stmt = Conexion::conectar()->prepare("CALL ObtenerTiposDePago()");

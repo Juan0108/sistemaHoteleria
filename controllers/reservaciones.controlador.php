@@ -37,9 +37,8 @@ class ControladorReservaciones{
 		$id_habitacion = isset($datos["id_habitacion"]) ? (int) $datos["id_habitacion"] : 0;
 		$fecha_entrada = isset($datos["fecha_entrada"]) ? trim($datos["fecha_entrada"]) : "";
 		$fecha_salida = isset($datos["fecha_salida"]) ? trim($datos["fecha_salida"]) : "";
-		$precio = isset($datos["precio"]) ? (float) $datos["precio"] : 0;
 
-		if($id_habitacion <= 0 || $fecha_entrada === "" || $fecha_salida === "" || $precio <= 0){
+		if($id_habitacion <= 0 || $fecha_entrada === "" || $fecha_salida === ""){
 			return ["ok" => false, "mensaje" => "Faltan datos de la reservación."];
 		}
 
@@ -52,6 +51,29 @@ class ControladorReservaciones{
 		if(strtotime(date("Y-m-d", strtotime($fecha_entrada))) < strtotime(date("Y-m-d"))){
 			return ["ok" => false, "mensaje" => "La fecha de entrada no puede ser en el pasado."];
 		}
+
+		// El precio nunca se toma de lo que mande el navegador: si la pestaña de Recepción
+		// llevaba rato abierta, seguiría mandando el precio con el que cargó la página, aunque
+		// alguien ya lo haya cambiado desde Administrar Habitaciones. Se recalcula aquí con el
+		// PrecioNoche VIGENTE de la habitación, multiplicado por las mismas noches que ya
+		// mostraba el formulario (mismo cálculo que nrCalcularPrecio en recepcion.js).
+		$habitacionActual = null;
+		foreach(ControladorHabitaciones::crtObtenerHabitaciones() as $hab){
+			if((int) $hab["Id_Habitacion"] === $id_habitacion){
+				$habitacionActual = $hab;
+				break;
+			}
+		}
+
+		if($habitacionActual === null){
+			return ["ok" => false, "mensaje" => "La habitación seleccionada ya no existe."];
+		}
+
+		$noches = (int) ceil((strtotime($fecha_salida) - strtotime($fecha_entrada)) / 86400);
+		if($noches < 1){
+			$noches = 1;
+		}
+		$precio = $noches * (float) $habitacionActual["PrecioNoche"];
 
 		// Normaliza el datetime-local del formulario ("2026-08-15T14:30") al formato de MySQL.
 		$fecha_entrada = date("Y-m-d H:i:s", strtotime($fecha_entrada));
@@ -281,11 +303,69 @@ class ControladorReservaciones{
 		return ModeloReservaciones::MdlObtenerMotivosCancelacion();
 	}
 
+	// Valida una lista de pagos [{idTipoPago, monto, referencia}, ...] contra el total real
+	// de la estadía (recalculado en servidor, nunca confiando en lo que mande el cliente):
+	// cada línea necesita tipo y monto válidos, y la suma debe cuadrar con el total. Regresa
+	// ["ok" => true, "pagos" => [...]] normalizado, o ["ok" => false, "mensaje" => ...].
+	private static function crtValidarPagosCheckout($pagos, $reservacion, $id_reservacion){
+		if(!is_array($pagos) || count($pagos) === 0){
+			return ["ok" => false, "mensaje" => "Captura al menos un método de pago."];
+		}
+
+		$pagosValidados = [];
+		$suma = 0;
+
+		foreach($pagos as $pago){
+			$idTipoPago = isset($pago["idTipoPago"]) ? (int) $pago["idTipoPago"] : 0;
+			$monto = isset($pago["monto"]) ? (float) $pago["monto"] : 0;
+			$referencia = isset($pago["referencia"]) ? trim((string) $pago["referencia"]) : "";
+
+			if($idTipoPago <= 0){
+				return ["ok" => false, "mensaje" => "Selecciona un tipo de pago en cada línea."];
+			}
+
+			if($monto <= 0){
+				return ["ok" => false, "mensaje" => "Captura un monto mayor a cero en cada línea de pago."];
+			}
+
+			if($referencia !== "" && mb_strlen($referencia) < 5){
+				return ["ok" => false, "mensaje" => "La referencia debe tener al menos 5 caracteres."];
+			}
+
+			$pagosValidados[] = ["idTipoPago" => $idTipoPago, "monto" => $monto, "referencia" => $referencia];
+			$suma += $monto;
+		}
+
+		$consumo = ModeloReservaciones::MdlObtenerConsumoReservacion($id_reservacion);
+		$totalConsumo = 0;
+		foreach($consumo as $item){
+			$totalConsumo += (float) $item["Total"];
+		}
+		$total = ($reservacion ? (float) $reservacion["PrecioReservacion"] : 0) + $totalConsumo;
+
+		if(abs($total - $suma) >= 0.01){
+			return ["ok" => false, "mensaje" => "Lo capturado (\$" . number_format($suma, 2) . ") no coincide con el total a cobrar (\$" . number_format($total, 2) . ")."];
+		}
+
+		return ["ok" => true, "pagos" => $pagosValidados];
+	}
+
+	// La columna Referencia de Tb_Reservaciones es un solo texto: con pago dividido se
+	// concatenan las referencias de TODAS las líneas que sí traen una (Efectivo normalmente
+	// no trae), separadas por coma, para que sigan siendo visibles en la base de datos.
+	private static function crtCombinarReferenciasCheckout($pagosValidados){
+		$referencias = array_filter(array_column($pagosValidados, "referencia"), function($referencia){
+			return $referencia !== "";
+		});
+
+		return implode(", ", $referencias);
+	}
+
 	// Completa el Check Out de una reservación Ocupada (pasa a Id_Estatus=20, Completada),
-	// liberando la habitación, guarda el tipo de pago + referencia capturados en el modal, y
+	// liberando la habitación, guarda el pago (uno o varios métodos) capturado en el modal, y
 	// carga el precio del hospedaje como un renglón real de Tb_Consumo (producto virtual
 	// "Hospedaje", mismo patrón que "HrsExtra"/"HRSANTICIPADA").
-	static public function crtCompletarCheckout($id_reservacion, $id_tipo_pago, $referencia){
+	static public function crtCompletarCheckout($id_reservacion, $pagos){
 		$id_hotel = ControladorHabitaciones::crtObtenerIdHotelSesion();
 
 		if($id_hotel === null){
@@ -293,30 +373,35 @@ class ControladorReservaciones{
 		}
 
 		$id_reservacion = trim((string) $id_reservacion);
-		$id_tipo_pago = (int) $id_tipo_pago;
-		$referencia = trim((string) $referencia);
 
 		if($id_reservacion === ""){
 			return ["ok" => false, "mensaje" => "Falta la reservación."];
-		}
-
-		if($id_tipo_pago <= 0){
-			return ["ok" => false, "mensaje" => "Selecciona un tipo de pago."];
-		}
-
-		if($referencia !== "" && mb_strlen($referencia) < 5){
-			return ["ok" => false, "mensaje" => "La referencia debe tener al menos 5 caracteres."];
 		}
 
 		// Se necesita el precio de hospedaje y el cliente ANTES de mover el estatus, porque
 		// una vez Completada, ObtenerReservacionParaCheckout ya no la va a encontrar.
 		$reservacion = ModeloReservaciones::MdlObtenerReservacionParaCheckout($id_reservacion, $id_hotel);
 
-		$resultado = ModeloReservaciones::MdlCompletarCheckout($id_reservacion, $id_hotel, $id_tipo_pago, $referencia);
+		$validacion = self::crtValidarPagosCheckout($pagos, $reservacion, $id_reservacion);
+		if(!$validacion["ok"]){
+			return $validacion;
+		}
+		$pagosValidados = $validacion["pagos"];
+
+		// Las columnas Id_TipoDePago/Referencia de la reservación (usadas por reportes
+		// existentes) se quedan con el tipo de pago "principal" (el primero) y con TODAS las
+		// referencias combinadas; el detalle línea por línea vive en Tb_PagosReservacion.
+		$principal = $pagosValidados[0];
+		$referenciasCombinadas = self::crtCombinarReferenciasCheckout($pagosValidados);
+		$resultado = ModeloReservaciones::MdlCompletarCheckout($id_reservacion, $id_hotel, $principal["idTipoPago"], $referenciasCombinadas);
 		$afectados = $resultado ? (int) $resultado["Afectados"] : 0;
 
 		if($afectados === 0){
 			return ["ok" => false, "mensaje" => "Esta reservación ya no está en estado Ocupado."];
+		}
+
+		foreach($pagosValidados as $pago){
+			ModeloReservaciones::MdlInsertarPagoReservacion($id_reservacion, $id_hotel, $pago["idTipoPago"], $pago["monto"], $pago["referencia"]);
 		}
 
 		self::crtCargarHospedajeComoConsumo($id_reservacion, $reservacion);
@@ -358,9 +443,9 @@ class ControladorReservaciones{
 	}
 
 	// Cancela la estadía Ocupada de una habitación Y hace, además, el Check Out: guarda el
-	// tipo de pago/referencia y cobra el hospedaje como consumo, igual que un Check Out
+	// pago (uno o varios métodos) y cobra el hospedaje como consumo, igual que un Check Out
 	// normal (una estadía cancelada a medio camino sigue debiendo esa cuenta).
-	static public function crtCancelarEstadiaConCheckout($id_reservacion, $id_motivo, $id_tipo_pago, $referencia){
+	static public function crtCancelarEstadiaConCheckout($id_reservacion, $id_motivo, $pagos){
 		$id_hotel = ControladorHabitaciones::crtObtenerIdHotelSesion();
 
 		if($id_hotel === null){
@@ -368,23 +453,19 @@ class ControladorReservaciones{
 		}
 
 		$id_reservacion = trim((string) $id_reservacion);
-		$id_tipo_pago = (int) $id_tipo_pago;
-		$referencia = trim((string) $referencia);
 
 		if($id_reservacion === ""){
 			return ["ok" => false, "mensaje" => "Falta la reservación."];
 		}
 
-		if($id_tipo_pago <= 0){
-			return ["ok" => false, "mensaje" => "Selecciona un tipo de pago."];
-		}
-
-		if($referencia !== "" && mb_strlen($referencia) < 5){
-			return ["ok" => false, "mensaje" => "La referencia debe tener al menos 5 caracteres."];
-		}
-
 		// Se necesita ANTES de cancelar, igual que en el Check Out normal.
 		$reservacion = ModeloReservaciones::MdlObtenerReservacionParaCheckout($id_reservacion, $id_hotel);
+
+		$validacion = self::crtValidarPagosCheckout($pagos, $reservacion, $id_reservacion);
+		if(!$validacion["ok"]){
+			return $validacion;
+		}
+		$pagosValidados = $validacion["pagos"];
 
 		$resultadoCancelacion = self::crtCancelarReservacion($id_reservacion, $id_motivo);
 
@@ -392,7 +473,14 @@ class ControladorReservaciones{
 			return $resultadoCancelacion;
 		}
 
-		ModeloReservaciones::MdlGuardarPagoReservacion($id_reservacion, $id_hotel, $id_tipo_pago, $referencia);
+		$principal = $pagosValidados[0];
+		$referenciasCombinadas = self::crtCombinarReferenciasCheckout($pagosValidados);
+		ModeloReservaciones::MdlGuardarPagoReservacion($id_reservacion, $id_hotel, $principal["idTipoPago"], $referenciasCombinadas);
+
+		foreach($pagosValidados as $pago){
+			ModeloReservaciones::MdlInsertarPagoReservacion($id_reservacion, $id_hotel, $pago["idTipoPago"], $pago["monto"], $pago["referencia"]);
+		}
+
 		self::crtCargarHospedajeComoConsumo($id_reservacion, $reservacion);
 
 		return [

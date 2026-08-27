@@ -186,6 +186,11 @@ $(document).on("submit", "#formEditarUsuario", function(e){
 
 	e.preventDefault();
 
+	// El <select> de Colonia perdió su "required" nativo (se oculta cuando el municipio no
+	// tiene catálogo); validarColoniaFormulario está definida en hoteles.js, que se carga
+	// en todas las páginas.
+	if (!validarColoniaFormulario("editarCbcolonia")) return;
+
 	var datos = new FormData(this);
 
 	$.ajax({

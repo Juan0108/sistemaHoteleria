@@ -273,7 +273,33 @@ $(document).ready(function(){
 
   })
 
+ // El <select> de Colonia perdió su "required" nativo (se oculta cuando el municipio no
+ // tiene catálogo), así que se revalida aquí a mano antes de dejar avanzar el envío,
+ // tanto si se eligió del combo como si se escribió a mano en el campo de texto libre.
+ $("#modalAgregarHotel form, #modalAgregarUsuario form").on("submit", function(e){
+ 	if (!validarColoniaFormulario("cbcolonia")) e.preventDefault();
+ });
+ $("#modalEditarHotel form").on("submit", function(e){
+ 	if (!validarColoniaFormulario("editarCbcolonia")) e.preventDefault();
+ });
+
 })
+
+// Compartida entre los formularios de Agregar/Editar Hotel y Agregar Usuario.
+function validarColoniaFormulario(prefijoSelect){
+	var $select = $("#" + prefijoSelect);
+	var $texto = $("#" + prefijoSelect + "Texto");
+
+	if ($select.is(":visible") && !$select.val()){
+		Swal.fire({ icon: "warning", title: "Falta la colonia", text: "Selecciona una colonia." });
+		return false;
+	}
+	if ($texto.is(":visible") && !$.trim($texto.val())){
+		Swal.fire({ icon: "warning", title: "Falta la colonia", text: "Escribe el nombre de la colonia." });
+		return false;
+	}
+	return true;
+}
 
 /*Llenado de combox aislado en una funcion para su reutilizacion
 en modales de actualizacion*/
@@ -413,7 +439,14 @@ function CargarCbMunicipio(id, select, seleccionar = false, valor = null){
 
 /*Llenado de combox aislado en una funcion para su reutilizacion
 en modales de actualizacion*/
+// El catálogo cat_colonias solo cubre un puñado de municipios (dato incompleto, no un bug
+// de la consulta); cuando no trae nada para el municipio elegido, se cambia el <select> por
+// un <input> de texto libre (id + "Texto") para no bloquear el formulario, y el Código
+// Postal (que normalmente se autocompletaba al elegir la colonia) se vuelve editable a mano.
 function CargarCbColonia(id, select, seleccionar = false, valor = null){
+
+	var campoTexto = select + "Texto";
+	var campoCP = (select.indexOf("editar") === 0) ? "editarCodigoPostal" : "CodigoPostal";
 
 	$.ajax({
       type: 'POST',
@@ -421,9 +454,9 @@ function CargarCbColonia(id, select, seleccionar = false, valor = null){
       data: {'id': id}
     })
     .done(function(Colonias){
-      
+
 		var jsonData = (typeof Colonias === 'string') ? JSON.parse(Colonias) : Colonias;
-		
+
 		// Verificamos si los datos vienen directamente en un array o dentro de jsonData.Colonias
 		var lista = jsonData.Colonias || jsonData.data || jsonData;
 
@@ -431,7 +464,9 @@ function CargarCbColonia(id, select, seleccionar = false, valor = null){
 
 			// Limpiamos el combo antes de llenarlo para no acumular opciones duplicadas
 			// cada vez que se abre el modal de edición.
-			$("#"+select).empty();
+			$("#"+select).empty().show();
+			$("#"+campoTexto).hide().val("");
+			$("#"+campoCP).prop("readonly", true);
 
 			for (var i = 0; i < lista.length; i++) {
 			    var counter = lista[i];
@@ -444,7 +479,9 @@ function CargarCbColonia(id, select, seleccionar = false, valor = null){
 				$("#"+select).val(valor);
 			}
 		} else {
-			console.warn("No se devolvieron colonias para el municipio con ID:", id);
+			$("#"+select).empty().hide().val("");
+			$("#"+campoTexto).show();
+			$("#"+campoCP).prop("readonly", false);
 		}
     })
     .fail(function(err){

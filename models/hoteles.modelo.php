@@ -396,6 +396,22 @@ static public function MdlJsonObtenerColonias($valor){
 }
 
 /**
+Da de alta una colonia escrita a mano (cuando el catálogo cat_colonias no tiene ninguna
+para el municipio elegido) o reutiliza la que ya exista con ese mismo nombre, para no
+duplicar filas cada vez que alguien la vuelve a escribir.
+ */
+static public function MdlInsertarColoniaSiNoExiste($id_municipio, $nombre, $codigo_postal){
+
+	$stmt = Conexion::conectar()->prepare("CALL InsertarColoniaSiNoExiste(:id_municipio, :nombre, :codigo_postal)");
+	$stmt->bindParam(":id_municipio", $id_municipio, PDO::PARAM_INT);
+	$stmt->bindParam(":nombre", $nombre);
+	$stmt->bindParam(":codigo_postal", $codigo_postal);
+	$stmt->execute();
+	return $stmt->fetch();
+
+}
+
+/**
 Obtener Codigo Postal
  */
 static public function MdlObtenerCodigoPostal($valor){

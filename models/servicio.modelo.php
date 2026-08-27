@@ -13,12 +13,13 @@ class ModeloServicio{
 		return $stmt->fetch();
 	}
 
-	static public function MdlIniciarServicio($id_habitacion, $id_hotel, $id_usuario, $id_estatus_activo){
-		$stmt = Conexion::conectar()->prepare("CALL IniciarServicio(:id_habitacion, :id_hotel, :id_usuario, :id_estatus_activo)");
+	static public function MdlIniciarServicio($id_habitacion, $id_hotel, $id_usuario, $id_estatus_activo, $foto_inicio){
+		$stmt = Conexion::conectar()->prepare("CALL IniciarServicio(:id_habitacion, :id_hotel, :id_usuario, :id_estatus_activo, :foto_inicio)");
 		$stmt->bindParam(":id_habitacion", $id_habitacion, PDO::PARAM_INT);
 		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
 		$stmt->bindParam(":id_usuario", $id_usuario, PDO::PARAM_INT);
 		$stmt->bindParam(":id_estatus_activo", $id_estatus_activo, PDO::PARAM_INT);
+		$stmt->bindParam(":foto_inicio", $foto_inicio);
 		$stmt->execute();
 		return $stmt->fetch();
 	}
@@ -57,11 +58,11 @@ class ModeloServicio{
 		return $stmt->fetchAll();
 	}
 
-	static public function MdlObtenerServiciosPorMes($id_hotel, $anio, $mes){
-		$stmt = Conexion::conectar()->prepare("CALL ObtenerServiciosPorMes(:id_hotel, :anio, :mes)");
+	// Historial de limpiezas ya finalizadas (Id_Estatus=22), con las tareas que sí se
+	// marcaron como realizadas resumidas en un solo texto.
+	static public function MdlObtenerHistorialServicios($id_hotel){
+		$stmt = Conexion::conectar()->prepare("CALL ObtenerHistorialServicios(:id_hotel)");
 		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
-		$stmt->bindParam(":anio", $anio, PDO::PARAM_INT);
-		$stmt->bindParam(":mes", $mes, PDO::PARAM_INT);
 		$stmt->execute();
 		return $stmt->fetchAll();
 	}

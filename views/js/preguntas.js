@@ -1,10 +1,8 @@
-function mostrarCargaPreguntas(){
-	$("#pregOverlay").show();
-}
+// El spinner de carga ahora es global (ver plantilla.php), así que este overlay local ya
+// no se muestra para no encimarse visualmente con el global.
+function mostrarCargaPreguntas(){}
 
-function ocultarCargaPreguntas(){
-	$("#pregOverlay").hide();
-}
+function ocultarCargaPreguntas(){}
 
 function refrescarTablaPreguntas(){
 

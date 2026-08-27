@@ -185,9 +185,33 @@ class ModeloMantenimiento{
 		return $stmt->fetch();
 	}
 
+	// Guarda el costo/fechas estimadas recapturados al Reabrir (el presupuesto del intento
+	// anterior ya no aplica a la reparación nueva).
+	static public function MdlActualizarPresupuestoReapertura($id_mantenimiento, $id_hotel, $costo, $fecha_inicio_estimado, $fecha_fin_estimado){
+		$stmt = Conexion::conectar()->prepare("CALL ActualizarPresupuestoReapertura(:id_mantenimiento, :id_hotel, :costo, :fecha_inicio_estimado, :fecha_fin_estimado)");
+		$stmt->bindParam(":id_mantenimiento", $id_mantenimiento, PDO::PARAM_INT);
+		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
+		$stmt->bindParam(":costo", $costo);
+		$stmt->bindParam(":fecha_inicio_estimado", $fecha_inicio_estimado);
+		$stmt->bindParam(":fecha_fin_estimado", $fecha_fin_estimado);
+		$stmt->execute();
+		return $stmt->fetch();
+	}
+
 	// Guarda la foto de cómo quedó la incidencia ya reparada, capturada al presionar "Marcar resuelto"
 	static public function MdlActualizarFotoResuelta($id_mantenimiento, $id_hotel, $foto){
 		$stmt = Conexion::conectar()->prepare("CALL ActualizarFotoResuelta(:id_mantenimiento, :id_hotel, :foto)");
+		$stmt->bindParam(":id_mantenimiento", $id_mantenimiento, PDO::PARAM_INT);
+		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
+		$stmt->bindParam(":foto", $foto);
+		$stmt->execute();
+		return $stmt->fetch();
+	}
+
+	// Guarda la foto obligatoria de una reapertura: se vuelve la foto activa de la
+	// incidencia y limpia la foto de resultado (ya no aplica, no está Resuelta).
+	static public function MdlActualizarFotoReapertura($id_mantenimiento, $id_hotel, $foto){
+		$stmt = Conexion::conectar()->prepare("CALL ActualizarFotoReapertura(:id_mantenimiento, :id_hotel, :foto)");
 		$stmt->bindParam(":id_mantenimiento", $id_mantenimiento, PDO::PARAM_INT);
 		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
 		$stmt->bindParam(":foto", $foto);

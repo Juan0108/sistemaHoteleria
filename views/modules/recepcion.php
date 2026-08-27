@@ -297,13 +297,12 @@ function armarTooltipMantenimientoRecepcion($descripciones){
         <input type="hidden" id="coIdMotivoCancelacion">
 
         <div class="co-seccion">
-          <h5 class="co-seccion-titulo">Preguntas</h5>
-          <div class="co-preguntas-scroll">
-            <table class="table co-tabla-preguntas">
-              <tbody id="coPreguntasCuerpo">
-                <tr><td class="text-center text-muted" style="padding:15px;">Cargando…</td></tr>
-              </tbody>
-            </table>
+          <h5 class="co-seccion-titulo co-seccion-colapsable" id="coPreguntasToggle">
+            Preguntas
+            <i class="fa fa-chevron-up co-seccion-chevron" id="coPreguntasChevron"></i>
+          </h5>
+          <div class="co-preguntas-grid" id="coPreguntasCuerpo">
+            <div class="co-pregunta-vacio text-center text-muted">Cargando…</div>
           </div>
         </div>
 
@@ -325,23 +324,21 @@ function armarTooltipMantenimientoRecepcion($descripciones){
         <div class="co-seccion">
           <h5 class="co-seccion-titulo">Cobro</h5>
           <span id="coTotalPagar" style="display:none;">0.00</span>
+          <div class="co-cobro-total">Total a cobrar: $<span id="coTotalPagarTexto">0.00</span></div>
 
-          <div class="cv-campo" style="margin-top:14px;">
-            <label for="coTipoPago">Tipo de pago</label>
-            <select class="form-control" id="coTipoPago">
-              <option value="">-- Selecciona una opción --</option>
-            </select>
-          </div>
-          <div class="cv-campo" id="coReferenciaGrupo" style="margin-top:10px; display:none;">
-            <label for="coReferencia">Referencia</label>
-            <input type="text" class="form-control" id="coReferencia" placeholder="Número de autorización, folio, etc." autocomplete="off" minlength="5">
-          </div>
+          <div class="co-lineas-pago" id="coLineasPago"></div>
 
-          <div class="co-monto-recibido-grupo">
-            <label for="coMontoRecibido">Monto recibido</label>
-            <input type="text" inputmode="decimal" class="form-control" id="coMontoRecibido" placeholder="0.00" autocomplete="off">
+          <button type="button" class="co-btn-agregar-pago" id="coAgregarLineaPago">
+            <i class="fa fa-plus"></i> Agregar otro método de pago
+          </button>
+
+          <div class="co-cobertura" id="coCobertura" style="display:none;"></div>
+
+          <div class="co-monto-recibido-grupo" id="coEfectivoGrupo" style="display:none;">
+            <label for="coMontoRecibido">Efectivo recibido</label>
+            <input type="text" class="form-control" id="coMontoRecibido" readonly tabindex="-1">
           </div>
-          <div class="co-cobro-linea co-cobro-cambio">Cambio: $<span id="coCambio">0.00</span></div>
+          <div class="co-cobro-linea co-cobro-cambio" id="coCambioGrupo" style="display:none;">Cambio: $<span id="coCambio">0.00</span></div>
         </div>
       </div>
       <div class="modal-footer">
@@ -1107,17 +1104,35 @@ function armarTooltipMantenimientoRecepcion($descripciones){
     border-bottom:1px solid #eee3d2;
     padding-bottom:6px;
   }
-  .co-preguntas-scroll{
-    max-height:230px;
-    overflow-y:auto;
-    border:1px solid #eee3d2;
-    border-radius:8px;
+  .co-seccion-colapsable{
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    user-select:none;
   }
-  .co-tabla-preguntas{ margin-bottom:0; }
-  .co-tabla-preguntas td{ vertical-align:middle; border-top:1px solid #f4efe4; }
-  .co-tabla-preguntas tr:first-child td{ border-top:none; }
-  .co-preg-num{ width:30px; color:#9c8a76; font-weight:700; }
-  .co-preg-toggle{ width:70px; text-align:right; }
+  .co-seccion-chevron{ color:#8d7a68; transition:transform .2s ease; }
+  .co-seccion-chevron.co-colapsado{ transform:rotate(180deg); }
+  .co-preguntas-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));
+    gap:8px;
+    max-height:260px;
+    overflow-y:auto;
+    padding:2px;
+  }
+  .co-pregunta-item{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    background:#f4efe4;
+    border:1px solid #eee3d2;
+    border-radius:9px;
+    padding:9px 11px;
+  }
+  .co-pregunta-texto{ font-size:13px; color:#3f342e; }
+  .co-pregunta-num{ color:#9c8a76; font-weight:700; margin-right:4px; }
   .co-consumo-scroll{
     max-height:200px;
     overflow-y:auto;
@@ -1156,6 +1171,12 @@ function armarTooltipMantenimientoRecepcion($descripciones){
     width:130px;
     text-align:right;
   }
+  .co-monto-recibido-grupo .form-control[readonly]{
+    background:#f4efe4;
+    color:#5c4a3a;
+    font-weight:700;
+    cursor:default;
+  }
   #modalCheckOut .cv-campo .form-control,
   #modalCheckOut .co-monto-recibido-grupo .form-control{
     border-radius:8px;
@@ -1170,13 +1191,73 @@ function armarTooltipMantenimientoRecepcion($descripciones){
     font-weight:800;
     color:#3f342e;
     font-size:16px;
-    border-top:1px solid #eee3d2;
-    padding-top:8px;
-    margin-top:8px;
+    margin-bottom:12px;
   }
   .co-cobro-cambio{
     font-weight:800;
     color:#4c8c5a;
     font-size:16px;
   }
+
+  .co-lineas-pago{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    margin-top:12px;
+    max-height:180px;
+    overflow-y:auto;
+    padding:2px;
+  }
+  .co-linea-pago{
+    display:grid;
+    grid-template-columns:1.2fr 1fr 1fr auto;
+    gap:8px;
+    align-items:center;
+    background:#f4efe4;
+    border:1px solid #eee3d2;
+    border-radius:9px;
+    padding:8px;
+  }
+  .co-linea-pago .form-control{
+    border-radius:7px;
+    border-color:#e4d9c8;
+    font-size:13px;
+    height:34px;
+    padding:6px 9px;
+  }
+  .co-linea-pago .form-control:focus{ border-color:#81412d; box-shadow:none; }
+  .co-linea-quitar{
+    border:none;
+    background:transparent;
+    color:#c85c3c;
+    padding:6px 8px;
+    border-radius:7px;
+  }
+  .co-linea-quitar:hover{ background:#fbebe5; }
+  .co-btn-agregar-pago{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    background:transparent;
+    border:1px dashed #b8a48c;
+    color:#5c4a3a;
+    font-size:13px;
+    font-weight:700;
+    border-radius:9px;
+    padding:7px 12px;
+    margin-top:10px;
+  }
+  .co-btn-agregar-pago:hover{ border-color:#81412d; color:#81412d; }
+  .co-cobertura{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    border-radius:9px;
+    padding:9px 12px;
+    font-size:13px;
+    font-weight:700;
+    margin-top:10px;
+  }
+  .co-cobertura-ok{ background:#e9f2ea; color:#4c8c5a; }
+  .co-cobertura-falta{ background:#fbebe5; color:#c85c3c; }
 </style>

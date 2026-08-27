@@ -195,13 +195,13 @@ function pintarTarjetasRecepcion(habitaciones, mensajeVacio){
 	$contenido.html(html);
 }
 
-function mostrarCargaRecepcion(){
-	$("#recepcionOverlay").show();
-}
+// El spinner de carga ahora es global (ver plantilla.php: se activa solo con cualquier
+// $.ajax de cualquier módulo), así que este overlay local ya no se muestra para no
+// encimarse visualmente con el global. Se dejan las funciones como no-op en vez de
+// borrarlas para no tener que tocar cada punto donde ya se llaman.
+function mostrarCargaRecepcion(){}
 
-function ocultarCargaRecepcion(){
-	$("#recepcionOverlay").hide();
-}
+function ocultarCargaRecepcion(){}
 
 function actualizarRecepcion(){
 
@@ -699,19 +699,120 @@ $(document).on("click", ".hc-icon-btn.cancelar", function(){
  Check Out normal; cuando trae un valor, #coConfirmar cancela la estadía en vez de
  completarla.
  =============================================*/
+// Cache de los tipos de pago disponibles, para poder construir el <select> de cada línea
+// de pago nueva sin tener que volver a pedirlos al servidor.
+var coTiposDePago = [];
+
+function coOpcionesTipoPagoHtml(seleccionado){
+	var _html = '<option value="">-- Tipo de pago --</option>';
+	coTiposDePago.forEach(function(tipo){
+		_html += '<option value="' + tipo.id + '"' + (String(tipo.id) === String(seleccionado) ? " selected" : "") + '>' + escaparHtmlRecepcion(tipo.pago) + '</option>';
+	});
+	return _html;
+}
+
+function coEsEfectivoLinea($linea){
+	return $linea.find(".co-linea-tipo option:selected").text().trim() === "Efectivo";
+}
+
+// Aplica el mismo formato (comas de miles, un solo punto decimal) que ya usaba
+// #coMontoRecibido, reutilizable para cualquier input de monto del modal de check out.
+function coFormatearInputMonto($input){
+	var _valor = $input.val().replace(/[^\d.]/g, "");
+
+	var _puntoIndice = _valor.indexOf(".");
+	if (_puntoIndice !== -1){
+		_valor = _valor.slice(0, _puntoIndice + 1) + _valor.slice(_puntoIndice + 1).replace(/\./g, "");
+	}
+
+	var _partes = _valor.split(".");
+	_partes[0] = _partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+	if (_partes.length > 1){
+		_partes[1] = _partes[1].slice(0, 2);
+	}
+
+	$input.val(_partes.join("."));
+}
+
+// El monto siempre se deja vacío para que el cajero lo capture a mano — no se sugiere ni
+// se autocompleta con el total ni con lo que falte cubrir, para evitar que se confirme un
+// monto sin que alguien lo haya escrito conscientemente.
+function coAgregarLineaPago(){
+	var $linea = $(
+		'<div class="co-linea-pago">' +
+			'<select class="form-control co-linea-tipo">' + coOpcionesTipoPagoHtml() + '</select>' +
+			'<input type="text" inputmode="decimal" class="form-control co-linea-monto" placeholder="0.00">' +
+			'<input type="text" class="form-control co-linea-referencia" placeholder="Referencia" style="display:none;">' +
+			'<button type="button" class="co-linea-quitar" title="Quitar este pago"><i class="fa fa-times"></i></button>' +
+		'</div>'
+	);
+
+	$("#coLineasPago").append($linea);
+	coActualizarCobertura();
+}
+
+// Suma de lo capturado en todas las líneas de pago (sin importar el método).
+function coSumaLineasPago(){
+	var _suma = 0;
+	$("#coLineasPago .co-linea-monto").each(function(){
+		_suma += desformatearPrecio($(this).val()) || 0;
+	});
+	return _suma;
+}
+
+// Solo lo asignado a líneas en Efectivo, para poder calcular el cambio de esa parte.
+function coSumaLineasEfectivo(){
+	var _suma = 0;
+	$("#coLineasPago .co-linea-pago").each(function(){
+		var $linea = $(this);
+		if (coEsEfectivoLinea($linea)){
+			_suma += desformatearPrecio($linea.find(".co-linea-monto").val()) || 0;
+		}
+	});
+	return _suma;
+}
+
+// El aviso de cobertura se evalúa siempre (con 1 línea o con varias): solo se oculta
+// cuando lo capturado cuadra exactamente con el total; si falta o sobra, se avisa aunque
+// sea un único método de pago.
+function coActualizarCobertura(){
+	var _total = Number($("#coTotalPagar").data("total")) || 0;
+	var _cubierto = coSumaLineasPago();
+	var _diferencia = Math.round((_total - _cubierto) * 100) / 100;
+
+	var $resumen = $("#coCobertura");
+
+	if (Math.abs(_diferencia) < 0.005){
+		$resumen.hide();
+	}else if (_diferencia > 0){
+		$resumen.removeClass("co-cobertura-ok").addClass("co-cobertura-falta")
+			.html("Falta cubrir $" + formatearPrecio(_diferencia))
+			.show();
+	}else{
+		$resumen.removeClass("co-cobertura-ok").addClass("co-cobertura-falta")
+			.html("Excede el total por $" + formatearPrecio(Math.abs(_diferencia)))
+			.show();
+	}
+
+	var _hayEfectivo = coSumaLineasEfectivo() > 0;
+	$("#coEfectivoGrupo, #coCambioGrupo").toggle(_hayEfectivo);
+	calcularCambioCheckOut();
+}
+
 function abrirModalCheckOut(idReservacion, idMotivoCancelacion){
 
 	$("#coIdReservacion").val(idReservacion);
 	$("#coIdMotivoCancelacion").val(idMotivoCancelacion || "");
-	$("#coPreguntasCuerpo").html('<tr><td class="text-center text-muted" style="padding:15px;">Cargando…</td></tr>');
+	$("#coPreguntasCuerpo").html('<div class="co-pregunta-vacio text-center text-muted">Cargando…</div>').show();
+	$("#coPreguntasChevron").removeClass("co-colapsado");
 	$("#coConsumoCuerpo").html('<tr><td colspan="4" class="text-center text-muted" style="padding:15px;">Cargando…</td></tr>');
 	$("#coConsumoTotal").text("0.00");
 	$("#coTotalPagar").text("0.00").data("total", 0);
+	$("#coTotalPagarTexto").text("0.00");
 	$("#coMontoRecibido").val("");
 	$("#coCambio").text("0.00");
-	$("#coTipoPago").val("");
-	$("#coReferencia").val("");
-	$("#coReferenciaGrupo").hide();
+	$("#coLineasPago").empty();
+	coAgregarLineaPago();
 
 	if (idMotivoCancelacion){
 		$("#coModalTitulo").html('<i class="fa fa-sign-out"></i> Cancelar estadía (Check Out)');
@@ -729,10 +830,12 @@ function abrirModalCheckOut(idReservacion, idMotivoCancelacion){
 		data: { accion: "tiposDePago" },
 		dataType: "json",
 		success: function(respuesta){
-			var $select = $("#coTipoPago");
-			$select.find("option[value!='']").remove();
-			(respuesta.data || []).forEach(function(tipo){
-				$select.append('<option value="' + tipo.id + '">' + escaparHtmlRecepcion(tipo.pago) + '</option>');
+			coTiposDePago = respuesta.data || [];
+			// Las líneas ya construidas (normalmente la única línea inicial) todavía no
+			// tenían opciones porque este catálogo llega en paralelo al abrir el modal.
+			$("#coLineasPago .co-linea-tipo").each(function(){
+				var _actual = $(this).val();
+				$(this).html(coOpcionesTipoPagoHtml(_actual));
 			});
 		}
 	});
@@ -749,24 +852,23 @@ function abrirModalCheckOut(idReservacion, idMotivoCancelacion){
 			$cuerpo.empty();
 
 			if (preguntas.length === 0){
-				$cuerpo.append('<tr><td class="text-center text-muted" style="padding:15px;">No hay preguntas configuradas.</td></tr>');
+				$cuerpo.append('<div class="co-pregunta-vacio text-center text-muted">No hay preguntas configuradas.</div>');
 				return;
 			}
 
 			preguntas.forEach(function(pregunta, indice){
 				$cuerpo.append(
-					'<tr>' +
-						'<td class="co-preg-num">' + (indice + 1) + '.</td>' +
-						'<td>' + escaparHtmlRecepcion(pregunta) + '</td>' +
-						'<td class="co-preg-toggle"><input type="checkbox" data-toggle="toggle" data-size="mini" data-onstyle="success" data-offstyle="default"></td>' +
-					'</tr>'
+					'<div class="co-pregunta-item">' +
+						'<span class="co-pregunta-texto"><span class="co-pregunta-num">' + (indice + 1) + '.</span>' + escaparHtmlRecepcion(pregunta) + '</span>' +
+						'<input type="checkbox" data-toggle="toggle" data-size="mini" data-onstyle="success" data-offstyle="default">' +
+					'</div>'
 				);
 			});
 
 			$cuerpo.find('input[data-toggle="toggle"]').bootstrapToggle();
 		},
 		error: function(){
-			$("#coPreguntasCuerpo").html('<tr><td class="text-center text-muted" style="padding:15px;">No se pudieron cargar las preguntas.</td></tr>');
+			$("#coPreguntasCuerpo").html('<div class="co-pregunta-vacio text-center text-muted">No se pudieron cargar las preguntas.</div>');
 		}
 	});
 
@@ -814,7 +916,9 @@ function abrirModalCheckOut(idReservacion, idMotivoCancelacion){
 
 			var _total = Number(respuesta.total) || 0;
 			$("#coTotalPagar").text(formatearPrecio(_total)).data("total", _total);
-			calcularCambioCheckOut();
+			$("#coTotalPagarTexto").text(formatearPrecio(_total));
+
+			coActualizarCobertura();
 		},
 		error: function(){
 			$("#coConsumoCuerpo").html('<tr><td colspan="4" class="text-center text-muted" style="padding:15px;">No se pudo cargar el consumo.</td></tr>');
@@ -826,43 +930,51 @@ $(document).on("click", ".hc-icon-btn.checkout", function(){
 	abrirModalCheckOut($(this).data("idReservacion"), null);
 });
 
+$(document).on("click", "#coPreguntasToggle", function(){
+	$("#coPreguntasCuerpo").slideToggle(150);
+	$("#coPreguntasChevron").toggleClass("co-colapsado");
+});
+
+// "Efectivo recibido" ya no se captura a mano: es la suma de lo capturado en TODAS las
+// líneas de pago (el propio campo antes duplicaba lo que el cajero ya tecleó por línea).
+// El cambio solo tiene sentido si hay alguna línea en Efectivo (es lo único que se puede
+// regresar en mano), y es el sobrante cuando esa suma excede el total a cobrar.
 function calcularCambioCheckOut(){
 
+	var _recibido = coSumaLineasPago();
 	var _total = Number($("#coTotalPagar").data("total")) || 0;
-	var _recibido = desformatearPrecio($("#coMontoRecibido").val()) || 0;
 	var _cambio = _recibido - _total;
 
+	$("#coMontoRecibido").val(formatearPrecio(_recibido));
 	$("#coCambio").text(formatearPrecio(_cambio > 0 ? _cambio : 0));
 }
 
-// Le añade la coma de miles mientras se escribe (igual que Crear Venta), sin dejar de
-// aceptar el punto decimal.
-$(document).on("input", "#coMontoRecibido", function(){
-
-	var _valor = $(this).val().replace(/[^\d.]/g, "");
-
-	var _puntoIndice = _valor.indexOf(".");
-	if (_puntoIndice !== -1){
-		_valor = _valor.slice(0, _puntoIndice + 1) + _valor.slice(_puntoIndice + 1).replace(/\./g, "");
-	}
-
-	var _partes = _valor.split(".");
-	_partes[0] = _partes[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-	if (_partes.length > 1){
-		_partes[1] = _partes[1].slice(0, 2);
-	}
-
-	$(this).val(_partes.join("."));
-
-	calcularCambioCheckOut();
+$(document).on("input", ".co-linea-monto", function(){
+	coFormatearInputMonto($(this));
+	coActualizarCobertura();
 });
 
 // La Referencia no aplica para pago en Efectivo; para cualquier otro tipo (tarjeta,
 // transferencia) sí es obligatoria.
-$(document).on("change", "#coTipoPago", function(){
-	var _esEfectivo = $(this).find("option:selected").text().trim() === "Efectivo";
-	$("#coReferenciaGrupo").toggle(!_esEfectivo);
-	if (_esEfectivo) $("#coReferencia").val("");
+$(document).on("change", ".co-linea-tipo", function(){
+	var $linea = $(this).closest(".co-linea-pago");
+	var _esEfectivo = coEsEfectivoLinea($linea);
+	$linea.find(".co-linea-referencia").toggle(!_esEfectivo);
+	if (_esEfectivo) $linea.find(".co-linea-referencia").val("");
+	coActualizarCobertura();
+});
+
+$(document).on("click", "#coAgregarLineaPago", function(){
+	coAgregarLineaPago();
+});
+
+// Siempre debe quedar al menos una línea de pago capturada.
+$(document).on("click", ".co-linea-quitar", function(){
+	if ($("#coLineasPago .co-linea-pago").length <= 1){
+		return;
+	}
+	$(this).closest(".co-linea-pago").remove();
+	coActualizarCobertura();
 });
 
 $(document).on("click", "#coConfirmar", function(){
@@ -870,17 +982,45 @@ $(document).on("click", "#coConfirmar", function(){
 	var idReservacion = $("#coIdReservacion").val();
 	var idMotivoCancelacion = $("#coIdMotivoCancelacion").val();
 	var _esCancelacion = !!idMotivoCancelacion;
-	var idTipoPago = $("#coTipoPago").val();
-	var _esEfectivo = $("#coTipoPago option:selected").text().trim() === "Efectivo";
-	var referencia = $.trim($("#coReferencia").val());
 
-	if (!idTipoPago){
-		Swal.fire({ icon: "warning", title: "Falta el tipo de pago", text: "Selecciona cómo se realizó el pago." });
+	var _pagos = [];
+	var _lineaInvalida = null;
+
+	$("#coLineasPago .co-linea-pago").each(function(){
+		var $linea = $(this);
+		var _idTipoPago = $linea.find(".co-linea-tipo").val();
+		var _esEfectivo = coEsEfectivoLinea($linea);
+		var _monto = desformatearPrecio($linea.find(".co-linea-monto").val()) || 0;
+		var _referencia = $.trim($linea.find(".co-linea-referencia").val());
+
+		if (!_idTipoPago || _monto <= 0 || (!_esEfectivo && _referencia.length < 5)){
+			_lineaInvalida = { idTipoPago: _idTipoPago, monto: _monto, esEfectivo: _esEfectivo, referencia: _referencia };
+			return false;
+		}
+
+		_pagos.push({ idTipoPago: _idTipoPago, monto: _monto, referencia: _referencia });
+	});
+
+	if (_lineaInvalida){
+		if (!_lineaInvalida.idTipoPago){
+			Swal.fire({ icon: "warning", title: "Falta el tipo de pago", text: "Selecciona cómo se realizó cada pago." });
+		}else if (_lineaInvalida.monto <= 0){
+			Swal.fire({ icon: "warning", title: "Falta el monto", text: "Captura un monto mayor a cero en cada línea de pago." });
+		}else{
+			Swal.fire({ icon: "warning", title: "Referencia incompleta", text: "Captura una referencia de al menos 5 caracteres." });
+		}
 		return;
 	}
 
-	if (!_esEfectivo && referencia.length < 5){
-		Swal.fire({ icon: "warning", title: "Referencia incompleta", text: "Captura una referencia de al menos 5 caracteres." });
+	var _total = Number($("#coTotalPagar").data("total")) || 0;
+	var _cubierto = _pagos.reduce(function(suma, pago){ return suma + pago.monto; }, 0);
+
+	if (Math.abs(_total - _cubierto) >= 0.005){
+		Swal.fire({
+			icon: "warning",
+			title: "El pago no cuadra",
+			text: "Lo capturado ($" + formatearPrecio(_cubierto) + ") debe ser igual al total a cobrar ($" + formatearPrecio(_total) + ")."
+		});
 		return;
 	}
 
@@ -900,19 +1040,19 @@ $(document).on("click", "#coConfirmar", function(){
 
 		mostrarCargaRecepcion();
 
+		var _pagosJson = JSON.stringify(_pagos);
+
 		var _datos = _esCancelacion
 			? {
 				accion: "cancelarConCheckout",
 				id_reservacion: idReservacion,
 				id_motivo: idMotivoCancelacion,
-				id_tipo_pago: idTipoPago,
-				referencia: referencia
+				pagos: _pagosJson
 			}
 			: {
 				accion: "checkout",
 				id_reservacion: idReservacion,
-				id_tipo_pago: idTipoPago,
-				referencia: referencia
+				pagos: _pagosJson
 			};
 
 		$.ajax({
@@ -947,9 +1087,12 @@ $(document).on("click", "#coConfirmar", function(){
 // CERRARSE (se haya confirmado el check out o no), para que nunca quede "Referencia"
 // visible de una elección anterior si el modal se vuelve a abrir.
 $("#modalCheckOut").on("hidden.bs.modal", function(){
-	$("#coTipoPago").val("");
-	$("#coReferencia").val("");
-	$("#coReferenciaGrupo").hide();
+	$("#coLineasPago").empty();
+	coAgregarLineaPago();
+	$("#coCobertura").hide();
+	$("#coEfectivoGrupo, #coCambioGrupo").hide();
+	$("#coMontoRecibido").val("");
+	$("#coCambio").text("0.00");
 	$("#coIdMotivoCancelacion").val("");
 });
 

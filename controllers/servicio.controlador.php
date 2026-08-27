@@ -41,9 +41,10 @@ class ControladorServicio{
 	}
 
 	// Inicia el servicio: valida que no haya ya uno activo para esa habitación, crea la
-	// sesión con la hora de inicio automática, y le hace una fotografía (snapshot) de las
-	// tareas activas del hotel en ese momento para el checklist.
-	static public function crtIniciarServicio($id_habitacion){
+	// sesión con la hora de inicio automática, guarda la foto inicial (obligatoria) y le
+	// hace una fotografía (snapshot) de las tareas activas del hotel en ese momento para
+	// el checklist.
+	static public function crtIniciarServicio($id_habitacion, $archivoFoto){
 		$id_habitacion = (int) $id_habitacion;
 
 		if($id_habitacion <= 0){
@@ -66,13 +67,67 @@ class ControladorServicio{
 			return ["ok" => false, "mensaje" => "No se pudo identificar al usuario en sesión."];
 		}
 
-		$resultado = ModeloServicio::MdlIniciarServicio($id_habitacion, $id_hotel, $id_usuario, self::ESTATUS_ACTIVO);
+		if(!is_array($archivoFoto) || empty($archivoFoto["tmp_name"])){
+			return ["ok" => false, "mensaje" => "Debes adjuntar una foto inicial para comenzar la limpieza."];
+		}
+
+		if($archivoFoto["size"] > 3 * 1024 * 1024){
+			return ["ok" => false, "mensaje" => "La foto no puede pesar más de 3MB."];
+		}
+
+		// Ruta absoluta: este método se llama desde ajax/servicio.ajax.php, cuyo cwd es
+		// /ajax/, así que una ruta relativa terminaría guardando el archivo en /ajax/....
+		$dirPathAbsoluto = dirname(__DIR__) . "/views/img/Servicio/";
+		if(!is_dir($dirPathAbsoluto)){
+			mkdir($dirPathAbsoluto, 0755, true);
+		}
+
+		$nombreImagen = time() . "_" . $archivoFoto["name"];
+
+		if(!move_uploaded_file($archivoFoto["tmp_name"], $dirPathAbsoluto . $nombreImagen)){
+			return ["ok" => false, "mensaje" => "No se pudo guardar la foto inicial."];
+		}
+
+		$fotoDestino = "views/img/Servicio/" . $nombreImagen;
+
+		$resultado = ModeloServicio::MdlIniciarServicio($id_habitacion, $id_hotel, $id_usuario, self::ESTATUS_ACTIVO, $fotoDestino);
 
 		if(!$resultado || empty($resultado["Id_Servicio"])){
 			return ["ok" => false, "mensaje" => "No se pudo iniciar el servicio."];
 		}
 
 		return ["ok" => true, "idServicio" => (int) $resultado["Id_Servicio"]];
+	}
+
+	// Historial de limpiezas ya finalizadas, para la tabla debajo del botón "Iniciar
+	// limpieza": una fila por sesión completada, con su habitación, usuario, fechas,
+	// fotos y las tareas que sí se marcaron como realizadas.
+	static public function crtObtenerHistorialServicios(){
+		$id_hotel = self::crtObtenerIdHotelSesion();
+
+		if($id_hotel === null){
+			return [];
+		}
+
+		$filas = ModeloServicio::MdlObtenerHistorialServicios($id_hotel);
+
+		$historial = [];
+		foreach($filas as $fila){
+			$historial[] = [
+				"idServicio"       => (int) $fila["Id_Servicio"],
+				"idHabitacion"     => (int) $fila["Id_Habitacion"],
+				"habitacion"       => $fila["TipoHabitacion"] ?: $fila["NumeroHabitacion"],
+				"usuario"          => trim($fila["NombreUsuario"]) !== "" ? $fila["NombreUsuario"] : "Sin asignar",
+				"fechaInicio"      => $fila["Fecha_Inicio"] ? date("d/m/Y g:i a", strtotime($fila["Fecha_Inicio"])) : null,
+				"fechaInicioRaw"   => $fila["Fecha_Inicio"] ? date("Y-m-d", strtotime($fila["Fecha_Inicio"])) : null,
+				"fotoInicio"       => $fila["Foto_Inicio"] ?: null,
+				"fechaFin"         => $fila["Fecha_Fin"] ? date("d/m/Y g:i a", strtotime($fila["Fecha_Fin"])) : null,
+				"fotoResultado"    => $fila["Foto_Evidencia"] ?: null,
+				"tareasRealizadas" => $fila["TareasRealizadas"] ?: null,
+			];
+		}
+
+		return $historial;
 	}
 
 	static public function crtObtenerServicioTareas($id_servicio){

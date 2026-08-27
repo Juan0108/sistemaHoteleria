@@ -1,10 +1,8 @@
-function mostrarCargaReserva(){
-	$("#reservaOverlay").show();
-}
+// El spinner de carga ahora es global (ver plantilla.php), así que este overlay local ya
+// no se muestra para no encimarse visualmente con el global.
+function mostrarCargaReserva(){}
 
-function ocultarCargaReserva(){
-	$("#reservaOverlay").hide();
-}
+function ocultarCargaReserva(){}
 
 // Persiste entre cambios de mes (la tabla se reemplaza por completo vía AJAX).
 var reservaHabitacionSeleccionada = null;

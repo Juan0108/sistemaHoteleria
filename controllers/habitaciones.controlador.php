@@ -168,11 +168,12 @@ class ControladorHabitaciones{
 		$tsMesInicio = mktime(0, 0, 0, $mes, 1, $anio);
 
 		// IDs de cat_estatus usados en reservaciones: 8=Ocupado, 9=Reservado,
-		// 12=CancelacionOcupacion, 13=CancelacionReserva. Cada una se pinta con su propio
-		// color/patrón en el calendario. 19=Movida (reservación reagendada a otra
-		// habitación/fechas) queda fuera a propósito: al no estar en este mapa, esas fechas
-		// simplemente no se pintan, para que se vean disponibles/normales sin ninguna huella.
-		$claseParaEstatus = [8 => "ocupada", 9 => "reservada", 12 => "cancelada-estadia", 13 => "cancelada-reserva"];
+		// 12=CancelacionOcupacion, 13=CancelacionReserva, 20=Completada (checkout normal, sin
+		// cancelación). Cada una se pinta con su propio color/patrón en el calendario.
+		// 19=Movida (reservación reagendada a otra habitación/fechas) queda fuera a propósito:
+		// al no estar en este mapa, esas fechas simplemente no se pintan, para que se vean
+		// disponibles/normales sin ninguna huella.
+		$claseParaEstatus = [8 => "ocupada", 9 => "reservada", 12 => "cancelada-estadia", 13 => "cancelada-reserva", 20 => "completada"];
 		$segmentosPorHabitacion = [];
 
 		foreach($reservaciones as $res){

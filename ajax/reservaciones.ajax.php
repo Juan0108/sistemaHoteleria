@@ -185,12 +185,19 @@ class ReservacionesAjax
 		echo '{"ok": '.$ok.', "mensaje": "'.$mensaje.'", "horasAnticipada": '.$horasAnticipada.', "montoAnticipada": '.$montoAnticipada.'}';
 	}
 
+	// $_POST["pagos"] es un JSON con las N líneas de pago capturadas en el modal:
+	// [{"idTipoPago": 1, "monto": 1500, "referencia": ""}, ...].
+	private function leerPagosPost(){
+		$crudo = isset($_POST["pagos"]) ? $_POST["pagos"] : "[]";
+		$pagos = json_decode($crudo, true);
+		return is_array($pagos) ? $pagos : [];
+	}
+
 	public function checkout(){
 
 		$id_reservacion = isset($_POST["id_reservacion"]) ? $_POST["id_reservacion"] : "";
-		$id_tipo_pago = isset($_POST["id_tipo_pago"]) ? $_POST["id_tipo_pago"] : 0;
-		$referencia = isset($_POST["referencia"]) ? $_POST["referencia"] : "";
-		$respuesta = ControladorReservaciones::crtCompletarCheckout($id_reservacion, $id_tipo_pago, $referencia);
+		$pagos = $this->leerPagosPost();
+		$respuesta = ControladorReservaciones::crtCompletarCheckout($id_reservacion, $pagos);
 
 		$ok = $respuesta["ok"] ? "true" : "false";
 		$mensaje = isset($respuesta["mensaje"]) ? $this->jsonEscape($respuesta["mensaje"]) : "";
@@ -198,15 +205,14 @@ class ReservacionesAjax
 		echo '{"ok": '.$ok.', "mensaje": "'.$mensaje.'"}';
 	}
 
-	// Cancela una estadía Ocupada Y hace el Check Out (cobro de hospedaje + tipo de pago),
-	// desde el mismo modal de Check Out cuando se cancela una habitación Ocupada.
+	// Cancela una estadía Ocupada Y hace el Check Out (cobro de hospedaje + pago), desde el
+	// mismo modal de Check Out cuando se cancela una habitación Ocupada.
 	public function cancelarConCheckout(){
 
 		$id_reservacion = isset($_POST["id_reservacion"]) ? $_POST["id_reservacion"] : "";
 		$id_motivo = isset($_POST["id_motivo"]) ? $_POST["id_motivo"] : 0;
-		$id_tipo_pago = isset($_POST["id_tipo_pago"]) ? $_POST["id_tipo_pago"] : 0;
-		$referencia = isset($_POST["referencia"]) ? $_POST["referencia"] : "";
-		$respuesta = ControladorReservaciones::crtCancelarEstadiaConCheckout($id_reservacion, $id_motivo, $id_tipo_pago, $referencia);
+		$pagos = $this->leerPagosPost();
+		$respuesta = ControladorReservaciones::crtCancelarEstadiaConCheckout($id_reservacion, $id_motivo, $pagos);
 
 		$ok = $respuesta["ok"] ? "true" : "false";
 		$mensaje = isset($respuesta["mensaje"]) ? $this->jsonEscape($respuesta["mensaje"]) : "";

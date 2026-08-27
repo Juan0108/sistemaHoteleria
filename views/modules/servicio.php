@@ -22,24 +22,73 @@ $HabitacionesServ = $ctlServicio->crtObtenerHabitaciones();
       <div class="overlay" id="servOverlay" style="display:none;">
         <i class="fa fa-refresh fa-spin"></i>
       </div>
-      <div class="box-body serv-box-body">
-        <img src="views/img/Iconos/limpieza.png" alt="" class="serv-icono-grande">
-        <p class="serv-intro-texto">Registra el servicio de limpieza de una habitación: inicio, checklist de tareas y evidencia final.</p>
-        <button type="button" class="btn sv-btn-realizar btnAbrirRealizarTarea">
-          <img src="views/img/Iconos/limpieza.png" alt="" class="sv-icono-boton"> Realizar tarea
-        </button>
+      <div class="box-body">
+        <?php if (($_SESSION["Perfil"] ?? "") !== "Administrador"): ?>
+          <button type="button" class="btn sv-btn-realizar btnAbrirRealizarTarea">
+            <img src="views/img/Iconos/limpieza.png" alt="" class="sv-icono-boton"> Iniciar limpieza
+          </button>
+        <?php endif; ?>
+
+        <h5 class="serv-seccion-titulo">Historial de limpiezas</h5>
+
+        <div class="serv-filtros">
+          <div class="serv-filtro-campo">
+            <i class="fa fa-bed"></i>
+            <select id="servFiltroHabitacion" class="serv-filtro-select">
+              <option value="">-- Selecciona una habitación --</option>
+              <?php foreach ($HabitacionesServ as $hab): ?>
+                <option value="<?php echo (int) $hab["Id_Habitacion"]; ?>"><?php echo htmlspecialchars($hab["TipoHabitacion"] ?: $hab["NumeroHabitacion"]); ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div class="serv-filtro-campo">
+            <i class="fa fa-calendar"></i>
+            <input type="date" id="servFiltroFechaDesde" class="serv-filtro-fecha">
+          </div>
+          <div class="serv-filtro-campo">
+            <i class="fa fa-calendar"></i>
+            <input type="date" id="servFiltroFechaHasta" class="serv-filtro-fecha">
+          </div>
+          <button type="button" class="btn serv-btn-limpiar" id="servLimpiarFiltros">
+            <i class="fa fa-times"></i> Limpiar fechas
+          </button>
+        </div>
+
+        <div class="serv-tabla-wrap">
+          <table class="serv-tabla-historial">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Habitación</th>
+                <th>Usuario</th>
+                <th>Fecha inicio</th>
+                <th>Foto inicio</th>
+                <th>Fecha fin</th>
+                <th>Foto resultado</th>
+                <th>Tareas realizadas</th>
+              </tr>
+            </thead>
+            <tbody id="servHistorialCuerpo">
+              <tr><td colspan="8" class="text-center text-muted" style="padding:15px;">Cargando…</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   </section>
 </div>
 
+<?php if (($_SESSION["Perfil"] ?? "") !== "Administrador"): ?>
 <!-- Modal Realizar Tarea -->
 <div id="modalRealizarTarea" class="modal fade" role="dialog" data-backdrop="static" data-keyboard="false">
   <div class="modal-dialog">
     <div class="modal-content">
       <div class="modal-header" style="background:#3f342e; color:white">
         <button type="button" class="close" data-dismiss="modal" style="color:white; opacity:1;">&times;</button>
-        <h4 class="modal-title"><img src="views/img/Iconos/limpieza.png" alt="" class="sv-icono-boton" style="width:16px;height:16px;"> Limpieza — <span id="servModalHabitacion"></span></h4>
+        <h4 class="modal-title serv-modal-title">
+          <img src="views/img/Iconos/limpieza.png" alt="" class="sv-icono-boton">
+          <span>Limpieza — <span id="servModalHabitacion"></span></span>
+        </h4>
       </div>
       <div class="modal-body">
 
@@ -65,7 +114,12 @@ $HabitacionesServ = $ctlServicio->crtObtenerHabitaciones();
             <label>Fecha y hora de inicio</label>
             <div class="serv-fecha-valor" id="servFechaInicioValor"></div>
           </div>
-          <button type="button" class="btn btn-success serv-btn-comenzar" id="servComenzar">
+
+          <h5 class="serv-seccion-titulo">Foto inicial (obligatoria)</h5>
+          <input type="file" id="servFotoInicio" accept="image/*">
+          <img id="servFotoInicioPreview" style="display:none; max-width:100%; max-height:180px; margin-top:10px; border-radius:8px;">
+
+          <button type="button" class="btn btn-success serv-btn-comenzar" id="servComenzar" style="margin-top:16px;">
             <i class="fa fa-play"></i> Comenzar
           </button>
         </div>
@@ -98,6 +152,22 @@ $HabitacionesServ = $ctlServicio->crtObtenerHabitaciones();
     </div>
   </div>
 </div>
+<?php endif; ?>
+
+<!-- Modal para ver una foto del historial en grande -->
+<div id="modalFotoServicio" class="modal fade" role="dialog">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header" style="background:#3f342e; color:white">
+        <button type="button" class="close" data-dismiss="modal" style="color:white; opacity:1;">&times;</button>
+        <h4 class="modal-title" id="servFotoModalTitulo"><i class="fa fa-camera"></i> Foto</h4>
+      </div>
+      <div class="modal-body text-center">
+        <img id="servFotoModalImg" style="max-width:100%; border-radius:8px;">
+      </div>
+    </div>
+  </div>
+</div>
 
 <style>
   .content-wrapper{ background:#f2ece0; }
@@ -110,30 +180,14 @@ $HabitacionesServ = $ctlServicio->crtObtenerHabitaciones();
 
   .serv-box{ border-radius:16px; overflow:hidden; }
 
-  .serv-box-body{
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    text-align:center;
-    padding:48px 24px;
-  }
-  .serv-icono-grande{
-    width:56px;
-    height:56px;
-    object-fit:contain;
-    margin-bottom:14px;
-    opacity:.85;
-  }
-  .serv-intro-texto{
-    color:#8d7a68;
-    max-width:420px;
-    margin-bottom:22px;
-  }
-
   .sv-icono-boton{ width:15px; height:15px; object-fit:contain; margin-right:6px; filter:brightness(0) invert(1); }
+
+  .serv-modal-title{ display:flex; align-items:center; }
+  .serv-modal-title img{ margin-right:8px; margin-top:0; }
 
   .sv-btn-realizar{
     display:inline-flex;
+    margin-bottom:10px;
     align-items:center;
     justify-content:center;
     border-radius:10px;
@@ -191,4 +245,48 @@ $HabitacionesServ = $ctlServicio->crtObtenerHabitaciones();
 
   #modalRealizarTarea .modal-content{ border-radius:16px; overflow:hidden; }
   #modalRealizarTarea .btn{ border-radius:8px; }
+  #modalFotoServicio .modal-content{ border-radius:16px; overflow:hidden; }
+
+  .serv-filtros{ display:flex; flex-wrap:wrap; gap:10px; margin-bottom:14px; }
+  .serv-filtro-campo{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    background:#fdfaf5;
+    border:1px solid #eee3d2;
+    border-radius:10px;
+    padding:8px 14px;
+  }
+  .serv-filtro-campo i{ color:#81412d; }
+  .serv-filtro-select, .serv-filtro-fecha{
+    border:none;
+    background:transparent;
+    color:#3f342e;
+    font-weight:600;
+    font-size:13px;
+    outline:none;
+  }
+  .serv-filtro-select{ min-width:170px; }
+  .serv-btn-limpiar{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    background:#fff;
+    border:1px solid #eee3d2;
+    border-radius:10px;
+    color:#3f342e;
+    font-weight:600;
+    font-size:13px;
+    padding:8px 14px;
+  }
+  .serv-btn-limpiar:hover, .serv-btn-limpiar:focus{ background:#f4efe4; color:#3f342e; }
+
+  .serv-tabla-wrap{ border:1px solid #eee3d2; border-radius:10px; overflow-x:auto; overflow-y:hidden; }
+  .serv-tabla-historial{ width:100%; border-collapse:collapse; background:#fff; margin-bottom:0; }
+  .serv-tabla-historial thead th{ background:#3f342e; color:#fff; text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.3px; padding:10px 12px; white-space:nowrap; }
+  .serv-tabla-historial td{ padding:10px 12px; font-size:13px; color:#3f342e; border-top:1px solid #eee3d2; }
+  .serv-tabla-historial tbody tr:nth-child(even){ background:#f8f4ea; }
+  .serv-ver-foto{ background:none; border:none; color:#81412d; font-size:12px; font-weight:700; padding:0; text-decoration:underline; }
+  .serv-ver-foto:hover{ color:#6e3625; }
+  .serv-sin-dato{ color:#8d7a68; font-style:italic; }
 </style>

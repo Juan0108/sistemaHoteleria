@@ -125,9 +125,10 @@
                 <td>
                   <div class="input-group">
                     <span class="input-group-addon"><i class="fa fa-map-marker"></i> </span>
-                    <select class="form-control input-sm" name="NuevaColonia" id="cbcolonia" required>
+                    <select class="form-control input-sm" name="NuevaColonia" id="cbcolonia">
                       <option value="" selected hidden>--Seleccionar Colonia--</option>
                     </select>
+                    <input type="text" class="form-control input-sm" name="NuevaColoniaTexto" id="cbcoloniaTexto" placeholder="Escribe la colonia (no está en el catálogo)" style="display:none;">
                   </div>
                 </td>
                 <td>
@@ -268,9 +269,10 @@
                 <td>
                   <div class="input-group">
                     <span class="input-group-addon"><i class="fa fa-map-marker"></i> </span>
-                    <select class="form-control input-sm" name="editarColonia" id="editarCbcolonia" required>
+                    <select class="form-control input-sm" name="editarColonia" id="editarCbcolonia">
                       <option value="" selected hidden>--Seleccionar Colonia--</option>
                     </select>
+                    <input type="text" class="form-control input-sm" name="editarColoniaTexto" id="editarCbcoloniaTexto" placeholder="Escribe la colonia (no está en el catálogo)" style="display:none;">
                   </div>
                 </td>
                 <td>

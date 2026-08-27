@@ -195,6 +195,15 @@ if ($currentPage !== "reset"): ?>
                     </li>';
             }
 
+            if ($_SESSION["Perfil"] == "Limpieza") {
+                echo '<li>
+                        <a href="servicio">
+                            <img src="views/img/Iconos/limpieza.png" alt="" style="width:14px;height:14px;object-fit:contain;margin-right:10px;vertical-align:-1px;filter:brightness(0) invert(1);">
+                            <span>Limpieza</span>
+                        </a>
+                    </li>';
+            }
+
             if ($_SESSION["Perfil"] == "Vendedor") {
                 echo '<li>
                         <a href="hoteles">

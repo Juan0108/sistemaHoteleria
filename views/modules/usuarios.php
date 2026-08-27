@@ -224,8 +224,9 @@
                     <span class="input-group-addon"><i class="fa fa-users"></i> </span>
                     <select class="form-control input-sm" name="Perfil" required>
                       <option value="">Seleccionar Perfil</option>
-                      <option value="1">Administrador</option>
-                      <option value="2">Ventas</option>
+                      <?php foreach (ControladorUsuarios::crtObtenerPerfiles() as $perfilOpcion): ?>
+                        <option value="<?php echo (int) $perfilOpcion["Id_perfil"]; ?>"><?php echo htmlspecialchars($perfilOpcion["Nombre"]); ?></option>
+                      <?php endforeach; ?>
                     </select>
                  </div>
                 </td>
@@ -266,9 +267,10 @@
                 <td>
                   <div class="input-group">
                     <span class="input-group-addon"><i class="fa fa-map-marker"></i> </span>
-                    <select class="form-control input-sm" name="NuevaColonia" id="cbcolonia" required>
+                    <select class="form-control input-sm" name="NuevaColonia" id="cbcolonia">
                       <option value="" selected hidden>--Seleccionar Colonia--</option>
                     </select>
+                    <input type="text" class="form-control input-sm" name="NuevaColoniaTexto" id="cbcoloniaTexto" placeholder="Escribe la colonia (no está en el catálogo)" style="display:none;">
                   </div>
                 </td>
                 <td>
@@ -433,9 +435,10 @@
                 <td>
                   <div class="input-group">
                     <span class="input-group-addon"><i class="fa fa-map-marker"></i> </span>
-                    <select class="form-control input-sm" name="editarColonia" id="editarCbcolonia" required>
+                    <select class="form-control input-sm" name="editarColonia" id="editarCbcolonia">
                       <option value="" selected hidden>--Seleccionar Colonia--</option>
                     </select>
+                    <input type="text" class="form-control input-sm" name="editarColoniaTexto" id="editarCbcoloniaTexto" placeholder="Escribe la colonia (no está en el catálogo)" style="display:none;">
                   </div>
                 </td>
                 <td>
@@ -471,10 +474,9 @@
                     <span class="input-group-addon"><i class="fa fa-users"></i> </span>
                     <select class="form-control input-sm" name="editarPerfil" id="editarPerfil">
                       <option value="">Seleccionar Perfil</option>
-                      <option value="1">Administrador</option>
-                      <option value="2">Ventas</option>
-                      <option value="3">Almacen</option>
-                      <option value="4">Soporte Tecnico</option>
+                      <?php foreach (ControladorUsuarios::crtObtenerPerfiles() as $perfilOpcion): ?>
+                        <option value="<?php echo (int) $perfilOpcion["Id_perfil"]; ?>"><?php echo htmlspecialchars($perfilOpcion["Nombre"]); ?></option>
+                      <?php endforeach; ?>
                     </select>
                  </div>
                 </td>

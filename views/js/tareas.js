@@ -1,10 +1,8 @@
-function mostrarCargaTareas(){
-	$("#tarOverlay").show();
-}
+// El spinner de carga ahora es global (ver plantilla.php), así que este overlay local ya
+// no se muestra para no encimarse visualmente con el global.
+function mostrarCargaTareas(){}
 
-function ocultarCargaTareas(){
-	$("#tarOverlay").hide();
-}
+function ocultarCargaTareas(){}
 
 function refrescarTablaTareas(){
 

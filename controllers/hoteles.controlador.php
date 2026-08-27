@@ -36,6 +36,20 @@ $IdEstatus = isset($_POST["NuevoEstatus"]) ? intval($_POST["NuevoEstatus"]) : 0;
 					return;
 				}
 
+				// El catálogo cat_colonias no cubre todos los municipios; cuando el combo de
+				// Colonia se queda sin opciones, el formulario deja escribirla a mano
+				// (NuevaColoniaTexto) y aquí se da de alta esa colonia (o se reutiliza si ya
+				// existe) para seguir guardando el hotel con un Id_Colonia real.
+				$idColonia = $_POST["NuevaColonia"];
+				if(empty($idColonia) && !empty($_POST["NuevaColoniaTexto"])){
+					$coloniaNueva = ModeloHoteles::MdlInsertarColoniaSiNoExiste(
+						$_POST["NuevoMunicipio"],
+						trim($_POST["NuevaColoniaTexto"]),
+						$_POST["CodigoPostal"] ?? ""
+					);
+					$idColonia = $coloniaNueva ? $coloniaNueva["Id_Colonia"] : "";
+				}
+
 				$hotel = new hotel(0,
 							$_POST["nuevoRazonsocial"],
 							$_POST["nuevoResponsable"],
@@ -45,7 +59,7 @@ $IdEstatus = isset($_POST["NuevoEstatus"]) ? intval($_POST["NuevoEstatus"]) : 0;
 							$_POST["Calle"],
 							$_POST["NuevoEstado"],
 							$_POST["NuevoMunicipio"],
-							$_POST["NuevaColonia"],
+							$idColonia,
 							$_POST["NuevoTipoPago"],
 							0,
 							0,
@@ -157,6 +171,16 @@ static public function ctrActualizarHotel()
 
 			if(preg_match('/^[a-zA-Z0-9ñÑáéíóúÁÉÍÓÚ ]+$/', $_POST["editarRazonsocial"])){
 
+			   	$idColonia = $_POST["editarColonia"];
+			   	if(empty($idColonia) && !empty($_POST["editarColoniaTexto"])){
+			   		$coloniaNueva = ModeloHoteles::MdlInsertarColoniaSiNoExiste(
+			   			$_POST["editarMunicipio"],
+			   			trim($_POST["editarColoniaTexto"]),
+			   			$_POST["editarCodigoPostal"] ?? ""
+			   		);
+			   		$idColonia = $coloniaNueva ? $coloniaNueva["Id_Colonia"] : "";
+			   	}
+
 			   	$hotel = new hotel($_POST["editarIdHotel"],
 			   							$_POST["editarRazonsocial"],
 			   							$_POST["editarResponsable"],
@@ -166,7 +190,7 @@ static public function ctrActualizarHotel()
 			   							$_POST["editarCalle"],
 			   							$_POST["editarEstado"],
 			   							$_POST["editarMunicipio"],
-			   							$_POST["editarColonia"],
+			   							$idColonia,
 			   							$_POST["editarTipoPago"],
 			   							0,
 			   							0,

@@ -70,6 +70,58 @@ class ControladorMantenimiento{
 		return $respuesta && (int) $respuesta["Afectados"] > 0;
 	}
 
+	// Valida el costo/fechas de la reapertura SIN guardar nada (llamado desde
+	// ajax/mantenimiento-cambiar-estatus.ajax.php ANTES de tocar el estatus, igual que la
+	// validación de la foto: si algo aquí falla, la incidencia no debe quedar reabierta a
+	// medias sin su nuevo presupuesto).
+	static public function crtValidarPresupuestoReapertura($costo, $fechaInicioEstimado, $fechaFinEstimado){
+		$costo = (float) $costo;
+		$hoy = date("Y-m-d");
+
+		if($costo <= 0){
+			return ["status" => "error", "message" => "Captura el costo estimado de la reparación"];
+		}
+
+		if(strtotime((string) $fechaInicioEstimado) === false || strtotime((string) $fechaFinEstimado) === false){
+			return ["status" => "error", "message" => "Captura las fechas estimadas de la reparación"];
+		}
+
+		if($fechaInicioEstimado < $hoy || $fechaFinEstimado < $hoy){
+			return ["status" => "error", "message" => "Las fechas estimadas no pueden ser anteriores a hoy"];
+		}
+
+		if($fechaFinEstimado < $fechaInicioEstimado){
+			return ["status" => "error", "message" => "La fecha de fin estimada no puede ser anterior a la de inicio"];
+		}
+
+		return ["status" => "success"];
+	}
+
+	// Guarda el costo y las fechas estimadas recapturadas al Reabrir (llamado desde
+	// ajax/mantenimiento-cambiar-estatus.ajax.php, ya validado, después de cambiar el
+	// estatus): el presupuesto del intento anterior ya no es válido, así que se piden de
+	// nuevo en vez de dejarlos con el dato viejo.
+	static public function crtActualizarPresupuestoReapertura($id_mantenimiento, $costo, $fechaInicioEstimado, $fechaFinEstimado){
+		$id_hotel = self::crtObtenerIdHotelSesion();
+
+		if($id_hotel === null){
+			return ["status" => "error", "message" => "No se encontró el hotel de tu negocio"];
+		}
+
+		$validacion = self::crtValidarPresupuestoReapertura($costo, $fechaInicioEstimado, $fechaFinEstimado);
+		if($validacion["status"] !== "success"){
+			return $validacion;
+		}
+
+		$respuesta = ModeloMantenimiento::MdlActualizarPresupuestoReapertura($id_mantenimiento, $id_hotel, (float) $costo, $fechaInicioEstimado, $fechaFinEstimado);
+
+		if(!$respuesta || (int) $respuesta["Afectados"] <= 0){
+			return ["status" => "error", "message" => "No se pudo guardar el presupuesto de la reapertura"];
+		}
+
+		return ["status" => "success"];
+	}
+
 	// Guarda la foto de cómo quedó la incidencia ya reparada (llamado desde
 	// ajax/mantenimiento-cambiar-estatus.ajax.php cuando la acción es Marcar resuelto)
 	static public function crtGuardarFotoResuelta($id_mantenimiento, $archivoFoto){
@@ -104,6 +156,45 @@ class ControladorMantenimiento{
 		$fotoDestino = "views/img/Mantenimiento/" . $nombreImagen;
 
 		$respuesta = ModeloMantenimiento::MdlActualizarFotoResuelta($id_mantenimiento, $id_hotel, $fotoDestino);
+
+		if(!$respuesta || (int) $respuesta["Afectados"] <= 0){
+			return ["status" => "error", "message" => "No se pudo guardar la foto"];
+		}
+
+		return ["status" => "success"];
+	}
+
+	// Guarda la foto obligatoria de una reapertura (llamado desde
+	// ajax/mantenimiento-cambiar-estatus.ajax.php cuando la acción es Reabrir): se vuelve la
+	// foto activa de la incidencia y limpia la foto de resultado, que ya no aplica.
+	static public function crtGuardarFotoReapertura($id_mantenimiento, $archivoFoto){
+		$id_hotel = self::crtObtenerIdHotelSesion();
+
+		if($id_hotel === null){
+			return ["status" => "error", "message" => "No se encontró el hotel de tu negocio"];
+		}
+
+		if(!is_array($archivoFoto) || empty($archivoFoto["tmp_name"])){
+			return ["status" => "error", "message" => "Debes adjuntar una foto para reabrir la incidencia"];
+		}
+
+		if($archivoFoto["size"] > 3 * 1024 * 1024){
+			return ["status" => "error", "message" => "La foto no puede pesar más de 3MB"];
+		}
+
+		$dirPathAbsoluto = dirname(__DIR__) . "/views/img/Mantenimiento/";
+		if(!is_dir($dirPathAbsoluto)){
+			mkdir($dirPathAbsoluto, 0755, true);
+		}
+		$nombreImagen = time() . "_" . $archivoFoto["name"];
+
+		if(!move_uploaded_file($archivoFoto["tmp_name"], $dirPathAbsoluto . $nombreImagen)){
+			return ["status" => "error", "message" => "No se pudo guardar la foto"];
+		}
+
+		$fotoDestino = "views/img/Mantenimiento/" . $nombreImagen;
+
+		$respuesta = ModeloMantenimiento::MdlActualizarFotoReapertura($id_mantenimiento, $id_hotel, $fotoDestino);
 
 		if(!$respuesta || (int) $respuesta["Afectados"] <= 0){
 			return ["status" => "error", "message" => "No se pudo guardar la foto"];
@@ -364,8 +455,11 @@ class ControladorMantenimiento{
 			$bitacora[] = [
 				"idMantenimiento" => (int) $fila["Id_Mantenimiento"],
 				"fecha"           => date("d/m/Y g:i a", strtotime($fila["Fecha"])),
-				"foto"            => $fila["Foto"] ?: null,
-				"fotoResuelto"    => $fila["Foto_Resuelto"] ?: null,
+				// La foto es la propia de ESTE evento (guardada en el historial al registrar,
+				// reabrir, resolver o restaurar), no una columna fija de la incidencia: así
+				// cada renglón conserva su propia evidencia sin que una acción posterior
+				// (p.ej. una segunda resolución) sobrescriba la foto de un renglón anterior.
+				"foto"            => $fila["FotoAccion"] ?: null,
 				"descripcion"     => $fila["Descripcion"],
 				"proveedor"       => $fila["Proveedor"] ?: null,
 				"estatus"         => self::NOMBRES_ESTATUS[$idEstatus] ?? "Otro",
@@ -373,7 +467,6 @@ class ControladorMantenimiento{
 					? ($mapaMotivos[(int) $fila["Id_MotivoEliminacion"]] ?? "Sin especificar")
 					: null,
 				"nota" => $fila["Nota"] ?: null,
-				"fotoAccion" => $fila["FotoAccion"] ?: null,
 			];
 		}
 

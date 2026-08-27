@@ -21,9 +21,16 @@ class ServicioAjax
 	public function iniciar(){
 
 		$id_habitacion = isset($_POST["id_habitacion"]) ? $_POST["id_habitacion"] : 0;
-		$respuesta = ControladorServicio::crtIniciarServicio($id_habitacion);
+		$archivoFoto = $_FILES["fotoInicio"] ?? null;
+		$respuesta = ControladorServicio::crtIniciarServicio($id_habitacion, $archivoFoto);
 
 		echo json_encode($respuesta, JSON_UNESCAPED_UNICODE);
+	}
+
+	public function historial(){
+		$historial = ControladorServicio::crtObtenerHistorialServicios();
+
+		echo json_encode(["data" => $historial], JSON_UNESCAPED_UNICODE);
 	}
 
 	public function tareas(){
@@ -67,4 +74,6 @@ if ($Accion === "activo") {
 	$Ajax->cambiarEstatusTarea();
 } elseif ($Accion === "finalizar") {
 	$Ajax->finalizar();
+} elseif ($Accion === "historial") {
+	$Ajax->historial();
 }
