@@ -3,6 +3,84 @@
   opacity: 0.5; /* Opcional: para dar un efecto visual de deshabilitado */
 }
 
+/* El popup del calendario nativo (input type="date") es UI del propio navegador, no de la
+   página; se fuerza a claro en todo el sistema para que no herede un tema oscuro y se vea
+   siempre con su apariencia normal/predeterminada, sin importar el módulo. */
+input[type="date"] {
+  color-scheme: light;
+}
+
+/* Calendario propio (bootstrap-datepicker) con la paleta del sistema, global para que
+   cualquier campo de fecha del sistema (no solo Recepción, de donde se movió este bloque)
+   se vea igual sin tener que repetir el estilo por módulo. z-index alto para que también
+   se vea por encima de popups de SweetAlert2. */
+.datepicker.datepicker-dropdown{
+  border:1px solid #e4d9c8;
+  border-radius:10px;
+  box-shadow:0 8px 24px rgba(63,52,46,.14);
+  padding:6px;
+  z-index:10000 !important;
+}
+.datepicker table tr td, .datepicker table tr th{
+  font-size:12.5px;
+}
+.datepicker th.dow{
+  color:#8a7c6d;
+  font-weight:700;
+  text-transform:uppercase;
+  font-size:11px;
+}
+.datepicker .datepicker-switch,
+.datepicker .prev,
+.datepicker .next{
+  color:#3f342e;
+  font-weight:700;
+}
+.datepicker .prev:hover,
+.datepicker .next:hover,
+.datepicker .datepicker-switch:hover{
+  background:#f2ede6;
+}
+.datepicker table tr td.day{
+  color:#3f342e;
+}
+.datepicker table tr td.day:hover{
+  background:#f2ede6;
+  border-radius:6px;
+  cursor:pointer;
+}
+.datepicker table tr td.old,
+.datepicker table tr td.new{
+  color:#dcd2c2;
+}
+.datepicker table tr td.disabled,
+.datepicker table tr td.disabled:hover{
+  color:#dcd2c2 !important;
+  background:none !important;
+  cursor:not-allowed;
+  text-decoration:line-through;
+}
+.datepicker table tr td.today,
+.datepicker table tr td.today:hover,
+.datepicker table tr td.today.disabled,
+.datepicker table tr td.today.disabled:hover{
+  background:#dfc6a2 !important;
+  background-image:none !important;
+  color:#3f342e !important;
+  border-radius:6px;
+  text-shadow:none;
+}
+.datepicker table tr td.active,
+.datepicker table tr td.active:hover,
+.datepicker table tr td.active.disabled,
+.datepicker table tr td.active.disabled:hover{
+  background:#81412d !important;
+  background-image:none !important;
+  color:#fff !important;
+  border-radius:6px;
+  text-shadow:none;
+}
+
 
 .button {
     display: inline-block;

@@ -44,3 +44,16 @@ $('#login-button').click(function(){
 	  TweenMax.to("#container", .4, { scale: 1, ease:Sine.easeInOut});
 	});
   });
+
+/*=============================================
+ Bloquea escribir directamente en cualquier input[type="date"] del sistema (solo se
+ puede elegir la fecha con el calendario nativo). Delegado en document para que tambien
+ aplique a campos que se agregan despues dinamicamente (ej. el modal de Reabrir de
+ Mantenimiento).
+ =============================================*/
+$(document).on("keydown", 'input[type="date"]', function(e){
+	e.preventDefault();
+});
+$(document).on("paste beforeinput", 'input[type="date"]', function(e){
+	e.preventDefault();
+});

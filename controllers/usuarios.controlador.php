@@ -39,6 +39,13 @@
 
 						if ($respuesta["id_estatus"] == 5) {
 							echo '<script>window.location = "reset";</script>';
+						} elseif ($_SESSION["Perfil"] === "Limpieza") {
+							// El perfil Limpieza no tiene "Inicio" en el menú (solo ve su
+							// propio módulo), así que aterriza directo ahí al iniciar sesión.
+							echo '<script>window.location = "servicio";</script>';
+						} elseif ($_SESSION["Perfil"] === "Recepcionista") {
+							// Tampoco tiene "Inicio" en el menú, aterriza directo en Recepción.
+							echo '<script>window.location = "recepcion";</script>';
 						} else {
 							echo '<script>window.location = "inicio";</script>';
 						}

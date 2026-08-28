@@ -74,13 +74,11 @@ class ControladorMantenimiento{
 	// ajax/mantenimiento-cambiar-estatus.ajax.php ANTES de tocar el estatus, igual que la
 	// validación de la foto: si algo aquí falla, la incidencia no debe quedar reabierta a
 	// medias sin su nuevo presupuesto).
+	// El costo estimado es opcional: si no se captura, se guarda en 0 y se puede corregir
+	// después desde la ficha de la incidencia.
 	static public function crtValidarPresupuestoReapertura($costo, $fechaInicioEstimado, $fechaFinEstimado){
 		$costo = (float) $costo;
 		$hoy = date("Y-m-d");
-
-		if($costo <= 0){
-			return ["status" => "error", "message" => "Captura el costo estimado de la reparación"];
-		}
 
 		if(strtotime((string) $fechaInicioEstimado) === false || strtotime((string) $fechaFinEstimado) === false){
 			return ["status" => "error", "message" => "Captura las fechas estimadas de la reparación"];
@@ -812,5 +810,21 @@ class ControladorMantenimiento{
 				</script>';
 			}
 		}
+	}
+
+	// Corte diario (cualquier movimiento de hoy) para el reporte de WhatsApp. Solo lo puede
+	// pedir el Administrador — se revalida aquí también, no solo se oculta el botón.
+	static public function crtObtenerCorteDiarioMantenimiento(){
+		if(($_SESSION["Perfil"] ?? "") !== "Administrador"){
+			return null;
+		}
+
+		$id_hotel = self::crtObtenerIdHotelSesion();
+
+		if($id_hotel === null){
+			return null;
+		}
+
+		return ModeloMantenimiento::MdlObtenerCorteDiarioMantenimiento($id_hotel);
 	}
 }

@@ -212,4 +212,21 @@ class ControladorServicio{
 		return ["ok" => true];
 	}
 
+	// Corte diario (limpiezas que iniciaron/terminaron hoy) para el reporte de WhatsApp.
+	// Solo lo puede pedir el Administrador — se revalida aquí también, no solo se oculta el
+	// botón.
+	static public function crtObtenerCorteDiarioLimpieza(){
+		if(($_SESSION["Perfil"] ?? "") !== "Administrador"){
+			return null;
+		}
+
+		$id_hotel = self::crtObtenerIdHotelSesion();
+
+		if($id_hotel === null){
+			return null;
+		}
+
+		return ModeloServicio::MdlObtenerCorteDiarioLimpieza($id_hotel);
+	}
+
 }

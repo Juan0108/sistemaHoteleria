@@ -35,7 +35,7 @@ function servPintarTareas($cuerpo, tareas){
 
 		$cuerpo.append(
 			'<tr>' +
-				'<td>' + (indice + 1) + '.</td>' +
+				'<td class="serv-tarea-num">' + (indice + 1) + '.</td>' +
 				'<td>' + escaparHtmlServicio(texto) + '</td>' +
 				'<td class="serv-tarea-toggle">' + toggle + '</td>' +
 			'</tr>'
@@ -303,14 +303,22 @@ $(document).ready(function(){
 		$("#modalFotoServicio").modal("show");
 	});
 
-	$(document).on("change", "#servFiltroHabitacion, #servFiltroFechaDesde, #servFiltroFechaHasta", function(){
+	$(document).on("change", "#servFiltroHabitacion, #servFiltroUsuario, #servFiltroFechaDesde, #servFiltroFechaHasta, #servFiltroCantidad", function(){
 		servAplicarFiltros();
 	});
 
 	$(document).on("click", "#servLimpiarFiltros", function(){
-		$("#servFiltroFechaDesde").val("");
-		$("#servFiltroFechaHasta").val("");
+		$("#servFiltroFechaDesde, #servFiltroFechaHasta").datepicker("clearDates");
 		servAplicarFiltros();
+	});
+
+	// Calendario propio en vez del selector nativo: solo se puede escoger la fecha, no
+	// escribirla a mano (el input ya queda "readonly" en el HTML).
+	$("#servFiltroFechaDesde, #servFiltroFechaHasta").datepicker({
+		format: "yyyy-mm-dd",
+		language: "es",
+		autoclose: true,
+		todayHighlight: true
 	});
 
 	servCargarHistorial();
@@ -319,15 +327,47 @@ $(document).ready(function(){
 // Tabla de limpiezas ya finalizadas, debajo del botón "Iniciar limpieza".
 var servHistorialCompleto = [];
 
+// Llena el filtro de Usuario con los nombres que realmente aparecen en el historial ya
+// cargado (sin pedirle otra lista al servidor), conservando la selección actual si sigue
+// siendo una opción válida.
+function servLlenarFiltroUsuario(lista){
+
+	var $select = $("#servFiltroUsuario");
+	var seleccionado = $select.val();
+	var usuarios = [];
+
+	lista.forEach(function(s){
+		if (s.usuario && usuarios.indexOf(s.usuario) === -1){
+			usuarios.push(s.usuario);
+		}
+	});
+
+	usuarios.sort(function(a, b){ return a.localeCompare(b); });
+
+	$select.empty().append('<option value="">-- Selecciona un usuario --</option>');
+	usuarios.forEach(function(usuario){
+		$select.append(new Option(usuario, usuario));
+	});
+
+	if (seleccionado && usuarios.indexOf(seleccionado) !== -1){
+		$select.val(seleccionado);
+	}
+}
+
 function servAplicarFiltros(){
 
 	var idHabitacion = $("#servFiltroHabitacion").val();
+	var usuario = $("#servFiltroUsuario").val();
 	var fechaDesde = $("#servFiltroFechaDesde").val();
 	var fechaHasta = $("#servFiltroFechaHasta").val();
 
 	var filtrado = servHistorialCompleto.filter(function(s){
 
 		if (idHabitacion && String(s.idHabitacion) !== String(idHabitacion)){
+			return false;
+		}
+
+		if (usuario && s.usuario !== usuario){
 			return false;
 		}
 
@@ -342,7 +382,10 @@ function servAplicarFiltros(){
 		return true;
 	});
 
-	servPintarHistorial(filtrado);
+	// "Mostrar N registros" (10/20/25/45/50/100, igual que el resto del sistema): recorta
+	// la lista ya filtrada a los primeros N, sin necesidad de una tabla de paginación aparte.
+	var _cantidad = parseInt($("#servFiltroCantidad").val(), 10) || 10;
+	servPintarHistorial(filtrado.slice(0, _cantidad));
 }
 
 function servPintarHistorial(lista){
@@ -384,6 +427,7 @@ function servCargarHistorial(){
 		dataType: "json",
 		success: function(respuesta){
 			servHistorialCompleto = respuesta.data || [];
+			servLlenarFiltroUsuario(servHistorialCompleto);
 			servAplicarFiltros();
 		},
 		error: function(){
@@ -391,3 +435,49 @@ function servCargarHistorial(){
 		}
 	});
 }
+
+/*=============================================
+ Corte diario por WhatsApp (solo Administrador): manda el reporte del día directo al
+ teléfono guardado en la sesión, sin pedirlo (a diferencia del ticket de checkout).
+ =============================================*/
+$(document).on("click", "#servBtnReporteCorte", function(){
+
+	Swal.fire({
+		title: "¿Generar el corte diario?",
+		text: "Se mandará por WhatsApp al teléfono registrado en tu cuenta.",
+		icon: "question",
+		showCancelButton: true,
+		confirmButtonText: "Sí, generar",
+		cancelButtonText: "Cancelar",
+		confirmButtonColor: "#4c8c5a",
+		cancelButtonColor: "#3f342e",
+		showLoaderOnConfirm: true,
+		preConfirm: function(){
+			return $.ajax({
+				url: "extensions/tcpdf/Reportes/ReporteCorteLimpieza.php",
+				method: "GET",
+				dataType: "json"
+			}).catch(function(){
+				Swal.showValidationMessage("No se pudo contactar al servidor, intenta de nuevo");
+				return Promise.reject();
+			});
+		},
+		allowOutsideClick: function(){ return !Swal.isLoading(); }
+	}).then(function(resultado){
+		if (!resultado.isConfirmed){
+			return;
+		}
+
+		var _respuesta = resultado.value;
+
+		if (_respuesta && _respuesta.ok){
+			Swal.fire({ icon: "success", title: "Reporte enviado", timer: 1800, showConfirmButton: false });
+		}else{
+			Swal.fire({
+				icon: "error",
+				title: "No se pudo enviar el reporte",
+				text: (_respuesta && _respuesta.mensaje) || "La API de WhatsApp no confirmó el envío."
+			});
+		}
+	});
+});

@@ -209,7 +209,9 @@ $(document).ready(function(){
 
     }
 
-    $("#habitacion").select2({ width: "100%" });
+    // minimumResultsForSearch:-1 quita la caja de búsqueda de select2 (que se puede
+    // escribir libremente); así el combo solo deja elegir una habitación de la lista.
+    $("#habitacion").select2({ width: "100%", minimumResultsForSearch: -1 });
 
     // Cada vez que se abre el combo se refrescan las habitaciones ocupadas
     // contra la BD antes de mostrar la lista (evita depender de F5).

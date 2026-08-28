@@ -525,71 +525,8 @@ function armarTooltipMantenimientoRecepcion($descripciones){
 <style>
   .content-wrapper{ background:#f2ece0; }
 
-  .datepicker.datepicker-dropdown{
-    border:1px solid #e4d9c8;
-    border-radius:10px;
-    box-shadow:0 8px 24px rgba(63,52,46,.14);
-    padding:6px;
-  }
-  .datepicker table tr td, .datepicker table tr th{
-    font-size:12.5px;
-  }
-  .datepicker th.dow{
-    color:#8a7c6d;
-    font-weight:700;
-    text-transform:uppercase;
-    font-size:11px;
-  }
-  .datepicker .datepicker-switch,
-  .datepicker .prev,
-  .datepicker .next{
-    color:#3f342e;
-    font-weight:700;
-  }
-  .datepicker .prev:hover,
-  .datepicker .next:hover,
-  .datepicker .datepicker-switch:hover{
-    background:#f2ede6;
-  }
-  .datepicker table tr td.day{
-    color:#3f342e;
-  }
-  .datepicker table tr td.day:hover{
-    background:#f2ede6;
-    border-radius:6px;
-    cursor:pointer;
-  }
-  .datepicker table tr td.old,
-  .datepicker table tr td.new{
-    color:#dcd2c2;
-  }
-  .datepicker table tr td.disabled,
-  .datepicker table tr td.disabled:hover{
-    color:#dcd2c2 !important;
-    background:none !important;
-    cursor:not-allowed;
-    text-decoration:line-through;
-  }
-  .datepicker table tr td.today,
-  .datepicker table tr td.today:hover,
-  .datepicker table tr td.today.disabled,
-  .datepicker table tr td.today.disabled:hover{
-    background:#dfc6a2 !important;
-    background-image:none !important;
-    color:#3f342e !important;
-    border-radius:6px;
-    text-shadow:none;
-  }
-  .datepicker table tr td.active,
-  .datepicker table tr td.active:hover,
-  .datepicker table tr td.active.disabled,
-  .datepicker table tr td.active.disabled:hover{
-    background:#81412d !important;
-    background-image:none !important;
-    color:#fff !important;
-    border-radius:6px;
-    text-shadow:none;
-  }
+  /* El estilo del calendario (.datepicker*) ahora es global, en CSS/FrontExtra.css, para
+     que se vea igual en cualquier módulo que use bootstrap-datepicker, no solo aquí. */
   .content-header h1{
     color:#3f342e;
     font-weight:800;
@@ -1248,6 +1185,7 @@ function armarTooltipMantenimientoRecepcion($descripciones){
     margin-top:10px;
   }
   .co-btn-agregar-pago:hover{ border-color:#81412d; color:#81412d; }
+  .co-btn-agregar-pago:disabled{ opacity:.45; cursor:not-allowed; border-color:#b8a48c; color:#5c4a3a; }
   .co-cobertura{
     display:flex;
     justify-content:space-between;

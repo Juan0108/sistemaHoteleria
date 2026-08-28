@@ -488,10 +488,31 @@ $(document).on("change", ".nuevaFotoMtto", function(){
 });
 
 /*=============================================
- La fecha fin del formulario no puede ser anterior a la fecha inicio
+ Calendario propio (bootstrap-datepicker) para "Nueva incidencia": no se puede escribir la
+ fecha a mano (el input queda "readonly"), y la fecha fin no puede ser anterior a la fecha
+ inicio elegida.
  =============================================*/
-$(document).on("change", "input[name='nuevaFechaInicioMtto']", function(){
-	$("input[name='nuevaFechaFinMtto']").attr("min", $(this).val());
+$(function(){
+	var _hoyIso = new Date().toISOString().slice(0, 10);
+
+	$("input[name='nuevaFechaInicioMtto']").datepicker({
+		format: "yyyy-mm-dd",
+		language: "es",
+		autoclose: true,
+		todayHighlight: true,
+		startDate: _hoyIso
+	});
+	$("input[name='nuevaFechaFinMtto']").datepicker({
+		format: "yyyy-mm-dd",
+		language: "es",
+		autoclose: true,
+		todayHighlight: true,
+		startDate: _hoyIso
+	});
+});
+
+$(document).on("changeDate", "input[name='nuevaFechaInicioMtto']", function(){
+	$("input[name='nuevaFechaFinMtto']").datepicker("setStartDate", $(this).val());
 });
 
 /*=============================================
@@ -585,19 +606,19 @@ $(document).on("click", ".btnCambiarEstatus", function(){
 			html:
 				'<div style="text-align:left;">' +
 					'<label style="font-weight:600; display:block; margin-bottom:6px;">¿Por qué se vuelve a reabrir esta incidencia?</label>' +
-					'<textarea id="mttoReaperturaMotivo" class="swal2-textarea" placeholder="Describe el motivo de la reapertura" style="display:block; resize:none; margin:0 0 16px;"></textarea>' +
+					'<textarea id="mttoReaperturaMotivo" class="swal2-textarea" placeholder="Describe el motivo de la reapertura" style="display:block; width:100%; box-sizing:border-box; resize:none; overflow-y:auto; min-height:60px; max-height:160px; margin:0 auto 16px;"></textarea>' +
 					'<label style="font-weight:600; display:block; margin-bottom:6px;">Foto nueva de la incidencia (obligatoria)</label>' +
 					'<input type="file" id="mttoReaperturaFoto" accept="image/*" class="swal2-file" style="margin:0 0 16px;">' +
 					'<label style="font-weight:600; display:block; margin-bottom:6px;">Costo estimado de esta reparación</label>' +
 					'<input type="text" inputmode="decimal" id="mttoReaperturaCosto" class="swal2-input" placeholder="0.00" style="margin:0 0 16px;">' +
 					'<div style="display:flex; gap:10px;">' +
-						'<div style="flex:1;">' +
+						'<div style="flex:1; min-width:0;">' +
 							'<label style="font-weight:600; display:block; margin-bottom:6px;">Inicio estimado</label>' +
-							'<input type="date" id="mttoReaperturaFechaInicio" class="swal2-input" style="margin:0;" min="' + _hoyIso + '">' +
+							'<input type="text" id="mttoReaperturaFechaInicio" class="swal2-input" style="margin:0; width:100%; box-sizing:border-box;" autocomplete="off" readonly>' +
 						'</div>' +
-						'<div style="flex:1;">' +
+						'<div style="flex:1; min-width:0;">' +
 							'<label style="font-weight:600; display:block; margin-bottom:6px;">Fin estimado</label>' +
-							'<input type="date" id="mttoReaperturaFechaFin" class="swal2-input" style="margin:0;" min="' + _hoyIso + '">' +
+							'<input type="text" id="mttoReaperturaFechaFin" class="swal2-input" style="margin:0; width:100%; box-sizing:border-box;" autocomplete="off" readonly>' +
 						'</div>' +
 					'</div>' +
 				'</div>',
@@ -613,9 +634,30 @@ $(document).on("click", ".btnCambiarEstatus", function(){
 				document.getElementById("mttoReaperturaCosto").addEventListener("input", function(){
 					this.value = formatearMontoMtto(this.value);
 				});
-				document.getElementById("mttoReaperturaFechaInicio").addEventListener("change", function(){
-					document.getElementById("mttoReaperturaFechaFin").min = this.value || _hoyIso;
+				// Calendario propio (bootstrap-datepicker) en vez del selector nativo: solo se
+				// puede escoger la fecha, no escribirla a mano.
+				$("#mttoReaperturaFechaInicio, #mttoReaperturaFechaFin").datepicker({
+					format: "yyyy-mm-dd",
+					language: "es",
+					autoclose: true,
+					todayHighlight: true,
+					startDate: _hoyIso
 				});
+				$("#mttoReaperturaFechaInicio").on("changeDate", function(){
+					$("#mttoReaperturaFechaFin").datepicker("setStartDate", this.value || _hoyIso);
+				});
+
+				// El textarea crece con el contenido (hasta max-height, definido en su propio
+				// style) en vez de quedar fijo con su propia scrollbar interna desde el inicio;
+				// pasado ese máximo, el overflow-y:auto ya puesto en el style se encarga de la
+				// scrollbar.
+				var _motivoTextarea = document.getElementById("mttoReaperturaMotivo");
+				var _autoAjustarAltura = function(){
+					_motivoTextarea.style.height = "auto";
+					_motivoTextarea.style.height = _motivoTextarea.scrollHeight + "px";
+				};
+				_motivoTextarea.addEventListener("input", _autoAjustarAltura);
+				_autoAjustarAltura();
 			},
 			preConfirm: function(){
 				var _motivo = document.getElementById("mttoReaperturaMotivo").value.trim();
@@ -634,10 +676,6 @@ $(document).on("click", ".btnCambiarEstatus", function(){
 				}
 				if (_archivo.size > 3 * 1024 * 1024) {
 					Swal.showValidationMessage("La foto no puede pesar más de 3MB");
-					return false;
-				}
-				if (_costo <= 0) {
-					Swal.showValidationMessage("Captura el costo estimado de la reparación");
 					return false;
 				}
 				if (!_fechaInicio || !_fechaFin) {
@@ -1161,8 +1199,7 @@ $(document).on("change", "#mttoHistorialDesde, #mttoHistorialHasta", function(){
 });
 
 $(document).on("click", "#mttoHistorialLimpiarFecha", function(){
-	$("#mttoHistorialDesde").val("");
-	$("#mttoHistorialHasta").val("");
+	$("#mttoHistorialDesde, #mttoHistorialHasta").datepicker("clearDates");
 	if (mttoHistorialListaActual.length){
 		mttoRenderizarHistorial();
 	}
@@ -1171,6 +1208,15 @@ $(document).on("click", "#mttoHistorialLimpiarFecha", function(){
 // Mientras no se toque el filtro de habitación, se ve el historial de todo el hotel junto.
 $(document).ready(function(){
 	if ($("#mttoHistorialHabitacion").length){
+		// Calendario propio (bootstrap-datepicker) para los filtros del historial: solo se
+		// puede escoger la fecha, no escribirla a mano (el input queda "readonly").
+		$("#mttoHistorialDesde, #mttoHistorialHasta").datepicker({
+			format: "yyyy-mm-dd",
+			language: "es",
+			autoclose: true,
+			todayHighlight: true
+		});
+
 		mttoCargarHistorial("");
 	}
 });
@@ -1244,5 +1290,51 @@ $(document).on("click", ".btnRestaurarMtto", function(){
 				});
 			}
 		});
+	});
+});
+
+/*=============================================
+ Corte diario por WhatsApp (solo Administrador): manda el reporte del día directo al
+ teléfono guardado en la sesión, sin pedirlo (a diferencia del ticket de checkout).
+ =============================================*/
+$(document).on("click", "#mttoBtnReporteCorte", function(){
+
+	Swal.fire({
+		title: "¿Generar el corte diario?",
+		text: "Se mandará por WhatsApp al teléfono registrado en tu cuenta.",
+		icon: "question",
+		showCancelButton: true,
+		confirmButtonText: "Sí, generar",
+		cancelButtonText: "Cancelar",
+		confirmButtonColor: "#4c8c5a",
+		cancelButtonColor: "#3f342e",
+		showLoaderOnConfirm: true,
+		preConfirm: function(){
+			return $.ajax({
+				url: "extensions/tcpdf/Reportes/ReporteCorteMantenimiento.php",
+				method: "GET",
+				dataType: "json"
+			}).catch(function(){
+				Swal.showValidationMessage("No se pudo contactar al servidor, intenta de nuevo");
+				return Promise.reject();
+			});
+		},
+		allowOutsideClick: function(){ return !Swal.isLoading(); }
+	}).then(function(resultado){
+		if (!resultado.isConfirmed){
+			return;
+		}
+
+		var _respuesta = resultado.value;
+
+		if (_respuesta && _respuesta.ok){
+			Swal.fire({ icon: "success", title: "Reporte enviado", timer: 1800, showConfirmButton: false });
+		}else{
+			Swal.fire({
+				icon: "error",
+				title: "No se pudo enviar el reporte",
+				text: (_respuesta && _respuesta.mensaje) || "La API de WhatsApp no confirmó el envío."
+			});
+		}
 	});
 });

@@ -50,6 +50,10 @@
 
        $Usuarios = ControladorUsuarios::crtObtenerUsuariosHotel();
 
+       // Se consulta una sola vez y se reutiliza en los dos selects de Perfil (Agregar y
+       // Editar) más abajo, en vez de abrir una conexión nueva a la BD remota por cada uno.
+       $PerfilesDisponibles = ControladorUsuarios::crtObtenerPerfiles()->fetchAll(PDO::FETCH_ASSOC);
+
        if($_SESSION["Perfil"] =="Soporte Tecnico" || $_SESSION["Perfil"] == "Administrador"){
 
         // Agregados para las tarjetas: totales, activos y conteo dinámico por rol.
@@ -224,7 +228,7 @@
                     <span class="input-group-addon"><i class="fa fa-users"></i> </span>
                     <select class="form-control input-sm" name="Perfil" required>
                       <option value="">Seleccionar Perfil</option>
-                      <?php foreach (ControladorUsuarios::crtObtenerPerfiles() as $perfilOpcion): ?>
+                      <?php foreach ($PerfilesDisponibles as $perfilOpcion): ?>
                         <option value="<?php echo (int) $perfilOpcion["Id_perfil"]; ?>"><?php echo htmlspecialchars($perfilOpcion["Nombre"]); ?></option>
                       <?php endforeach; ?>
                     </select>
@@ -474,7 +478,7 @@
                     <span class="input-group-addon"><i class="fa fa-users"></i> </span>
                     <select class="form-control input-sm" name="editarPerfil" id="editarPerfil">
                       <option value="">Seleccionar Perfil</option>
-                      <?php foreach (ControladorUsuarios::crtObtenerPerfiles() as $perfilOpcion): ?>
+                      <?php foreach ($PerfilesDisponibles as $perfilOpcion): ?>
                         <option value="<?php echo (int) $perfilOpcion["Id_perfil"]; ?>"><?php echo htmlspecialchars($perfilOpcion["Nombre"]); ?></option>
                       <?php endforeach; ?>
                     </select>

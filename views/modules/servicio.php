@@ -31,6 +31,7 @@ $HabitacionesServ = $ctlServicio->crtObtenerHabitaciones();
 
         <h5 class="serv-seccion-titulo">Historial de limpiezas</h5>
 
+        <?php if (($_SESSION["Perfil"] ?? "") !== "Limpieza"): ?>
         <div class="serv-filtros">
           <div class="serv-filtro-campo">
             <i class="fa fa-bed"></i>
@@ -42,16 +43,41 @@ $HabitacionesServ = $ctlServicio->crtObtenerHabitaciones();
             </select>
           </div>
           <div class="serv-filtro-campo">
-            <i class="fa fa-calendar"></i>
-            <input type="date" id="servFiltroFechaDesde" class="serv-filtro-fecha">
+            <i class="fa fa-user"></i>
+            <select id="servFiltroUsuario" class="serv-filtro-select">
+              <option value="">-- Selecciona un usuario --</option>
+            </select>
           </div>
           <div class="serv-filtro-campo">
             <i class="fa fa-calendar"></i>
-            <input type="date" id="servFiltroFechaHasta" class="serv-filtro-fecha">
+            <input type="text" id="servFiltroFechaDesde" class="serv-filtro-fecha" placeholder="Desde" autocomplete="off" readonly>
+          </div>
+          <div class="serv-filtro-campo">
+            <i class="fa fa-calendar"></i>
+            <input type="text" id="servFiltroFechaHasta" class="serv-filtro-fecha" placeholder="Hasta" autocomplete="off" readonly>
           </div>
           <button type="button" class="btn serv-btn-limpiar" id="servLimpiarFiltros">
             <i class="fa fa-times"></i> Limpiar fechas
           </button>
+        </div>
+        <?php endif; ?>
+
+        <div class="serv-mostrar">
+          <span>Mostrar</span>
+          <select id="servFiltroCantidad" class="serv-filtro-select">
+            <option value="10">10</option>
+            <option value="20">20</option>
+            <option value="25">25</option>
+            <option value="45">45</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+          <span>registros</span>
+          <?php if (($_SESSION["Perfil"] ?? "") === "Administrador"): ?>
+          <button type="button" class="btn serv-btn-reporte-corte" id="servBtnReporteCorte" title="Manda el corte diario de hoy por WhatsApp a tu teléfono">
+            <i class="fa fa-whatsapp"></i> Generar reporte
+          </button>
+          <?php endif; ?>
         </div>
 
         <div class="serv-tabla-wrap">
@@ -183,7 +209,7 @@ $HabitacionesServ = $ctlServicio->crtObtenerHabitaciones();
   .sv-icono-boton{ width:15px; height:15px; object-fit:contain; margin-right:6px; filter:brightness(0) invert(1); }
 
   .serv-modal-title{ display:flex; align-items:center; }
-  .serv-modal-title img{ margin-right:8px; margin-top:0; }
+  .serv-modal-title img{ margin:0 8px 0 0; }
 
   .sv-btn-realizar{
     display:inline-flex;
@@ -226,9 +252,10 @@ $HabitacionesServ = $ctlServicio->crtObtenerHabitaciones();
     border:1px solid #eee3d2;
     border-radius:8px;
   }
-  .serv-tabla-tareas{ margin-bottom:0; }
+  .serv-tabla-tareas{ margin-bottom:0; table-layout:fixed; width:100%; }
   .serv-tabla-tareas td{ vertical-align:middle; border-top:1px solid #f4efe4; }
   .serv-tabla-tareas tr:first-child td{ border-top:none; }
+  .serv-tarea-num{ width:26px; color:#9c8a76; font-weight:700; white-space:nowrap; }
   .serv-tarea-toggle{ width:60px; text-align:right; }
 
   .tar-btn-secondary{
@@ -261,12 +288,46 @@ $HabitacionesServ = $ctlServicio->crtObtenerHabitaciones();
   .serv-filtro-select, .serv-filtro-fecha{
     border:none;
     background:transparent;
+    cursor:pointer;
     color:#3f342e;
     font-weight:600;
     font-size:13px;
     outline:none;
   }
   .serv-filtro-select{ min-width:170px; }
+  .serv-mostrar{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:12px;
+    font-size:13px;
+    color:#5c4a3a;
+    font-weight:600;
+  }
+  .serv-mostrar #servFiltroCantidad{
+    min-width:0;
+    border:1px solid #eee3d2;
+    border-radius:8px;
+    padding:6px 10px;
+    background:#fdfaf5;
+    color:#3f342e;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .serv-btn-reporte-corte{
+    margin-left:auto;
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    background:#4c8c5a;
+    border:1px solid #4c8c5a;
+    color:#fff;
+    border-radius:8px;
+    font-size:13px;
+    font-weight:600;
+    padding:7px 14px;
+  }
+  .serv-btn-reporte-corte:hover, .serv-btn-reporte-corte:focus{ background:#3f7649; border-color:#3f7649; color:#fff; }
   .serv-btn-limpiar{
     display:inline-flex;
     align-items:center;

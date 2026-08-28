@@ -772,6 +772,22 @@ function coSumaLineasEfectivo(){
 	return _suma;
 }
 
+// true si alguna línea ya en pantalla todavía no tiene tipo de pago o monto capturado —
+// no tiene caso dejar agregar una línea nueva si la anterior sigue vacía.
+function coHayLineaIncompleta(){
+	var _incompleta = false;
+	$("#coLineasPago .co-linea-pago").each(function(){
+		var $linea = $(this);
+		var _idTipoPago = $linea.find(".co-linea-tipo").val();
+		var _monto = desformatearPrecio($linea.find(".co-linea-monto").val()) || 0;
+		if (!_idTipoPago || _monto <= 0){
+			_incompleta = true;
+			return false;
+		}
+	});
+	return _incompleta;
+}
+
 // El aviso de cobertura se evalúa siempre (con 1 línea o con varias): solo se oculta
 // cuando lo capturado cuadra exactamente con el total; si falta o sobra, se avisa aunque
 // sea un único método de pago.
@@ -797,6 +813,11 @@ function coActualizarCobertura(){
 	var _hayEfectivo = coSumaLineasEfectivo() > 0;
 	$("#coEfectivoGrupo, #coCambioGrupo").toggle(_hayEfectivo);
 	calcularCambioCheckOut();
+
+	// Se deshabilita "Agregar otro método de pago" si ya está cubierto/excedido (no tiene
+	// caso seguir agregando), o si alguna línea existente todavía está incompleta (no se
+	// deja apilar líneas vacías sin llenar la anterior primero).
+	$("#coAgregarLineaPago").prop("disabled", _diferencia <= 0.005 || coHayLineaIncompleta());
 }
 
 function abrirModalCheckOut(idReservacion, idMotivoCancelacion){
@@ -1069,6 +1090,8 @@ $(document).on("click", "#coConfirmar", function(){
 						text: _esCancelacion && respuesta.folio ? "Folio de cancelación: " + respuesta.folio : undefined,
 						timer: 2500,
 						showConfirmButton: false
+					}).then(function(){
+						coOfrecerEnvioTicketWhatsapp(idReservacion);
 					});
 					refrescarRecepcion();
 				}else{
@@ -1082,6 +1105,74 @@ $(document).on("click", "#coConfirmar", function(){
 		});
 	});
 });
+
+// Al terminar un checkout (o cancelación con checkout), ofrece mandar el ticket de la
+// estadía (hospedaje + todo el consumo cargado) por WhatsApp — mismo patrón ya usado en
+// Punto de Venta (ver views/js/ventas.js), reutilizando la misma cuenta de WhatsApp ya
+// contratada para el sistema.
+function coOfrecerEnvioTicketWhatsapp(idReservacion){
+	Swal.fire({
+		title: "¿Enviar el ticket por WhatsApp?",
+		icon: "question",
+		showDenyButton: true,
+		confirmButtonText: "Sí",
+		denyButtonText: "No",
+		confirmButtonColor: "#81412d"
+	}).then(function(resultado){
+		if (!resultado.isConfirmed){
+			return;
+		}
+
+		Swal.fire({
+			title: "Teléfono del huésped",
+			input: "tel",
+			inputAttributes: { autocapitalize: "off" },
+			inputPlaceholder: "10 dígitos",
+			showCancelButton: true,
+			confirmButtonText: "Enviar",
+			cancelButtonText: "Cancelar",
+			confirmButtonColor: "#81412d",
+			showLoaderOnConfirm: true,
+			preConfirm: function(telefono){
+				if (!telefono || telefono.trim().length < 10){
+					Swal.showValidationMessage("Captura un teléfono válido (10 dígitos)");
+					return false;
+				}
+				return $.ajax({
+					url: "extensions/tcpdf/Reportes/TicketReservacion.php",
+					method: "GET",
+					data: { IdReservacion: idReservacion, Telefono: telefono.trim() },
+					dataType: "json"
+				}).catch(function(){
+					// Fallo de red/HTTP (a nivel navegador); un rechazo reportado por la propia
+					// API de WhatsApp SÍ llega aquí como respuesta 200 normal, se revisa abajo.
+					Swal.showValidationMessage("No se pudo contactar al servidor, intenta de nuevo");
+					return Promise.reject();
+				});
+			},
+			allowOutsideClick: function(){ return !Swal.isLoading(); }
+		}).then(function(resultado2){
+			if (!resultado2.isConfirmed){
+				return;
+			}
+
+			var _respuesta = resultado2.value;
+
+			if (_respuesta && _respuesta.ok){
+				Swal.fire({ icon: "success", title: "Ticket enviado", timer: 1800, showConfirmButton: false });
+			}else{
+				// No se asume éxito solo porque la petición HTTP funcionó: la API de WhatsApp
+				// puede responder 200 y aun así no haber entregado el mensaje (token vencido,
+				// número mal formateado, instancia desconectada, etc.).
+				Swal.fire({
+					icon: "error",
+					title: "No se pudo enviar el ticket",
+					text: (_respuesta && _respuesta.mensaje) || "La API de WhatsApp no confirmó el envío."
+				});
+			}
+		});
+	});
+}
 
 // Refuerzo: además de resetearse al ABRIR el modal (arriba), también se resetea al
 // CERRARSE (se haya confirmado el check out o no), para que nunca quede "Referencia"

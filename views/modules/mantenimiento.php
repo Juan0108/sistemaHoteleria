@@ -113,13 +113,18 @@ $motivosMtto = ControladorMantenimiento::crtObtenerMotivos();
 					</div>
 					<div class="input-group input-group-sm mtto-filtro-group" style="width:170px;">
 						<span class="input-group-addon"><i class="fa fa-calendar"></i></span>
-						<input type="date" id="mttoHistorialDesde" class="form-control" title="Desde">
+						<input type="text" id="mttoHistorialDesde" class="form-control" title="Desde" placeholder="Desde" autocomplete="off" readonly>
 					</div>
 					<div class="input-group input-group-sm mtto-filtro-group" style="width:170px;">
 						<span class="input-group-addon"><i class="fa fa-calendar"></i></span>
-						<input type="date" id="mttoHistorialHasta" class="form-control" title="Hasta">
+						<input type="text" id="mttoHistorialHasta" class="form-control" title="Hasta" placeholder="Hasta" autocomplete="off" readonly>
 					</div>
 					<button type="button" class="mtto-btn-limpiar-filtro" id="mttoHistorialLimpiarFecha" title="Quitar filtro de fecha" ><i class="fa fa-times"></i> Limpiar fechas</button>
+					<?php if (($_SESSION["Perfil"] ?? "") === "Administrador"): ?>
+					<button type="button" class="mtto-btn-reporte-corte" id="mttoBtnReporteCorte" title="Manda el corte diario de hoy por WhatsApp a tu teléfono">
+						<i class="fa fa-whatsapp"></i> Generar reporte
+					</button>
+					<?php endif; ?>
 				</div>
 
 				<div id="mttoHistorialTabContenido" class="mtto-grid">
@@ -184,6 +189,8 @@ $motivosMtto = ControladorMantenimiento::crtObtenerMotivos();
 	}
 	.mtto-btn-limpiar-filtro{ background:#fff; border:1px solid #8d7a68; color:#8d7a68; border-radius:6px; font-size:12px; font-weight:600; padding:6px 12px; }
 	.mtto-btn-limpiar-filtro:hover{ background:#8d7a68; color:#fff; }
+	.mtto-btn-reporte-corte{ background:#4c8c5a; border:1px solid #4c8c5a; color:#fff; border-radius:6px; font-size:12px; font-weight:600; padding:6px 12px; margin-left:auto; }
+	.mtto-btn-reporte-corte:hover{ background:#3f7649; border-color:#3f7649; }
 	.mtto-btn-ver-info{ background:#fff; border:1px solid #3f342e; color:#3f342e; border-radius:6px; font-size:12px; font-weight:600; padding:5px 10px; white-space:nowrap; }
 	.mtto-btn-ver-info:hover{ background:#3f342e; color:#fff; }
 
@@ -387,13 +394,13 @@ $motivosMtto = ControladorMantenimiento::crtObtenerMotivos();
 							<div class="col-xs-6">
 								<div class="form-group">
 									<label><i class="fa fa-calendar-plus-o"></i> Fecha inicio estimada</label>
-									<input type="date" class="form-control" name="nuevaFechaInicioMtto" min="<?php echo date('Y-m-d'); ?>" required>
+									<input type="text" class="form-control" name="nuevaFechaInicioMtto" autocomplete="off" readonly required>
 								</div>
 							</div>
 							<div class="col-xs-6">
 								<div class="form-group">
 									<label><i class="fa fa-hourglass-half"></i> Fecha fin estimada</label>
-									<input type="date" class="form-control" name="nuevaFechaFinMtto" min="<?php echo date('Y-m-d'); ?>" required>
+									<input type="text" class="form-control" name="nuevaFechaFinMtto" autocomplete="off" readonly required>
 								</div>
 							</div>
 						</div>

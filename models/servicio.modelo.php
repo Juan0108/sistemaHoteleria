@@ -67,4 +67,13 @@ class ModeloServicio{
 		return $stmt->fetchAll();
 	}
 
+	// Corte diario: limpiezas que iniciaron y/o terminaron HOY, para el reporte de WhatsApp
+	// del Administrador.
+	static public function MdlObtenerCorteDiarioLimpieza($id_hotel){
+		$stmt = Conexion::conectar()->prepare("CALL ObtenerCorteDiarioLimpieza(:id_hotel)");
+		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
+		$stmt->execute();
+		return $stmt->fetchAll();
+	}
+
 }

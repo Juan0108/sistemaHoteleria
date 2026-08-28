@@ -7,12 +7,14 @@ if ($currentPage !== "reset"): ?>
 <aside class="main-sidebar">
     <section class="sidebar">
         <ul class="sidebar-menu">
+            <?php if (!in_array($_SESSION["Perfil"], ["Limpieza", "Recepcionista"], true)): ?>
             <li class="active">
                 <a href="inicio">
                     <i class="fa fa-home"></i>
                     <span>Inicio</span>
                 </a>
             </li>
+            <?php endif; ?>
 
             <?php
             if ($_SESSION["Perfil"] == "Soporte Tecnico") {
@@ -144,6 +146,12 @@ if ($currentPage !== "reset"): ?>
                             <i class="fa fa-question-circle"></i>
                             <span>Preguntas</span>
                         </a>
+                    </li>
+                    <li>
+                        <a href="tareas">
+                            <i class="fa fa-tasks"></i>
+                            <span>Tareas</span>
+                        </a>
                     </li>';
             }
 
@@ -196,10 +204,25 @@ if ($currentPage !== "reset"): ?>
             }
 
             if ($_SESSION["Perfil"] == "Limpieza") {
-                echo '<li>
+                echo '<li class="active">
                         <a href="servicio">
                             <img src="views/img/Iconos/limpieza.png" alt="" style="width:14px;height:14px;object-fit:contain;margin-right:10px;vertical-align:-1px;filter:brightness(0) invert(1);">
                             <span>Limpieza</span>
+                        </a>
+                    </li>';
+            }
+
+            if ($_SESSION["Perfil"] == "Recepcionista") {
+                echo '<li class="active">
+                        <a href="recepcion">
+                            <i class="fa fa-bell"></i>
+                            <span>Recepción</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="reservas">
+                            <i class="fa fa-calendar"></i>
+                            <span>Reserva</span>
                         </a>
                     </li>';
             }

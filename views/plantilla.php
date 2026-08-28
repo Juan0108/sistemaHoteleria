@@ -287,7 +287,7 @@ if(isset($_SESSION["IniciarSesion"]) && $_SESSION["IniciarSesion"] == "ok")
 
 }
 ?>
-<script src="views/js/plantilla.js"></script>
+<script src="views/js/plantilla.js?v=<?php echo @filemtime(__DIR__ . "/js/plantilla.js"); ?>"></script>
 <script src="views/js/conector.js"></script>
 <script src="views/js/usuarios.js?v=<?php echo @filemtime(__DIR__ . "/js/usuarios.js"); ?>"></script>
 <script src="views/js/categorias.js"></script>

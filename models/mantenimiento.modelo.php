@@ -218,4 +218,13 @@ class ModeloMantenimiento{
 		$stmt->execute();
 		return $stmt->fetch();
 	}
+
+	// Corte diario: cualquier movimiento (registro, cambio de estatus, reapertura, etc.) de
+	// HOY, para el reporte de WhatsApp del Administrador.
+	static public function MdlObtenerCorteDiarioMantenimiento($id_hotel){
+		$stmt = Conexion::conectar()->prepare("CALL ObtenerCorteDiarioMantenimiento(:id_hotel)");
+		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
+		$stmt->execute();
+		return $stmt->fetchAll();
+	}
 }
