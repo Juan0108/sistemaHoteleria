@@ -563,4 +563,9 @@ $motivosMtto = ControladorMantenimiento::crtObtenerMotivos();
 	// "Marcar resuelto" que se acaba de presionar debe pedir la foto de cómo
 	// quedó la incidencia ya reparada
 	var MTTO_ESTATUS_RESUELTO = <?php echo ControladorMantenimiento::ESTATUS_RESUELTO; ?>;
+
+	// Id de estatus "En Proceso": mantenimiento.js lo usa para saber si el botón
+	// "Iniciar" que se acaba de presionar debe pedir la foto de evidencia de que
+	// se empezó a trabajar la incidencia
+	var MTTO_ESTATUS_PROCESO = <?php echo ControladorMantenimiento::ESTATUS_PROCESO; ?>;
 </script>

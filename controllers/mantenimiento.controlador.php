@@ -201,6 +201,45 @@ class ControladorMantenimiento{
 		return ["status" => "success"];
 	}
 
+	// Guarda la foto obligatoria de "Iniciar" (Pendiente -> Proceso): evidencia de que se
+	// empezó a trabajar la incidencia, queda en el renglón nuevo de la bitácora/historial
+	// (llamado desde ajax/mantenimiento-cambiar-estatus.ajax.php).
+	static public function crtGuardarFotoProceso($id_mantenimiento, $archivoFoto){
+		$id_hotel = self::crtObtenerIdHotelSesion();
+
+		if($id_hotel === null){
+			return ["status" => "error", "message" => "No se encontró el hotel de tu negocio"];
+		}
+
+		if(!is_array($archivoFoto) || empty($archivoFoto["tmp_name"])){
+			return ["status" => "error", "message" => "Debes adjuntar una foto para iniciar la reparación"];
+		}
+
+		if($archivoFoto["size"] > 3 * 1024 * 1024){
+			return ["status" => "error", "message" => "La foto no puede pesar más de 3MB"];
+		}
+
+		$dirPathAbsoluto = dirname(__DIR__) . "/views/img/Mantenimiento/";
+		if(!is_dir($dirPathAbsoluto)){
+			mkdir($dirPathAbsoluto, 0755, true);
+		}
+		$nombreImagen = time() . "_" . $archivoFoto["name"];
+
+		if(!move_uploaded_file($archivoFoto["tmp_name"], $dirPathAbsoluto . $nombreImagen)){
+			return ["status" => "error", "message" => "No se pudo guardar la foto"];
+		}
+
+		$fotoDestino = "views/img/Mantenimiento/" . $nombreImagen;
+
+		$respuesta = ModeloMantenimiento::MdlActualizarFotoProceso($id_mantenimiento, $id_hotel, $fotoDestino);
+
+		if(!$respuesta || (int) $respuesta["Afectados"] <= 0){
+			return ["status" => "error", "message" => "No se pudo guardar la foto"];
+		}
+
+		return ["status" => "success"];
+	}
+
 	// Restaura una incidencia eliminada por error, de vuelta a su último estatus antes de
 	// eliminarse. La foto es obligatoria: sirve de evidencia de por qué se está restaurando.
 	static public function crtRestaurarMantenimiento($id_mantenimiento, $archivoFoto){
@@ -812,9 +851,11 @@ class ControladorMantenimiento{
 		}
 	}
 
-	// Corte diario (cualquier movimiento de hoy) para el reporte de WhatsApp. Solo lo puede
-	// pedir el Administrador — se revalida aquí también, no solo se oculta el botón.
-	static public function crtObtenerCorteDiarioMantenimiento(){
+	// Corte de Mantenimiento (historial completo de incidencias con movimiento en el rango
+	// dado, o de HOY si no se manda rango) para el reporte de WhatsApp. Solo lo puede pedir
+	// el Administrador — se revalida aquí también, no solo se oculta el botón. Las fechas se
+	// validan contra el formato Y-m-d antes de pasarlas al SP, por si llegan manipuladas.
+	static public function crtObtenerCorteDiarioMantenimiento($fecha_inicio = null, $fecha_fin = null, $id_habitacion = null){
 		if(($_SESSION["Perfil"] ?? "") !== "Administrador"){
 			return null;
 		}
@@ -825,6 +866,19 @@ class ControladorMantenimiento{
 			return null;
 		}
 
-		return ModeloMantenimiento::MdlObtenerCorteDiarioMantenimiento($id_hotel);
+		$fecha_inicio = self::crtValidarFechaCorte($fecha_inicio);
+		$fecha_fin = self::crtValidarFechaCorte($fecha_fin);
+		$id_habitacion = $id_habitacion !== null && (int) $id_habitacion > 0 ? (int) $id_habitacion : null;
+
+		return ModeloMantenimiento::MdlObtenerCorteDiarioMantenimiento($id_hotel, $fecha_inicio, $fecha_fin, $id_habitacion);
+	}
+
+	private static function crtValidarFechaCorte($fecha){
+		if(!$fecha || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)){
+			return null;
+		}
+
+		$partes = explode('-', $fecha);
+		return checkdate((int) $partes[1], (int) $partes[2], (int) $partes[0]) ? $fecha : null;
 	}
 }

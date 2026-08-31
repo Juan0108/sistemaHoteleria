@@ -212,10 +212,11 @@ class ControladorServicio{
 		return ["ok" => true];
 	}
 
-	// Corte diario (limpiezas que iniciaron/terminaron hoy) para el reporte de WhatsApp.
-	// Solo lo puede pedir el Administrador — se revalida aquí también, no solo se oculta el
-	// botón.
-	static public function crtObtenerCorteDiarioLimpieza(){
+	// Corte de Limpieza (limpiezas que iniciaron/terminaron en el rango dado, o de HOY si no
+	// se manda rango) para el reporte de WhatsApp. Solo lo puede pedir el Administrador — se
+	// revalida aquí también, no solo se oculta el botón. Las fechas se validan contra el
+	// formato Y-m-d antes de pasarlas al SP, por si llegan manipuladas.
+	static public function crtObtenerCorteDiarioLimpieza($fecha_inicio = null, $fecha_fin = null, $id_habitacion = null, $nombre_usuario = null){
 		if(($_SESSION["Perfil"] ?? "") !== "Administrador"){
 			return null;
 		}
@@ -226,7 +227,21 @@ class ControladorServicio{
 			return null;
 		}
 
-		return ModeloServicio::MdlObtenerCorteDiarioLimpieza($id_hotel);
+		$fecha_inicio = self::crtValidarFechaCorte($fecha_inicio);
+		$fecha_fin = self::crtValidarFechaCorte($fecha_fin);
+		$id_habitacion = $id_habitacion !== null && (int) $id_habitacion > 0 ? (int) $id_habitacion : null;
+		$nombre_usuario = trim((string) $nombre_usuario) !== "" ? trim((string) $nombre_usuario) : null;
+
+		return ModeloServicio::MdlObtenerCorteDiarioLimpieza($id_hotel, $fecha_inicio, $fecha_fin, $id_habitacion, $nombre_usuario);
+	}
+
+	private static function crtValidarFechaCorte($fecha){
+		if(!$fecha || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)){
+			return null;
+		}
+
+		$partes = explode('-', $fecha);
+		return checkdate((int) $partes[1], (int) $partes[2], (int) $partes[0]) ? $fecha : null;
 	}
 
 }

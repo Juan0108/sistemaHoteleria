@@ -67,11 +67,17 @@ class ModeloServicio{
 		return $stmt->fetchAll();
 	}
 
-	// Corte diario: limpiezas que iniciaron y/o terminaron HOY, para el reporte de WhatsApp
-	// del Administrador.
-	static public function MdlObtenerCorteDiarioLimpieza($id_hotel){
-		$stmt = Conexion::conectar()->prepare("CALL ObtenerCorteDiarioLimpieza(:id_hotel)");
+	// Corte de Limpieza: limpiezas que iniciaron y/o terminaron dentro de
+	// [fecha_inicio, fecha_fin] (ambas NULL = HOY, mismo comportamiento original), para el
+	// reporte de WhatsApp del Administrador. Habitación opcional; el filtro de usuario es por
+	// NOMBRE completo (así lo maneja el filtro en pantalla, no hay Id_Usuario ahí).
+	static public function MdlObtenerCorteDiarioLimpieza($id_hotel, $fecha_inicio = null, $fecha_fin = null, $id_habitacion = null, $nombre_usuario = null){
+		$stmt = Conexion::conectar()->prepare("CALL ObtenerCorteDiarioLimpieza(:id_hotel, :fecha_inicio, :fecha_fin, :id_habitacion, :nombre_usuario)");
 		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
+		$stmt->bindParam(":fecha_inicio", $fecha_inicio, $fecha_inicio === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+		$stmt->bindParam(":fecha_fin", $fecha_fin, $fecha_fin === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+		$stmt->bindParam(":id_habitacion", $id_habitacion, $id_habitacion === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
+		$stmt->bindParam(":nombre_usuario", $nombre_usuario, $nombre_usuario === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
 		$stmt->execute();
 		return $stmt->fetchAll();
 	}

@@ -1019,7 +1019,7 @@ $(document).on("click", "#coConfirmar", function(){
 			return false;
 		}
 
-		_pagos.push({ idTipoPago: _idTipoPago, monto: _monto, referencia: _referencia });
+		_pagos.push({ idTipoPago: _idTipoPago, monto: _monto, referencia: _referencia, esEfectivo: _esEfectivo });
 	});
 
 	if (_lineaInvalida){
@@ -1035,12 +1035,42 @@ $(document).on("click", "#coConfirmar", function(){
 
 	var _total = Number($("#coTotalPagar").data("total")) || 0;
 	var _cubierto = _pagos.reduce(function(suma, pago){ return suma + pago.monto; }, 0);
+	var _excedente = Math.round((_cubierto - _total) * 100) / 100;
+	var _cambio = 0;
 
-	if (Math.abs(_total - _cubierto) >= 0.005){
+	if (_excedente > 0.004){
+		// El billete que entregó el cliente puede ser mayor al total (p.ej. paga $500 una
+		// cuenta de $380): el excedente solo se puede "devolver" si viene de Efectivo, nunca
+		// de tarjeta/transferencia. Si alcanza, se resta de la(s) línea(s) en Efectivo (de la
+		// última hacia la primera) para que lo que se manda al servidor sí cuadre exacto con
+		// el total — el campo "Cambio" en pantalla ya le mostró al cajero cuánto entregar.
+		var _sumaEfectivo = _pagos.reduce(function(s, p){ return s + (p.esEfectivo ? p.monto : 0); }, 0);
+
+		if (_excedente - _sumaEfectivo > 0.004){
+			Swal.fire({
+				icon: "warning",
+				title: "El pago no cuadra",
+				text: "Lo capturado ($" + formatearPrecio(_cubierto) + ") excede el total a cobrar ($" + formatearPrecio(_total) + ") y el sobrante no cabe en Efectivo. Solo se puede dar cambio en Efectivo; ajusta los montos de tarjeta/transferencia para que no rebasen el total."
+			});
+			return;
+		}
+
+		_cambio = _excedente;
+		var _restante = _excedente;
+		for (var i = _pagos.length - 1; i >= 0 && _restante > 0.004; i--){
+			if (!_pagos[i].esEfectivo){
+				continue;
+			}
+			var _descuento = Math.min(_pagos[i].monto, _restante);
+			_pagos[i].monto = Math.round((_pagos[i].monto - _descuento) * 100) / 100;
+			_restante = Math.round((_restante - _descuento) * 100) / 100;
+		}
+		_pagos = _pagos.filter(function(pago){ return pago.monto > 0.004; });
+	}else if (_excedente < -0.004){
 		Swal.fire({
 			icon: "warning",
-			title: "El pago no cuadra",
-			text: "Lo capturado ($" + formatearPrecio(_cubierto) + ") debe ser igual al total a cobrar ($" + formatearPrecio(_total) + ")."
+			title: "Falta el monto",
+			text: "Lo capturado ($" + formatearPrecio(_cubierto) + ") no cubre el total a cobrar ($" + formatearPrecio(_total) + ")."
 		});
 		return;
 	}
@@ -1048,7 +1078,9 @@ $(document).on("click", "#coConfirmar", function(){
 	Swal.fire({
 		icon: "question",
 		title: _esCancelacion ? "¿Confirmar cancelación de la estadía?" : "¿Confirmar Check Out?",
-		text: "La habitación quedará disponible.",
+		text: _cambio > 0.004
+			? "La habitación quedará disponible. Cambio a entregar: $" + formatearPrecio(_cambio) + "."
+			: "La habitación quedará disponible.",
 		showCancelButton: true,
 		confirmButtonText: "Sí, confirmar",
 		cancelButtonText: "Cancelar",
@@ -1061,7 +1093,9 @@ $(document).on("click", "#coConfirmar", function(){
 
 		mostrarCargaRecepcion();
 
-		var _pagosJson = JSON.stringify(_pagos);
+		var _pagosJson = JSON.stringify(_pagos.map(function(pago){
+			return { idTipoPago: pago.idTipoPago, monto: pago.monto, referencia: pago.referencia };
+		}));
 
 		var _datos = _esCancelacion
 			? {
@@ -1123,16 +1157,28 @@ function coOfrecerEnvioTicketWhatsapp(idReservacion){
 			return;
 		}
 
-		Swal.fire({
-			title: "Teléfono del huésped",
-			input: "tel",
-			inputAttributes: { autocapitalize: "off" },
-			inputPlaceholder: "10 dígitos",
-			showCancelButton: true,
-			confirmButtonText: "Enviar",
-			cancelButtonText: "Cancelar",
-			confirmButtonColor: "#81412d",
-			showLoaderOnConfirm: true,
+		// Se precarga con el teléfono ya guardado del cliente (cat_clientes), para que el
+		// recepcionista solo confirme en vez de digitarlo cada vez — pero sigue siendo
+		// editable por si el cliente no tiene número guardado o dio uno distinto hoy.
+		$.ajax({
+			url: "ajax/reservaciones.ajax.php",
+			method: "GET",
+			data: { accion: "telefonoCliente", id_reservacion: idReservacion },
+			dataType: "json"
+		}).always(function(respuesta){
+			var _telefonoPrecargado = (respuesta && respuesta.telefono) ? respuesta.telefono : "";
+
+			Swal.fire({
+				title: "Teléfono del huésped",
+				input: "tel",
+				inputAttributes: { autocapitalize: "off" },
+				inputValue: _telefonoPrecargado,
+				inputPlaceholder: "10 dígitos",
+				showCancelButton: true,
+				confirmButtonText: "Enviar",
+				cancelButtonText: "Cancelar",
+				confirmButtonColor: "#81412d",
+				showLoaderOnConfirm: true,
 			preConfirm: function(telefono){
 				if (!telefono || telefono.trim().length < 10){
 					Swal.showValidationMessage("Captura un teléfono válido (10 dígitos)");
@@ -1170,6 +1216,7 @@ function coOfrecerEnvioTicketWhatsapp(idReservacion){
 					text: (_respuesta && _respuesta.mensaje) || "La API de WhatsApp no confirmó el envío."
 				});
 			}
+			});
 		});
 	});
 }

@@ -219,11 +219,27 @@ class ModeloMantenimiento{
 		return $stmt->fetch();
 	}
 
-	// Corte diario: cualquier movimiento (registro, cambio de estatus, reapertura, etc.) de
-	// HOY, para el reporte de WhatsApp del Administrador.
-	static public function MdlObtenerCorteDiarioMantenimiento($id_hotel){
-		$stmt = Conexion::conectar()->prepare("CALL ObtenerCorteDiarioMantenimiento(:id_hotel)");
+	// Guarda la foto obligatoria de "Iniciar" (Pendiente -> Proceso): solo queda en el
+	// renglón nuevo del historial (bitácora), no toca la foto activa de la incidencia.
+	static public function MdlActualizarFotoProceso($id_mantenimiento, $id_hotel, $foto){
+		$stmt = Conexion::conectar()->prepare("CALL ActualizarFotoProceso(:id_mantenimiento, :id_hotel, :foto)");
+		$stmt->bindParam(":id_mantenimiento", $id_mantenimiento, PDO::PARAM_INT);
 		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
+		$stmt->bindParam(":foto", $foto);
+		$stmt->execute();
+		return $stmt->fetch();
+	}
+
+	// Corte de Mantenimiento para el reporte de WhatsApp del Administrador: historial
+	// completo de cada incidencia con movimiento dentro de [fecha_inicio, fecha_fin]
+	// (ambas NULL = HOY, mismo comportamiento que el corte diario original), opcionalmente
+	// acotado a una sola habitación.
+	static public function MdlObtenerCorteDiarioMantenimiento($id_hotel, $fecha_inicio = null, $fecha_fin = null, $id_habitacion = null){
+		$stmt = Conexion::conectar()->prepare("CALL ObtenerCorteDiarioMantenimiento(:id_hotel, :fecha_inicio, :fecha_fin, :id_habitacion)");
+		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
+		$stmt->bindParam(":fecha_inicio", $fecha_inicio, $fecha_inicio === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+		$stmt->bindParam(":fecha_fin", $fecha_fin, $fecha_fin === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+		$stmt->bindParam(":id_habitacion", $id_habitacion, $id_habitacion === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
 		$stmt->execute();
 		return $stmt->fetchAll();
 	}

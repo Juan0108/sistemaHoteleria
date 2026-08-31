@@ -53,7 +53,13 @@ class imprimirTicketReservacion {
         $Calle = $Negocio[0]["Calle"] ?? "";
         $Telefono2 = $Negocio[0]["Telefono"] ?? "";
         $Correo = $Negocio[0]["Correo"] ?? "";
-        $Fecha = date('d/m/Y H:i');
+        // Fecha y hora por separado (no en un solo string): así se pueden acomodar en columnas
+        // de tabla (fecha a la izquierda, hora a la derecha) sin depender de que el HTML de
+        // TCPDF respete white-space/nowrap, que es poco confiable en su parser.
+        $FechaCheckoutFecha = date('d/m/Y');
+        $FechaCheckoutHora = date('H:i');
+        $FechaCheckinFecha = !empty($reservacion['FechaEntrada']) ? date('d/m/Y', strtotime($reservacion['FechaEntrada'])) : '';
+        $FechaCheckinHora = !empty($reservacion['FechaEntrada']) ? date('H:i', strtotime($reservacion['FechaEntrada'])) : '';
 
         require_once('tcpdf_include.php');
 
@@ -91,13 +97,13 @@ EOF;
         $Contenido = <<<EOF
 <div style="font-size:6px; text-align:center; "></div>
 
-<table border="1" style="font-size: 8.5px; color: black; font-weight: bold;">
+<table border="1" style="width: 180px; font-size: 8.5px; color: black; font-weight: bold;">
     <thead>
         <tr>
-           <th align="center" style="width: 20px;">N°</th>
-           <th align="center" style="width: 65px;">Concepto</th>
-           <th align="center">Precio</th>
-           <th align="center">Total</th>
+           <th align="center" style="width: 18px;">N°</th>
+           <th align="center" style="width: 52px;">Concepto</th>
+           <th align="center" style="width: 55px;">Precio</th>
+           <th align="center" style="width: 55px;">Total</th>
         </tr>
     </thead>
 </table>
@@ -110,14 +116,23 @@ EOF;
         foreach ($consumo as $item) {
             $totalEstadia += (float) $item['Total'];
 
+            // number_format con separador de miles y 2 decimales fijos, para que las cifras
+            // (Precio y Total) queden alineadas entre renglones sin importar cuántos dígitos
+            // tenga cada una.
+            $precioFormateado = number_format((float) $item['PrecioVenta'], 2);
+            $totalFormateado = number_format((float) $item['Total'], 2);
+
+            // $&nbsp;$cifra (espacio duro) en vez de "$ $cifra": con espacio normal, si la
+            // celda no alcanza a caber la cifra completa, TCPDF corta la línea justo ahí y el
+            // "$" queda solo arriba y el monto abajo — el &nbsp; evita ese salto.
             $Complemento = <<<EOF
 <table>
     <tbody>
         <tr>
-            <td style="width: 20px;">$item[Cantidad]</td>
-            <td style="width: 65px;">$item[Producto]</td>
-            <td align="right">$ $item[PrecioVenta]</td>
-            <td align="right">$ $item[Total]</td>
+            <td style="width: 18px; font-size: 7px;">$item[Cantidad]</td>
+            <td style="width: 52px; font-size: 7px;">$item[Producto]</td>
+            <td align="right" style="width: 55px; font-size: 7px; white-space: nowrap;">$&nbsp;$precioFormateado</td>
+            <td align="right" style="width: 55px; font-size: 7px; white-space: nowrap;">$&nbsp;$totalFormateado</td>
         </tr>
     </tbody>
 </table>
@@ -126,22 +141,18 @@ EOF;
             $pdf->writeHTML($Complemento, false, false, false, false, '');
         }
 
+        $totalFormateadoGeneral = number_format($totalEstadia, 2);
+
+        // Misma tabla de 180px (18+52+55+55, igual que la de los conceptos) para que la cifra
+        // del Total quede exactamente debajo de la columna "Total" de arriba, en vez de en una
+        // tabla aparte de otro ancho que no se alinea con las demás cifras.
         $Totales = <<<EOF
 <div style="font-size:6px; text-align:center; "></div>
-<table style="border: none;">
+<table style="border: none; width: 180px;">
 <tbody>
     <tr>
-        <td style="width: 50%; border: none;"></td>
-        <td style="border: none;">
-            <table style="width: 90px;">
-            <tbody>
-                <tr>
-                    <td>Total:</td>
-                    <td align="right">$ $totalEstadia</td>
-                </tr>
-            </tbody>
-            </table>
-        </td>
+        <td align="right" style="border: none; width: 125px; font-size: 7px;">Total:</td>
+        <td align="right" style="border: none; width: 55px; font-size: 7px; white-space: nowrap;">$&nbsp;$totalFormateadoGeneral</td>
     </tr>
 </tbody>
 </table>
@@ -151,10 +162,27 @@ EOF;
 
         $nombreUsuario = $Usuario["Nombre"] ?? "";
 
+        // Tabla de 2 columnas (fecha a la izquierda, hora a la derecha) en vez de un solo
+        // texto: writeHTML de TCPDF no respeta bien white-space/nowrap, así que la única forma
+        // confiable de que la hora nunca se vaya a la línea de abajo es ponerla en su propia
+        // celda. El renglón de Check-in queda arriba del de Checkout, en el mismo bloque.
         $Final = <<<EOF
 <div></div>
 <br align="left">Le atendió: $nombreUsuario </br>
-<div align="left">Fecha de checkout: $Fecha </div>
+<div style="font-size:6px;"></div>
+<table style="border: none; width: 200px;">
+<tbody>
+    <tr>
+        <td align="left" style="border: none; width: 150px; font-size: 7px; white-space: nowrap;">Fecha de check-in: $FechaCheckinFecha</td>
+        <td align="right" style="border: none; width: 50px; font-size: 7px;">$FechaCheckinHora</td>
+    </tr>
+    <tr>
+        <td align="left" style="border: none; width: 150px; font-size: 7px; white-space: nowrap;">Fecha de checkout: $FechaCheckoutFecha</td>
+        <td align="right" style="border: none; width: 50px; font-size: 7px;">$FechaCheckoutHora</td>
+    </tr>
+</tbody>
+</table>
+<div style="font-size:6px;"></div>
 <br align="center"> ¡Gracias por su estadía! </br>
 EOF;
 

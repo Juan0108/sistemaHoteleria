@@ -453,10 +453,19 @@ $(document).on("click", "#servBtnReporteCorte", function(){
 		cancelButtonColor: "#3f342e",
 		showLoaderOnConfirm: true,
 		preConfirm: function(){
+			// Mismos filtros que ya están en pantalla (habitación, usuario, Desde, Hasta):
+			// si no se tocaron, se mandan vacíos y el reporte se comporta igual que antes
+			// (corte de hoy).
 			return $.ajax({
 				url: "extensions/tcpdf/Reportes/ReporteCorteLimpieza.php",
 				method: "GET",
-				dataType: "json"
+				dataType: "json",
+				data: {
+					idHabitacion: $("#servFiltroHabitacion").val() || "",
+					nombreUsuarioFiltro: $("#servFiltroUsuario").val() || "",
+					fechaDesde: $("#servFiltroFechaDesde").val() || "",
+					fechaHasta: $("#servFiltroFechaHasta").val() || ""
+				}
 			}).catch(function(){
 				Swal.showValidationMessage("No se pudo contactar al servidor, intenta de nuevo");
 				return Promise.reject();

@@ -15,6 +15,7 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Worksheet\Table;
 use PhpOffice\PhpSpreadsheet\Worksheet\Table\TableStyle;
 use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
 
 // Corte diario de Mantenimiento en Excel: cualquier movimiento de HOY (registro, cambio de
 // estatus, reapertura...), solo para el perfil Administrador — se manda directo al teléfono
@@ -39,7 +40,13 @@ class reporteCorteMantenimiento {
             return;
         }
 
-        $movimientos = ControladorMantenimiento::crtObtenerCorteDiarioMantenimiento();
+        // Mismos filtros que ya existen en pantalla (habitación/Desde/Hasta del tab
+        // Historial): si no se mandan, se comporta igual que antes (corte de HOY).
+        $fechaDesde = trim((string) ($_GET["fechaDesde"] ?? ""));
+        $fechaHasta = trim((string) ($_GET["fechaHasta"] ?? ""));
+        $idHabitacion = isset($_GET["idHabitacion"]) ? (int) $_GET["idHabitacion"] : null;
+
+        $movimientos = ControladorMantenimiento::crtObtenerCorteDiarioMantenimiento($fechaDesde ?: null, $fechaHasta ?: null, $idHabitacion);
 
         if ($movimientos === null) {
             header('Content-Type: application/json; charset=utf-8');
@@ -47,61 +54,147 @@ class reporteCorteMantenimiento {
             return;
         }
 
+        $id_hotel = ControladorMantenimiento::crtObtenerIdHotelSesion();
+
         $Prefijo = 52;
         $Celular = $Prefijo . str_replace([' ', '(', ')', '-'], '', $telefono);
 
         $Negocio = ControladorHoteles::crtObtenerNegocioUsuarioReporte($idUsuario);
         $Tienda = $Negocio[0]["Razon_Social"] ?? "";
-        $Fecha = date('d/m/Y');
+
+        // Con filtro de rango, la etiqueta deja de decir "diario" y muestra el rango real;
+        // sin filtro (ambas fechas vacías) se ve exactamente igual que antes (corte de hoy).
+        if ($fechaDesde !== "" || $fechaHasta !== "") {
+            $EtiquetaCorte = 'Corte de Mantenimiento:';
+            $inicioMostrar = $fechaDesde !== "" ? date('d/m/Y', strtotime($fechaDesde)) : date('d/m/Y');
+            $finMostrar = $fechaHasta !== "" ? date('d/m/Y', strtotime($fechaHasta)) : date('d/m/Y');
+            $Fecha = $inicioMostrar === $finMostrar ? $inicioMostrar : "$inicioMostrar - $finMostrar";
+        } else {
+            $EtiquetaCorte = 'Corte diario de Mantenimiento:';
+            $Fecha = date('d/m/Y');
+        }
+
+        // Se agrupa por incidencia (Id_Mantenimiento): el SP ya entrega los movimientos de
+        // cada incidencia en orden cronológico, así que cada grupo refleja el progreso real
+        // (Pendiente -> Proceso -> Resuelto, y si se reabrió, vuelve a Pendiente y sigue).
+        $grupos = [];
+        foreach ($movimientos as $item) {
+            $idMtto = (int) $item['Id_Mantenimiento'];
+            if (!isset($grupos[$idMtto])) {
+                $grupos[$idMtto] = [];
+            }
+            $grupos[$idMtto][] = $item;
+        }
+
+        // La incidencia con el movimiento más reciente aparece primero.
+        usort($grupos, function ($a, $b) {
+            return strtotime(end($b)['Fecha']) <=> strtotime(end($a)['Fecha']);
+        });
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Corte Mantenimiento');
 
+        $totalIncidencias = count($grupos);
+
         $sheet->setCellValue('B2', 'Negocio:');
         $sheet->setCellValue('C2', $Tienda);
-        $sheet->setCellValue('B3', 'Corte diario de Mantenimiento:');
+        $sheet->setCellValue('B3', $EtiquetaCorte);
         $sheet->setCellValue('C3', $Fecha);
-        $sheet->setCellValue('B4', 'Total de movimientos:');
-        $sheet->setCellValue('C4', count($movimientos));
-        $sheet->getStyle('B2:B4')->getFont()->setBold(true);
+        $sheet->setCellValue('B4', 'Total de incidencias:');
+        $sheet->setCellValue('C4', $totalIncidencias);
+        $sheet->setCellValue('B5', 'Total costo:');
+        $sheet->getStyle('B2:B5')->getFont()->setBold(true);
 
-        $sheet->setCellValue('B6', 'Hora');
-        $sheet->setCellValue('C6', 'Habitación');
-        $sheet->setCellValue('D6', 'Estatus');
-        $sheet->setCellValue('E6', 'Descripción');
-        $sheet->setCellValue('F6', 'Proveedor');
-        $sheet->setCellValue('G6', 'Nota');
-        $sheet->setCellValue('H6', 'Costo reparación');
+        $sheet->setCellValue('B7', 'Habitación');
+        $sheet->setCellValue('C7', 'Descripción');
+        $sheet->setCellValue('D7', 'Proveedor');
+        $sheet->setCellValue('E7', 'Inicio estimado');
+        $sheet->setCellValue('F7', 'Fin estimado');
+        $sheet->setCellValue('G7', 'Costo estimado');
+        $sheet->setCellValue('H7', 'Total abonado');
+        $sheet->setCellValue('I7', 'Saldo restante');
+        $sheet->setCellValue('J7', 'Estado');
+        $sheet->setCellValue('K7', 'Inicio');
+        $sheet->setCellValue('L7', 'Fin');
 
-        $row = 7;
-        foreach ($movimientos as $item) {
-            $sheet->setCellValue("B$row", date('H:i', strtotime($item['Fecha'])));
-            $sheet->setCellValue("C$row", $item['TipoHabitacion'] ?: $item['NumeroHabitacion']);
-            $sheet->setCellValue("D$row", ControladorMantenimiento::NOMBRES_ESTATUS[(int) $item['Id_Estatus']] ?? 'Otro');
-            $sheet->setCellValue("E$row", $item['Descripcion'] ?: '');
-            $sheet->setCellValue("F$row", $item['Proveedor'] ?: '');
-            $sheet->setCellValue("G$row", $item['Nota'] ?: '');
-            $sheet->setCellValue("H$row", (float) $item['CostoReparacion']);
-            $row++;
+        $row = 8;
+        $totalCosto = 0;
+
+        foreach ($grupos as $filasIncidencia) {
+            $primera = $filasIncidencia[0];
+            $idMtto = (int) $primera['Id_Mantenimiento'];
+            $filaInicio = $row;
+
+            $costo = (float) $primera['CostoReparacion'];
+            $totalCosto += $costo;
+
+            // Total abonado/saldo restante: mismo resumen que ya usa el tablero de
+            // Mantenimiento (ObtenerResumenAbonos), una sola vez por incidencia.
+            $resumenAbonos = ModeloMantenimiento::MdlObtenerResumenAbonos($idMtto, $id_hotel);
+            $totalAbonado = $resumenAbonos ? ((float) $resumenAbonos['SaldoInicial'] - (float) $resumenAbonos['SaldoRestante']) : 0;
+            $saldoRestante = $resumenAbonos ? (float) $resumenAbonos['SaldoRestante'] : $costo;
+
+            // El SP ya trae el historial COMPLETO de cada incidencia con movimiento en el
+            // rango pedido (no solo un día), así que cada renglón es un estado real de su
+            // línea de tiempo. "Fin" de un estado = fecha Y HORA de inicio del SIGUIENTE
+            // estado de esa misma incidencia (no hay una columna de "fin real" en la BD); el
+            // último estado (normalmente Resuelto, o el más reciente si sigue abierta) no
+            // tiene fin porque sigue vigente. Fecha+hora van juntas en una sola columna (acá
+            // no hay riesgo de que se corten como en el PDF de TCPDF) para que quede claro
+            // que cada hora es DE esa fecha, y no de la columna de al lado.
+            foreach ($filasIncidencia as $indice => $item) {
+                $siguiente = $filasIncidencia[$indice + 1] ?? null;
+
+                $sheet->setCellValue("J$row", ControladorMantenimiento::NOMBRES_ESTATUS[(int) $item['Id_Estatus']] ?? 'Otro');
+                $sheet->setCellValue("K$row", date('d/m/Y H:i', strtotime($item['Fecha'])));
+                $sheet->setCellValue("L$row", $siguiente ? date('d/m/Y H:i', strtotime($siguiente['Fecha'])) : '');
+                $row++;
+            }
+
+            $filaFin = $row - 1;
+
+            $sheet->setCellValue("B$filaInicio", $primera['TipoHabitacion'] ?: $primera['NumeroHabitacion']);
+            $sheet->setCellValue("C$filaInicio", $primera['Descripcion'] ?: '');
+            $sheet->setCellValue("D$filaInicio", $primera['Proveedor'] ?: '');
+            $sheet->setCellValue("E$filaInicio", $primera['Fecha_InicioEstimado'] ? date('d/m/Y', strtotime($primera['Fecha_InicioEstimado'])) : '');
+            $sheet->setCellValue("F$filaInicio", $primera['Fecha_FinEstimado'] ? date('d/m/Y', strtotime($primera['Fecha_FinEstimado'])) : '');
+            $sheet->setCellValue("G$filaInicio", $costo);
+            $sheet->setCellValue("H$filaInicio", $totalAbonado);
+            $sheet->setCellValue("I$filaInicio", $saldoRestante);
+
+            // El costo (y el resto de datos de la incidencia) va en UNA sola celda combinada
+            // que abarca todos los estados por los que pasó hoy — repetirlo en cada renglón
+            // daría a entender que cada estado tuvo un costo distinto.
+            if ($filaFin > $filaInicio) {
+                foreach (['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'] as $col) {
+                    $sheet->mergeCells("{$col}{$filaInicio}:{$col}{$filaFin}");
+                    $sheet->getStyle("{$col}{$filaInicio}")->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
+                }
+            }
         }
 
-        if (count($movimientos) > 0) {
-            $sheet->getStyle("H7:H" . ($row - 1))->getNumberFormat()->setFormatCode('$#,##0.00');
+        $sheet->setCellValue('C5', $totalCosto);
+        $sheet->getStyle('C5')->getNumberFormat()->setFormatCode('$#,##0.00');
 
-            $table = new Table("B6:H" . ($row - 1));
+        $ultimaFila = $row - 1;
+
+        if ($totalIncidencias > 0) {
+            $sheet->getStyle("G8:I$ultimaFila")->getNumberFormat()->setFormatCode('$#,##0.00');
+
+            $table = new Table("B7:L$ultimaFila");
             $tableStyle = new TableStyle();
             $tableStyle->setTheme(TableStyle::TABLE_STYLE_MEDIUM9);
             $tableStyle->setShowRowStripes(true);
             $table->setStyle($tableStyle);
             $sheet->addTable($table);
 
-            $sheet->getStyle("B6:H" . ($row - 1))->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+            $sheet->getStyle("B7:L$ultimaFila")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
         }
 
-        $sheet->getStyle('B6:H6')->getFont()->setBold(true);
+        $sheet->getStyle('B7:L7')->getFont()->setBold(true);
 
-        foreach (range('B', 'H') as $col) {
+        foreach (range('B', 'L') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 

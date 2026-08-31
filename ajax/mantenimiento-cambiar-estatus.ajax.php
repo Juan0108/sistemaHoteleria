@@ -49,6 +49,14 @@ class CambiarEstatusMantenimientoAjax
 				echo json_encode(["status" => "error", "message" => "Debes adjuntar la foto de cómo quedó resuelta la incidencia"]);
 				return;
 			}
+		}elseif($id_estatus === ControladorMantenimiento::ESTATUS_PROCESO){
+			$archivoFoto = $_FILES["fotoProceso"] ?? null;
+
+			if(!is_array($archivoFoto) || empty($archivoFoto["tmp_name"])){
+				http_response_code(400);
+				echo json_encode(["status" => "error", "message" => "Debes adjuntar una foto para iniciar la reparación"]);
+				return;
+			}
 		}elseif($id_estatus === ControladorMantenimiento::ESTATUS_PENDIENTE){
 			$archivoFoto = $_FILES["fotoReapertura"] ?? null;
 
@@ -94,6 +102,14 @@ class CambiarEstatusMantenimientoAjax
 			if($resultadoFoto["status"] !== "success"){
 				http_response_code(400);
 				echo json_encode($resultadoFoto);
+				return;
+			}
+		}elseif($id_estatus === ControladorMantenimiento::ESTATUS_PROCESO){
+			$resultadoFotoProceso = ControladorMantenimiento::crtGuardarFotoProceso($id_mantenimiento, $archivoFoto);
+
+			if($resultadoFotoProceso["status"] !== "success"){
+				http_response_code(400);
+				echo json_encode($resultadoFotoProceso);
 				return;
 			}
 		}elseif($id_estatus === ControladorMantenimiento::ESTATUS_PENDIENTE){

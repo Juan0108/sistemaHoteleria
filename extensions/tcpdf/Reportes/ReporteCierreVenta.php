@@ -1,5 +1,7 @@
 <?php
 
+session_start();
+
 require_once "../../../controllers/ventas.controlador.php";
 require_once "../../../models/ventas.modelo.php";
 require_once "../../../controllers/hoteles.controlador.php";
@@ -22,6 +24,8 @@ class generaReporteDia
 
     public function traerReporteCierreDia()
     {
+        header('Content-Type: application/json; charset=utf-8');
+
         $idusuario = $this->CodigoUsuario;
         $ValorCierre = $this->MontoCierre;
         $ValorCaja = $this->MontoCaja;
@@ -171,17 +175,103 @@ class generaReporteDia
         // Ruta completa para guardar el archivo en el servidor
         $rutaArchivo = $_SERVER['DOCUMENT_ROOT'] . "/sistema.posdit.com.mx/reportes/" . $nombreArchivo;
 
+        // En local (XAMPP) esta carpeta no existe todavía; en producción normalmente ya está
+        // creada, pero crearla aquí si falta evita que Xlsx::save() truene con una excepción
+        // sin capturar (eso era lo que mandaba HTML de error en vez de JSON al navegador).
+        $dirReportes = dirname($rutaArchivo);
+        if (!is_dir($dirReportes)) {
+            mkdir($dirReportes, 0755, true);
+        }
+
         // Crear el archivo Excel
         $writer = new Xlsx($spreadsheet);
 
         // Guardar el archivo en la ruta definida
         $writer->save($rutaArchivo);
 
-        $RutaEnvio = "https://posdit.com.mx/sistema.posdit.com.mx/reportes/" . $nombreArchivo;
+        // Antes el navegador armaba y mandaba esta petición él mismo, usando la URL pública
+        // del archivo (https://posdit.com.mx/.../reportes/...) — eso nunca podía funcionar en
+        // local, porque el archivo solo existe en la máquina del que lo genera. Igual que en
+        // TicketReservacion.php y los reportes de Mantenimiento/Limpieza, se manda embebido en
+        // base64: así funciona igual en producción y en local, sin depender de que la API de
+        // WhatsApp pueda alcanzar el archivo por su cuenta. No es un ajuste temporal para
+        // pruebas: se queda así también en producción.
+        $telefono = trim((string) ($_SESSION["Telefono"] ?? ""));
 
-        // Devolver la ruta del archivo para usarla en la API de WhatsApp
-        echo json_encode(['filePath' => $RutaEnvio]);
+        if ($telefono === "") {
+            echo json_encode(["ok" => false, "mensaje" => "Tu usuario no tiene un teléfono guardado para recibir el reporte."]);
+            return;
+        }
 
+        $Prefijo = 52;
+        $Celular = $Prefijo . str_replace([' ', '(', ')', '-'], '', $telefono);
+        $Tienda = $Negocio[0]["Razon_Social"] ?? "";
+
+        $mediaBase64 = base64_encode(file_get_contents($rutaArchivo));
+
+        $apiUrl = 'https://apiwsp.factiliza.com/api/v1/message/sendMedia/NTI1NTI1MzI3MzA0';
+        $token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2MjciLCJuYW1lIjoiSnVhbiBEYXZpZCBBZ3VpbGFyIEJhcnJvbiAiLCJlbWFpbCI6ImFndWlsYXJiYXJyb25qdWFuZGF2aWRAZ21haWwuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiY29uc3VsdG9yIn0.r5cvSNgCntPbf4OCjqx1JlS885CxHSN7FyxCLlVBAus';
+        $data = array(
+            "number" => $Celular,
+            "mediatype" => "document",
+            "media" => $mediaBase64,
+            "filename" => $nombreArchivo,
+            "caption" => "Venta Reportada: $" . number_format((float) $ValorCierre, 2) . ", Caja: $" . number_format((float) $ValorCaja, 2) . ", para más detalles favor de consultar el archivo adjunto."
+        );
+
+        $resultado = $this->enviarMensajeAPI($apiUrl, $token, $data);
+        echo json_encode($resultado, JSON_UNESCAPED_UNICODE);
+    }
+
+    // Mismo criterio que TicketReservacion.php: se revisa el HTTP code y el cuerpo de la
+    // respuesta antes de decir que se envió, en vez de asumir éxito solo porque cURL no truene.
+    private function enviarMensajeAPI($url, $token, $data) {
+        $ch = curl_init($url);
+
+        curl_setopt_array($ch, array(
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_ENCODING => '',
+            CURLOPT_MAXREDIRS => 10,
+            CURLOPT_TIMEOUT => 20,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+            CURLOPT_CUSTOMREQUEST => 'POST',
+            CURLOPT_POSTFIELDS => json_encode($data),
+            CURLOPT_HTTPHEADER => array(
+                'Content-Type: application/json',
+                'Authorization: Bearer ' . $token
+            ),
+        ));
+
+        $response = curl_exec($ch);
+
+        if (curl_errno($ch)) {
+            $error = curl_error($ch);
+            curl_close($ch);
+            return ["ok" => false, "mensaje" => "Error de conexión con la API de WhatsApp: " . $error, "raw" => null];
+        }
+
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode < 200 || $httpCode >= 300) {
+            return ["ok" => false, "mensaje" => "La API de WhatsApp respondió con error (HTTP $httpCode)", "raw" => $response];
+        }
+
+        $decodificado = json_decode($response, true);
+
+        if (is_array($decodificado)) {
+            $reportaError = (isset($decodificado["error"]) && $decodificado["error"])
+                || (isset($decodificado["success"]) && $decodificado["success"] === false)
+                || (isset($decodificado["status"]) && in_array($decodificado["status"], [false, "error", "ERROR"], true));
+
+            if ($reportaError) {
+                $mensajeApi = $decodificado["message"] ?? $decodificado["mensaje"] ?? $decodificado["error"] ?? "La API de WhatsApp reportó un error";
+                return ["ok" => false, "mensaje" => is_string($mensajeApi) ? $mensajeApi : "La API de WhatsApp reportó un error", "raw" => $response];
+            }
+        }
+
+        return ["ok" => true, "mensaje" => "Reporte enviado", "raw" => $response];
     }
 }
 

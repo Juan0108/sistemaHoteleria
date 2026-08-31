@@ -12,6 +12,35 @@ class ControladorReservaciones{
 		return ModeloReservaciones::MdlBuscarClientes($id_hotel, $termino);
 	}
 
+	// Teléfono guardado del cliente de una reservación: precarga (pero no reemplaza) el
+	// campo de captura al ofrecer mandar el ticket de checkout por WhatsApp, para que el
+	// recepcionista ya no tenga que digitarlo a mano cada vez.
+	static public function crtObtenerTelefonoClienteReservacion($id_reservacion){
+		$id_hotel = ControladorHabitaciones::crtObtenerIdHotelSesion();
+
+		if($id_hotel === null){
+			return null;
+		}
+
+		$id_reservacion = trim((string) $id_reservacion);
+
+		if($id_reservacion === ""){
+			return null;
+		}
+
+		// MdlObtenerReservacionParaCheckout ya limita por Id_Hotel de la sesión, así que un
+		// usuario de un negocio nunca puede consultar el teléfono de otro.
+		$reservacion = ModeloReservaciones::MdlObtenerReservacionParaCheckout($id_reservacion, $id_hotel);
+
+		if(!$reservacion || empty($reservacion["Id_Cliente"])){
+			return null;
+		}
+
+		$cliente = ModeloClientes::MdlObtenerCliente((int) $reservacion["Id_Cliente"]);
+
+		return $cliente ? trim((string) ($cliente["Telefono"] ?? "")) : null;
+	}
+
 	// Todas las reservaciones (cualquier estatus/fecha) de una habitación, para el historial
 	// que se abre desde la tarjeta de Recepción.
 	static public function crtObtenerReservacionesHabitacion($id_habitacion){

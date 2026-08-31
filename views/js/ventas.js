@@ -1167,15 +1167,6 @@ Generar Reporte de Cierre
 
 $(".formularioVenta").on("click", "button.btnGeneraCierre", function () {
   var IdUsuario = $("#usuario").val();
-  let telefono = $("#telefono").val();
-  var telefono1 = telefono.replace(/[^\d]/g, '');
-  var telefonoConLada = "52" + telefono1;
-  var Nombre = $("#Nuser").val();
-
-
-  const today = new Date();
-  const formattedDate = today.toISOString().split('T')[0];
-  const filename = `ReporteCierreDia_${Nombre}_${formattedDate}.xlsx`;
 
   Swal.fire({
       title: "Sistema PosDit",
@@ -1225,67 +1216,32 @@ $(".formularioVenta").on("click", "button.btnGeneraCierre", function () {
               cancelButtonText: "No, cancelar"
           }).then((confirmation) => {
               if (confirmation.isConfirmed) {
+                // El propio ReporteCierreVenta.php arma el Excel Y lo manda por WhatsApp
+                // (embebido en base64), así que aquí solo se muestra su respuesta — ya no se
+                // arma ni se manda la petición a la API de WhatsApp desde el navegador.
                 $.ajax({
                   url: "extensions/tcpdf/Reportes/ReporteCierreVenta.php",
                   method: "GET",
                   data: { Cu: IdUsuario, mCierre: montoCierre, mCaja: montoCaja },
-                  success: function(response) {
-                      try {
-                          // Suponemos que la respuesta del servidor es un JSON que incluye la ruta del archivo
-                          var data = JSON.parse(response);
-                          const filePath = data.filePath;  // Obtener la ruta del archivo generado
-                          
-                          if (filePath) {
-                              // Enviar el archivo a través de la API de WhatsApp
-                              $.ajax({
-                                  url: "https://apiwsp.factiliza.com/api/v1/message/sendMedia/NTI1NTI1MzI3MzA0",
-                                  method: "POST",
-                                  contentType: "application/json",
-                                  headers: {
-                                      'Authorization': 'Bearer ' + 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2MjciLCJuYW1lIjoiSnVhbiBEYXZpZCBBZ3VpbGFyIEJhcnJvbiAiLCJlbWFpbCI6ImFndWlsYXJiYXJyb25qdWFuZGF2aWRAZ21haWwuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiY29uc3VsdG9yIn0.r5cvSNgCntPbf4OCjqx1JlS885CxHSN7FyxCLlVBAus'  // Aquí va tu token de autenticación
-                                  },
-                                  data: JSON.stringify({
-                                      number: telefonoConLada,  // Número de destino (con código de país)
-                                      mediatype: "document",  // Tipo de medio (documento)
-                                      media: filePath,  // Ruta del archivo en el servidor
-                                      filename: filename,  // Nombre del archivo que se enviará
-                                      caption: `Venta Reportada: $${montoCierre}, Caja: $${montoCaja}, Para más detalles favor de consultar el archivo adjunto.`
-                                  }),
-                                  success: function() {
-                                      Swal.fire({
-                                          icon: "success",
-                                          title: "Reporte enviado",
-                                          text: "El reporte se envió exitosamente por WhatsApp.",
-                                          confirmButtonText: "Aceptar"
-                                      });
-                                  },
-                                  error: function() {
-                                      Swal.fire({
-                                          icon: "error",
-                                          title: "Error al enviar",
-                                          text: "No se pudo enviar el reporte por WhatsApp. Por favor, intenta nuevamente.",
-                                          confirmButtonText: "Aceptar"
-                                      });
-                                  }
-                              });
-                          } else {
-                              Swal.fire({
-                                  icon: "error",
-                                  title: "Error",
-                                  text: "No se pudo obtener la ruta del archivo generado. Intenta nuevamente.",
-                                  confirmButtonText: "Aceptar"
-                              });
-                          }
-                      } catch (error) {
+                  dataType: "json",
+                  success: function(respuesta){
+                      if (respuesta && respuesta.ok){
+                          Swal.fire({
+                              icon: "success",
+                              title: "Reporte enviado",
+                              text: "El reporte se envió exitosamente por WhatsApp.",
+                              confirmButtonText: "Aceptar"
+                          });
+                      }else{
                           Swal.fire({
                               icon: "error",
-                              title: "Error",
-                              text: "Hubo un problema al procesar la respuesta del servidor. Intenta nuevamente.",
+                              title: "No se pudo enviar el reporte",
+                              text: (respuesta && respuesta.mensaje) || "La API de WhatsApp no confirmó el envío.",
                               confirmButtonText: "Aceptar"
                           });
                       }
                   },
-                  error: function(error) {
+                  error: function(){
                       Swal.fire({
                           icon: "error",
                           title: "Error",
@@ -1294,7 +1250,7 @@ $(".formularioVenta").on("click", "button.btnGeneraCierre", function () {
                       });
                   }
               });
-              
+
               } else {
                   Swal.fire({
                       icon: "info",

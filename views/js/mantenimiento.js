@@ -537,9 +537,9 @@ function formatearMontoMtto(valor){
 	return _partes.join(".");
 }
 
-function enviarCambioEstatusMtto(idMantenimiento, idEstatus, notaReapertura, fotoResuelto, fotoReapertura, presupuestoReapertura){
+function enviarCambioEstatusMtto(idMantenimiento, idEstatus, notaReapertura, fotoResuelto, fotoReapertura, presupuestoReapertura, fotoProceso){
 	var _datosEnvio;
-	var _llevaArchivo = !!(fotoResuelto || fotoReapertura);
+	var _llevaArchivo = !!(fotoResuelto || fotoReapertura || fotoProceso);
 
 	if (_llevaArchivo) {
 		_datosEnvio = new FormData();
@@ -548,6 +548,7 @@ function enviarCambioEstatusMtto(idMantenimiento, idEstatus, notaReapertura, fot
 		_datosEnvio.append("notaReapertura", notaReapertura || "");
 		if (fotoResuelto) _datosEnvio.append("fotoResuelto", fotoResuelto);
 		if (fotoReapertura) _datosEnvio.append("fotoReapertura", fotoReapertura);
+		if (fotoProceso) _datosEnvio.append("fotoProceso", fotoProceso);
 		if (presupuestoReapertura) {
 			_datosEnvio.append("costoReapertura", presupuestoReapertura.costo);
 			_datosEnvio.append("fechaInicioReapertura", presupuestoReapertura.fechaInicio);
@@ -700,6 +701,38 @@ $(document).on("click", ".btnCambiarEstatus", function(){
 		}).then(function(result){
 			if (result.isConfirmed) {
 				enviarCambioEstatusMtto(_idMantenimiento, _idEstatus, result.value.motivo, null, result.value.foto, result.value.presupuesto);
+			}
+		});
+		return;
+	}
+
+	if (typeof MTTO_ESTATUS_PROCESO !== "undefined" && String(_idEstatus) === String(MTTO_ESTATUS_PROCESO)) {
+		// "Iniciar" (Pendiente -> Proceso) también exige foto: evidencia de que se empezó a
+		// trabajar, para que quede en la bitácora/historial junto con ese cambio de estado.
+		Swal.fire({
+			title: "Sistema PosDit",
+			text: "Sube una foto de evidencia de que se está iniciando la reparación",
+			icon: "question",
+			input: "file",
+			inputAttributes: {
+				accept: "image/*"
+			},
+			inputValidator: function(value){
+				if (!value) {
+					return "Debes adjuntar la foto para iniciar la reparación";
+				}
+				if (value.size > 3 * 1024 * 1024) {
+					return "La foto no puede pesar más de 3MB";
+				}
+			},
+			showCancelButton: true,
+			confirmButtonColor: "#3f7649",
+			cancelButtonColor: "#3f342e",
+			confirmButtonText: "Iniciar",
+			cancelButtonText: "Cancelar"
+		}).then(function(result){
+			if (result.isConfirmed) {
+				enviarCambioEstatusMtto(_idMantenimiento, _idEstatus, null, null, null, null, result.value);
 			}
 		});
 		return;
@@ -1310,10 +1343,18 @@ $(document).on("click", "#mttoBtnReporteCorte", function(){
 		cancelButtonColor: "#3f342e",
 		showLoaderOnConfirm: true,
 		preConfirm: function(){
+			// Mismos filtros que ya están en pantalla en el tab Historial (habitación,
+			// Desde, Hasta): si no se tocaron, se mandan vacíos y el reporte se comporta
+			// igual que antes (corte de hoy).
 			return $.ajax({
 				url: "extensions/tcpdf/Reportes/ReporteCorteMantenimiento.php",
 				method: "GET",
-				dataType: "json"
+				dataType: "json",
+				data: {
+					idHabitacion: $("#mttoHistorialHabitacion").val() || "",
+					fechaDesde: $("#mttoHistorialDesde").val() || "",
+					fechaHasta: $("#mttoHistorialHasta").val() || ""
+				}
 			}).catch(function(){
 				Swal.showValidationMessage("No se pudo contactar al servidor, intenta de nuevo");
 				return Promise.reject();

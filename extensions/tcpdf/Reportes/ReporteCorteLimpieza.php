@@ -38,7 +38,14 @@ class reporteCorteLimpieza {
             return;
         }
 
-        $limpiezas = ControladorServicio::crtObtenerCorteDiarioLimpieza();
+        // Mismos filtros que ya existen en pantalla (habitación/usuario/Desde/Hasta): si no
+        // se mandan, se comporta igual que antes (corte de HOY).
+        $fechaDesde = trim((string) ($_GET["fechaDesde"] ?? ""));
+        $fechaHasta = trim((string) ($_GET["fechaHasta"] ?? ""));
+        $idHabitacion = isset($_GET["idHabitacion"]) ? (int) $_GET["idHabitacion"] : null;
+        $nombreUsuarioFiltro = trim((string) ($_GET["nombreUsuarioFiltro"] ?? ""));
+
+        $limpiezas = ControladorServicio::crtObtenerCorteDiarioLimpieza($fechaDesde ?: null, $fechaHasta ?: null, $idHabitacion, $nombreUsuarioFiltro ?: null);
 
         if ($limpiezas === null) {
             header('Content-Type: application/json; charset=utf-8');
@@ -51,7 +58,18 @@ class reporteCorteLimpieza {
 
         $Negocio = ControladorHoteles::crtObtenerNegocioUsuarioReporte($idUsuario);
         $Tienda = $Negocio[0]["Razon_Social"] ?? "";
-        $Fecha = date('d/m/Y');
+
+        // Con filtro de rango, la etiqueta deja de decir "diario" y muestra el rango real;
+        // sin filtro (ambas fechas vacías) se ve exactamente igual que antes (corte de hoy).
+        if ($fechaDesde !== "" || $fechaHasta !== "") {
+            $EtiquetaCorte = 'Corte de Limpieza:';
+            $inicioMostrar = $fechaDesde !== "" ? date('d/m/Y', strtotime($fechaDesde)) : date('d/m/Y');
+            $finMostrar = $fechaHasta !== "" ? date('d/m/Y', strtotime($fechaHasta)) : date('d/m/Y');
+            $Fecha = $inicioMostrar === $finMostrar ? $inicioMostrar : "$inicioMostrar - $finMostrar";
+        } else {
+            $EtiquetaCorte = 'Corte diario de Limpieza:';
+            $Fecha = date('d/m/Y');
+        }
 
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
@@ -59,7 +77,7 @@ class reporteCorteLimpieza {
 
         $sheet->setCellValue('B2', 'Negocio:');
         $sheet->setCellValue('C2', $Tienda);
-        $sheet->setCellValue('B3', 'Corte diario de Limpieza:');
+        $sheet->setCellValue('B3', $EtiquetaCorte);
         $sheet->setCellValue('C3', $Fecha);
         $sheet->setCellValue('B4', 'Total de limpiezas:');
         $sheet->setCellValue('C4', count($limpiezas));
