@@ -1028,17 +1028,6 @@ function mttoConstruirFlujoIncidenciaHtml(lista){
 	return html;
 }
 
-// Todas las habitaciones existentes (id + nombre), leídas del propio combo de filtro,
-// para poder "mapear" las que no tienen ninguna incidencia registrada todavía.
-function mttoObtenerRosterHabitacionesMtto(){
-	var roster = [];
-	$("#mttoHistorialHabitacion option").each(function(){
-		var _valor = $(this).val();
-		if (_valor) roster.push({ id: _valor, nombre: $(this).text() });
-	});
-	return roster;
-}
-
 function mttoRenderizarHistorial(){
 
 	var $contenido = $("#mttoHistorialTabContenido");
@@ -1049,12 +1038,10 @@ function mttoRenderizarHistorial(){
 		return mttoEnRangoFecha(i.fechaRegistroIso, $desde, $hasta);
 	});
 
-	// Sin ningún filtro tocado (ni habitación ni fechas) se mapean TODAS las habitaciones
-	// existentes, aunque no tengan incidencias todavía; en cuanto se filtra por habitación
-	// o por fecha, solo tiene sentido mostrar lo que realmente cae en ese filtro.
-	var _sinFiltros = !mttoHistorialIdHabitacionActual && !$desde.val() && !$hasta.val();
-
-	if (lista.length === 0 && !_sinFiltros){
+	// Solo se muestran habitaciones que SÍ tienen al menos una incidencia — antes, sin
+	// filtros tocados, se rellenaba con todas las habitaciones existentes aunque no
+	// tuvieran ninguna; ya no.
+	if (lista.length === 0){
 		var _vacioBase = mttoHistorialIdHabitacionActual ? "Esta habitación no tiene incidencias registradas." : "Todavía no hay incidencias registradas.";
 		$contenido.html('<p class="mtto-grid-vacio">' + (mttoHistorialListaActual.length === 0 ? _vacioBase : "Ninguna incidencia cae en ese rango de fechas.") + '</p>');
 		return;
@@ -1064,17 +1051,6 @@ function mttoRenderizarHistorial(){
 	// (ya está implícito), así que se toma del texto seleccionado en el combo.
 	var _nombreHabitacionFiltro = mttoHistorialIdHabitacionActual ? $("#mttoHistorialHabitacion option:selected").text() : null;
 	var grupos = mttoAgruparPorHabitacionMtto(lista);
-
-	if (_sinFiltros){
-		var _idsConDatos = {};
-		grupos.forEach(function(g){ _idsConDatos[g.idHabitacion] = true; });
-
-		mttoObtenerRosterHabitacionesMtto().forEach(function(hab){
-			if (!_idsConDatos[hab.id]){
-				grupos.push({ idHabitacion: hab.id, nombre: hab.nombre, incidencias: [] });
-			}
-		});
-	}
 
 	if (grupos.length === 0){
 		$contenido.html('<p class="mtto-grid-vacio">No hay habitaciones registradas.</p>');

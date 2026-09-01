@@ -9,38 +9,53 @@ require_once "../../../models/reservaciones.modelo.php";
 require_once "../../../controllers/hoteles.controlador.php";
 require_once "../../../models/hoteles.modelo.php";
 require_once "../../../models/usuarios.modelo.php";
+require_once "../../../models/clientes.modelo.php";
 
 // Ticket de checkout (folio completo de la estadía: hospedaje + consumo), a diferencia de
 // Ticket.php que arma el ticket de UN solo NTicket de Punto de Venta. Aquí se agrupa por
 // Id_Reservacion, así que junta todo lo que se le cargó al huésped durante toda su estadía
 // (el hospedaje ya queda registrado como un renglón más de Tb_Consumo al hacer el checkout).
+// El envío es automático (sin preguntar ni pedir el teléfono a mano): se manda SIEMPRE justo
+// después de terminar el check-out, usando el teléfono ya guardado del cliente en
+// cat_clientes.
 class imprimirTicketReservacion {
 
     public $IdReservacion;
-    public $Telefono;
 
     public function enviar() {
+
+        header('Content-Type: application/json; charset=utf-8');
 
         $id_hotel = ControladorHabitaciones::crtObtenerIdHotelSesion();
 
         if ($id_hotel === null) {
-            echo "Sin hotel en sesión";
+            echo json_encode(["ok" => false, "mensaje" => "Sin hotel en sesión"]);
             return;
         }
 
         $idReservacion = trim((string) $this->IdReservacion);
         $idUsuario = (int) ($_SESSION["IdUsuario"] ?? 0);
-        $Prefijo = 52;
-        $Celular = $Prefijo . str_replace([' ', '(', ')', '-'], '', (string) $this->Telefono);
 
         // MdlObtenerReservacionParaCheckout ya limita por Id_Hotel de la sesión, así que un
         // usuario de un negocio nunca puede pedir el ticket de una reservación de otro.
         $reservacion = ModeloReservaciones::MdlObtenerReservacionParaCheckout($idReservacion, $id_hotel);
 
         if (!$reservacion) {
-            echo "Reservación no encontrada";
+            echo json_encode(["ok" => false, "mensaje" => "Reservación no encontrada"]);
             return;
         }
+
+        $telefono = !empty($reservacion['Id_Cliente'])
+            ? trim((string) (ModeloClientes::MdlObtenerCliente((int) $reservacion['Id_Cliente'])['Telefono'] ?? ''))
+            : '';
+
+        if ($telefono === '') {
+            echo json_encode(["ok" => false, "mensaje" => "El cliente de esta reservación no tiene un teléfono guardado."]);
+            return;
+        }
+
+        $Prefijo = 52;
+        $Celular = $Prefijo . str_replace([' ', '(', ')', '-'], '', $telefono);
 
         $consumo = ModeloReservaciones::MdlObtenerConsumoReservacion($idReservacion);
         $Negocio = ControladorHoteles::crtObtenerNegocioUsuarioReporte($idUsuario);
@@ -98,14 +113,14 @@ EOF;
 <div style="font-size:6px; text-align:center; "></div>
 
 <table border="1" style="width: 180px; font-size: 8.5px; color: black; font-weight: bold;">
-    <thead>
+    <tbody>
         <tr>
-           <th align="center" style="width: 18px;">N°</th>
-           <th align="center" style="width: 52px;">Concepto</th>
-           <th align="center" style="width: 55px;">Precio</th>
-           <th align="center" style="width: 55px;">Total</th>
+           <td align="center" style="width: 18px;">N°</td>
+           <td align="center" style="width: 52px;">Concepto</td>
+           <td align="center" style="width: 55px;">Precio</td>
+           <td align="center" style="width: 55px;">Total</td>
         </tr>
-    </thead>
+    </tbody>
 </table>
 EOF;
 
@@ -209,7 +224,6 @@ EOF;
 
         $resultado = $this->enviarMensajeAPI($apiUrl, $token, $data);
 
-        header('Content-Type: application/json; charset=utf-8');
         echo json_encode($resultado, JSON_UNESCAPED_UNICODE);
     }
 
@@ -271,7 +285,6 @@ EOF;
 
 $Ticket = new imprimirTicketReservacion();
 $Ticket->IdReservacion = $_GET["IdReservacion"] ?? "";
-$Ticket->Telefono = $_GET["Telefono"] ?? "";
 $Ticket->enviar();
 
 //============================================================+

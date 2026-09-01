@@ -102,6 +102,9 @@ class ControladorServicio{
 	// Historial de limpiezas ya finalizadas, para la tabla debajo del botón "Iniciar
 	// limpieza": una fila por sesión completada, con su habitación, usuario, fechas,
 	// fotos y las tareas que sí se marcaron como realizadas.
+	// Solo el Administrador ve el historial de TODO el personal de limpieza; cualquier otro
+	// perfil (p.ej. un usuario de Limpieza) solo ve sus propias sesiones, nunca las de un
+	// compañero.
 	static public function crtObtenerHistorialServicios(){
 		$id_hotel = self::crtObtenerIdHotelSesion();
 
@@ -111,8 +114,14 @@ class ControladorServicio{
 
 		$filas = ModeloServicio::MdlObtenerHistorialServicios($id_hotel);
 
+		$esAdministrador = ($_SESSION["Perfil"] ?? "") === "Administrador";
+		$idUsuarioSesion = (int) ($_SESSION["IdUsuario"] ?? 0);
+
 		$historial = [];
 		foreach($filas as $fila){
+			if(!$esAdministrador && (int) $fila["Id_Usuario"] !== $idUsuarioSesion){
+				continue;
+			}
 			$historial[] = [
 				"idServicio"       => (int) $fila["Id_Servicio"],
 				"idHabitacion"     => (int) $fila["Id_Habitacion"],

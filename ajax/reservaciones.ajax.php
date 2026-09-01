@@ -9,7 +9,6 @@ require_once "../models/reservaciones.modelo.php";
 require_once "../models/hoteles.modelo.php";
 require_once "../models/inventarios.modelo.php";
 require_once "../models/ventas.modelo.php";
-require_once "../models/clientes.modelo.php";
 
 class ReservacionesAjax
 {
@@ -240,13 +239,6 @@ class ReservacionesAjax
 		echo $datosJason;
 	}
 
-	public function telefonoCliente(){
-		$id_reservacion = isset($_GET["id_reservacion"]) ? $_GET["id_reservacion"] : "";
-		$telefono = ControladorReservaciones::crtObtenerTelefonoClienteReservacion($id_reservacion);
-
-		echo '{"telefono": "'.$this->jsonEscape($telefono ?: '').'"}';
-	}
-
 	public function consumo(){
 
 		$id_reservacion = isset($_GET["id_reservacion"]) ? $_GET["id_reservacion"] : "";
@@ -316,8 +308,6 @@ if ($Accion === "buscarClientes") {
 	$Ajax->cancelarConCheckout();
 } elseif ($Accion === "consumo") {
 	$Ajax->consumo();
-} elseif ($Accion === "telefonoCliente") {
-	$Ajax->telefonoCliente();
 } elseif ($Accion === "tiposDePago") {
 	$Ajax->tiposDePago();
 } elseif ($Accion === "validarLlegadaAnticipada") {

@@ -75,13 +75,21 @@ class reporteCorteLimpieza {
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Corte Limpieza');
 
-        $sheet->setCellValue('B2', 'Negocio:');
+        $sheet->setCellValue('B2', 'Hotel:');
         $sheet->setCellValue('C2', $Tienda);
         $sheet->setCellValue('B3', $EtiquetaCorte);
         $sheet->setCellValue('C3', $Fecha);
         $sheet->setCellValue('B4', 'Total de limpiezas:');
         $sheet->setCellValue('C4', count($limpiezas));
-        $sheet->getStyle('B2:B4')->getFont()->setBold(true);
+
+        // Mismo estilo de tabla dinámica (DARK10) que ya usa el resumen de
+        // ReporteCierreVenta.php, para que los 3 reportes se vean consistentes.
+        $tablaResumen = new Table('B2:C4');
+        $estiloResumen = new TableStyle();
+        $estiloResumen->setTheme(TableStyle::TABLE_STYLE_DARK10);
+        $estiloResumen->setShowRowStripes(true);
+        $tablaResumen->setStyle($estiloResumen);
+        $sheet->addTable($tablaResumen);
 
         $sheet->setCellValue('B6', 'Habitación');
         $sheet->setCellValue('C6', 'Usuario');

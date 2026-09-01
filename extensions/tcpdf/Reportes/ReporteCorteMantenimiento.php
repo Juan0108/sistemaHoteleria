@@ -97,14 +97,27 @@ class reporteCorteMantenimiento {
 
         $totalIncidencias = count($grupos);
 
-        $sheet->setCellValue('B2', 'Negocio:');
+        $sheet->setCellValue('B2', 'Hotel:');
         $sheet->setCellValue('C2', $Tienda);
         $sheet->setCellValue('B3', $EtiquetaCorte);
         $sheet->setCellValue('C3', $Fecha);
         $sheet->setCellValue('B4', 'Total de incidencias:');
         $sheet->setCellValue('C4', $totalIncidencias);
         $sheet->setCellValue('B5', 'Total costo:');
-        $sheet->getStyle('B2:B5')->getFont()->setBold(true);
+
+        // Mismo estilo de tabla dinámica (DARK10) que ya usa el resumen de
+        // ReporteCierreVenta.php, para que los 3 reportes se vean consistentes.
+        $tablaResumen = new Table('B2:C5');
+        $estiloResumen = new TableStyle();
+        $estiloResumen->setTheme(TableStyle::TABLE_STYLE_DARK10);
+        $estiloResumen->setShowRowStripes(true);
+        $tablaResumen->setStyle($estiloResumen);
+        $sheet->addTable($tablaResumen);
+
+        // Los valores numéricos (Total de incidencias, Total costo) se alinean a la derecha
+        // por default en Excel; se fuerzan a la izquierda para que queden parejos con el
+        // Hotel/la fecha, que sí son texto.
+        $sheet->getStyle('C2:C5')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
 
         $sheet->setCellValue('B7', 'Habitación');
         $sheet->setCellValue('C7', 'Descripción');

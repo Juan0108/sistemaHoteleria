@@ -230,6 +230,17 @@ class ModeloMantenimiento{
 		return $stmt->fetch();
 	}
 
+	// Abonos de mantenimiento de UN día (para la hoja "Mantenimiento" del corte de venta):
+	// una fila por incidencia que recibió al menos un abono ese día, con el estado en el que
+	// estaba la incidencia EN ESE MOMENTO (no el estado actual). $fecha null = HOY.
+	static public function MdlObtenerAbonosCorteDiario($id_hotel, $fecha = null){
+		$stmt = Conexion::conectar()->prepare("CALL ObtenerAbonosCorteDiario(:id_hotel, :fecha)");
+		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
+		$stmt->bindParam(":fecha", $fecha, $fecha === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+		$stmt->execute();
+		return $stmt->fetchAll();
+	}
+
 	// Corte de Mantenimiento para el reporte de WhatsApp del Administrador: historial
 	// completo de cada incidencia con movimiento dentro de [fecha_inicio, fecha_fin]
 	// (ambas NULL = HOY, mismo comportamiento que el corte diario original), opcionalmente

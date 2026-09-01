@@ -1140,83 +1140,37 @@ $(document).on("click", "#coConfirmar", function(){
 	});
 });
 
-// Al terminar un checkout (o cancelación con checkout), ofrece mandar el ticket de la
-// estadía (hospedaje + todo el consumo cargado) por WhatsApp — mismo patrón ya usado en
-// Punto de Venta (ver views/js/ventas.js), reutilizando la misma cuenta de WhatsApp ya
-// contratada para el sistema.
+// Al terminar un checkout (o cancelación con checkout), el ticket de la estadía (hospedaje +
+// todo el consumo cargado) se manda por WhatsApp SIEMPRE, sin preguntar ni pedir el teléfono
+// a mano — TicketReservacion.php ya lo toma directo del cliente en cat_clientes. Mismo patrón
+// ya usado en Punto de Venta (ver views/js/ventas.js), reutilizando la misma cuenta de
+// WhatsApp ya contratada para el sistema.
 function coOfrecerEnvioTicketWhatsapp(idReservacion){
-	Swal.fire({
-		title: "¿Enviar el ticket por WhatsApp?",
-		icon: "question",
-		showDenyButton: true,
-		confirmButtonText: "Sí",
-		denyButtonText: "No",
-		confirmButtonColor: "#81412d"
-	}).then(function(resultado){
-		if (!resultado.isConfirmed){
-			return;
-		}
-
-		// Se precarga con el teléfono ya guardado del cliente (cat_clientes), para que el
-		// recepcionista solo confirme en vez de digitarlo cada vez — pero sigue siendo
-		// editable por si el cliente no tiene número guardado o dio uno distinto hoy.
-		$.ajax({
-			url: "ajax/reservaciones.ajax.php",
-			method: "GET",
-			data: { accion: "telefonoCliente", id_reservacion: idReservacion },
-			dataType: "json"
-		}).always(function(respuesta){
-			var _telefonoPrecargado = (respuesta && respuesta.telefono) ? respuesta.telefono : "";
-
+	$.ajax({
+		url: "extensions/tcpdf/Reportes/TicketReservacion.php",
+		method: "GET",
+		data: { IdReservacion: idReservacion },
+		dataType: "json"
+	}).then(function(respuesta){
+		if (respuesta && respuesta.ok){
+			Swal.fire({ icon: "success", title: "Ticket enviado por WhatsApp", timer: 1800, showConfirmButton: false });
+		}else{
+			// No se asume éxito solo porque la petición HTTP funcionó: la API de WhatsApp
+			// puede responder 200 y aun así no haber entregado el mensaje (token vencido,
+			// cliente sin teléfono guardado, número mal formateado, instancia desconectada,
+			// etc.). El check-out ya quedó completado de cualquier forma; esto solo avisa que
+			// el ticket no llegó, para que se mande a mano por otro medio si hace falta.
 			Swal.fire({
-				title: "Teléfono del huésped",
-				input: "tel",
-				inputAttributes: { autocapitalize: "off" },
-				inputValue: _telefonoPrecargado,
-				inputPlaceholder: "10 dígitos",
-				showCancelButton: true,
-				confirmButtonText: "Enviar",
-				cancelButtonText: "Cancelar",
-				confirmButtonColor: "#81412d",
-				showLoaderOnConfirm: true,
-			preConfirm: function(telefono){
-				if (!telefono || telefono.trim().length < 10){
-					Swal.showValidationMessage("Captura un teléfono válido (10 dígitos)");
-					return false;
-				}
-				return $.ajax({
-					url: "extensions/tcpdf/Reportes/TicketReservacion.php",
-					method: "GET",
-					data: { IdReservacion: idReservacion, Telefono: telefono.trim() },
-					dataType: "json"
-				}).catch(function(){
-					// Fallo de red/HTTP (a nivel navegador); un rechazo reportado por la propia
-					// API de WhatsApp SÍ llega aquí como respuesta 200 normal, se revisa abajo.
-					Swal.showValidationMessage("No se pudo contactar al servidor, intenta de nuevo");
-					return Promise.reject();
-				});
-			},
-			allowOutsideClick: function(){ return !Swal.isLoading(); }
-		}).then(function(resultado2){
-			if (!resultado2.isConfirmed){
-				return;
-			}
-
-			var _respuesta = resultado2.value;
-
-			if (_respuesta && _respuesta.ok){
-				Swal.fire({ icon: "success", title: "Ticket enviado", timer: 1800, showConfirmButton: false });
-			}else{
-				// No se asume éxito solo porque la petición HTTP funcionó: la API de WhatsApp
-				// puede responder 200 y aun así no haber entregado el mensaje (token vencido,
-				// número mal formateado, instancia desconectada, etc.).
-				Swal.fire({
-					icon: "error",
-					title: "No se pudo enviar el ticket",
-					text: (_respuesta && _respuesta.mensaje) || "La API de WhatsApp no confirmó el envío."
-				});
-			}
+				icon: "error",
+				title: "No se pudo enviar el ticket",
+				text: (respuesta && respuesta.mensaje) || "La API de WhatsApp no confirmó el envío."
 			});
+		}
+	}, function(){
+		Swal.fire({
+			icon: "error",
+			title: "No se pudo enviar el ticket",
+			text: "No se pudo contactar al servidor."
 		});
 	});
 }
@@ -1374,7 +1328,6 @@ $(document).on("click", ".hc-arrow", function(){
 	$("#nrClienteNuevoCampos").hide();
 	$("#nrBuscarCliente").val("").prop("disabled", false);
 	$("#nrToggleClienteNuevo").show();
-	nrLimpiarAdvertenciaTelefono();
 
 	$("#nrIdHabitacion").val($arrow.data("idHabitacion"));
 	$("#nrPrecioNoche").val($arrow.data("precioNoche"));
@@ -1502,106 +1455,18 @@ $(document).on("click", "#nrToggleClienteNuevo", function(e){
 	}else{
 		$("#nrBuscarCliente").prop("disabled", false);
 		$("#nrTelefono").val("");
-		nrLimpiarAdvertenciaTelefono();
 		$("#nrNombre, #nrApaterno, #nrAmaterno").val("");
-		nrLimpiarAdvertenciaNombre();
 	}
 });
 
-var nrTelefonoDuplicado = false;
-var nrTelefonoCheckTimeout = null;
-
-function nrLimpiarAdvertenciaTelefono(){
-	nrTelefonoDuplicado = false;
-	clearTimeout(nrTelefonoCheckTimeout);
-	$("#nrTelefonoAdvertencia").hide().text("");
-}
-
-var nrNombreDuplicado = false;
-var nrNombreCheckTimeout = null;
-
-function nrLimpiarAdvertenciaNombre(){
-	nrNombreDuplicado = false;
-	clearTimeout(nrNombreCheckTimeout);
-	$("#nrNombreAdvertencia").hide().text("");
-}
-
-$(document).on("input", "#nrNombre, #nrApaterno, #nrAmaterno", function(){
-
-	nrLimpiarAdvertenciaNombre();
-
-	var nombre = $.trim($("#nrNombre").val());
-	var apaterno = $.trim($("#nrApaterno").val());
-	var amaterno = $.trim($("#nrAmaterno").val());
-
-	// El apellido materno es opcional en el resto del flujo, así que no se exige aquí tampoco.
-	if (!nombre || !apaterno){
-		return;
-	}
-
-	nrNombreCheckTimeout = setTimeout(function(){
-		$.ajax({
-			url: "ajax/reservaciones.ajax.php",
-			method: "GET",
-			data: { accion: "buscarClientes", termino: nombre },
-			dataType: "json",
-			success: function(respuesta){
-				// Se ignoran acentos para no dejar pasar duplicados solo porque alguien
-				// escribió "Martinez" en vez de "Martínez" (o viceversa).
-				var acentosRegex = new RegExp("[" + String.fromCharCode(0x0300) + "-" + String.fromCharCode(0x036f) + "]", "g");
-				var normalizar = function(valor){
-					return $.trim(valor || "").toLowerCase().normalize("NFD").replace(acentosRegex, "");
-				};
-
-				var existe = (respuesta.data || []).some(function(cliente){
-					return normalizar(cliente.nombre) === normalizar(nombre)
-						&& normalizar(cliente.apaterno) === normalizar(apaterno)
-						&& normalizar(cliente.amaterno) === normalizar(amaterno);
-				});
-
-				if (existe){
-					nrNombreDuplicado = true;
-					$("#nrNombreAdvertencia")
-						.text("Ya existe un cliente registrado con ese nombre. Búscalo arriba en vez de crear uno nuevo.")
-						.show();
-				}
-			}
-		});
-	}, 400);
-});
-
+// La validación de cliente duplicado (nombre completo o teléfono) ya NO se hace en vivo
+// mientras se escribe: con 4 campos buscando en el servidor por cada tecla, el usuario podía
+// seguir escribiendo mientras la búsqueda anterior seguía en curso y disparar una petición
+// nueva por cada carácter, saturando el servidor. Ahora solo se valida una vez, del lado del
+// servidor, al dar clic en "Agregar reservación" (ControladorReservaciones::crtCrearReservacion
+// ya la bloquea ahí y regresa el mismo mensaje de "ya existe" si encuentra coincidencia).
 $(document).on("input", "#nrTelefono", function(){
-
 	this.value = this.value.replace(/\D/g, "").slice(0, 10);
-
-	var telefono = this.value;
-
-	nrLimpiarAdvertenciaTelefono();
-
-	if (telefono.length !== 10){
-		return;
-	}
-
-	nrTelefonoCheckTimeout = setTimeout(function(){
-		$.ajax({
-			url: "ajax/reservaciones.ajax.php",
-			method: "GET",
-			data: { accion: "buscarClientes", termino: telefono },
-			dataType: "json",
-			success: function(respuesta){
-				var existe = (respuesta.data || []).some(function(cliente){
-					return cliente.telefono === telefono;
-				});
-
-				if (existe){
-					nrTelefonoDuplicado = true;
-					$("#nrTelefonoAdvertencia")
-						.text("Ya existe un cliente registrado con este teléfono. Búscalo arriba en vez de crear uno nuevo.")
-						.show();
-				}
-			}
-		});
-	}, 400);
 });
 
 $(document).on("change", "#nrFechaEntrada, #nrFechaSalida", nrCalcularPrecio);
@@ -1640,16 +1505,10 @@ $(document).on("click", "#nrGuardar", function(){
 		return;
 	}
 
-	if (!datos.id_cliente && nrTelefonoDuplicado){
-		Swal.fire({ icon: "warning", title: "Teléfono duplicado", text: "Ya existe un cliente con ese teléfono. Selecciónalo desde la búsqueda en vez de crear uno nuevo." });
-		return;
-	}
-
-	if (!datos.id_cliente && nrNombreDuplicado){
-		Swal.fire({ icon: "warning", title: "Cliente duplicado", text: "Ya existe un cliente con ese nombre. Selecciónalo desde la búsqueda en vez de crear uno nuevo." });
-		return;
-	}
-
+	// El duplicado (mismo nombre completo o mismo teléfono) ya no se detecta en vivo mientras
+	// se escribe — se valida una sola vez aquí, del lado del servidor
+	// (ControladorReservaciones::crtCrearReservacion), que bloquea el guardado y regresa el
+	// mensaje de "ya existe" en respuesta.mensaje si encuentra coincidencia.
 	mostrarCargaRecepcion();
 
 	$.ajax({

@@ -403,11 +403,9 @@ function armarTooltipMantenimientoRecepcion($descripciones){
                 <div class="form-group">
                   <label>Teléfono</label>
                   <input type="tel" class="form-control" id="nrTelefono" maxlength="10" inputmode="numeric" autocomplete="off">
-                  <span id="nrTelefonoAdvertencia" class="nr-telefono-advertencia" style="display:none;"></span>
                 </div>
               </div>
             </div>
-            <span id="nrNombreAdvertencia" class="nr-telefono-advertencia" style="display:none;"></span>
           </div>
 
           <div class="row">
