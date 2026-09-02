@@ -14,6 +14,7 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Worksheet\Table;
 use PhpOffice\PhpSpreadsheet\Worksheet\Table\TableStyle;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 
 // Corte diario de Limpieza en Excel: limpiezas que iniciaron y/o terminaron HOY, solo para
@@ -38,8 +39,7 @@ class reporteCorteLimpieza {
             return;
         }
 
-        // Mismos filtros que ya existen en pantalla (habitación/usuario/Desde/Hasta): si no
-        // se mandan, se comporta igual que antes (corte de HOY).
+        // Filtros de pantalla (habitación/usuario/Desde/Hasta); sin filtro, es el corte de HOY.
         $fechaDesde = trim((string) ($_GET["fechaDesde"] ?? ""));
         $fechaHasta = trim((string) ($_GET["fechaHasta"] ?? ""));
         $idHabitacion = isset($_GET["idHabitacion"]) ? (int) $_GET["idHabitacion"] : null;
@@ -59,8 +59,7 @@ class reporteCorteLimpieza {
         $Negocio = ControladorHoteles::crtObtenerNegocioUsuarioReporte($idUsuario);
         $Tienda = $Negocio[0]["Razon_Social"] ?? "";
 
-        // Con filtro de rango, la etiqueta deja de decir "diario" y muestra el rango real;
-        // sin filtro (ambas fechas vacías) se ve exactamente igual que antes (corte de hoy).
+        // Con filtro de rango, la etiqueta deja de decir "diario" y muestra el rango real.
         if ($fechaDesde !== "" || $fechaHasta !== "") {
             $EtiquetaCorte = 'Corte de Limpieza:';
             $inicioMostrar = $fechaDesde !== "" ? date('d/m/Y', strtotime($fechaDesde)) : date('d/m/Y');
@@ -91,36 +90,76 @@ class reporteCorteLimpieza {
         $tablaResumen->setStyle($estiloResumen);
         $sheet->addTable($tablaResumen);
 
+        // "Total de limpiezas" es numérico y Excel lo alinea a la derecha por default; se
+        // fuerza a la izquierda para que quede parejo con Hotel/la fecha (texto).
+        $sheet->getStyle('C2:C4')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+
         $sheet->setCellValue('B6', 'Habitación');
         $sheet->setCellValue('C6', 'Usuario');
-        $sheet->setCellValue('D6', 'Inicio');
-        $sheet->setCellValue('E6', 'Fin');
-        $sheet->setCellValue('F6', 'Tareas realizadas');
+        $sheet->setCellValue('D6', 'Fecha');
+        $sheet->setCellValue('E6', 'Hora inicio');
+        $sheet->setCellValue('F6', 'Hora fin');
+        $sheet->setCellValue('G6', 'Hrs Trabajada');
+        $sheet->setCellValue('H6', 'Tareas realizadas');
 
-        $row = 7;
+        // Se agrupa por usuario (conservando el orden original — más reciente primero —
+        // dentro de cada grupo) para que las limpiezas de un mismo empleado queden juntas y
+        // se le pueda poner su total de minutos trabajados al final de su bloque.
+        $limpiezasPorUsuario = [];
         foreach ($limpiezas as $item) {
-            $sheet->setCellValue("B$row", $item['TipoHabitacion'] ?: $item['NumeroHabitacion']);
-            $sheet->setCellValue("C$row", $item['NombreUsuario'] ?: 'Sin asignar');
-            $sheet->setCellValue("D$row", $item['Fecha_Inicio'] ? date('H:i', strtotime($item['Fecha_Inicio'])) : '—');
-            $sheet->setCellValue("E$row", $item['Fecha_Fin'] ? date('H:i', strtotime($item['Fecha_Fin'])) : 'En proceso');
-            $sheet->setCellValue("F$row", $item['TareasRealizadas'] ?: '');
-            $row++;
+            $usuario = $item['NombreUsuario'] ?: 'Sin asignar';
+            $limpiezasPorUsuario[$usuario][] = $item;
         }
 
+        $row = 7;
+        foreach ($limpiezasPorUsuario as $usuario => $itemsUsuario) {
+            $minutosTotalesUsuario = 0;
+            $filaInicioUsuario = $row;
+
+            foreach ($itemsUsuario as $item) {
+                $horasTrabajadas = null;
+
+                if ($item['Fecha_Inicio'] && $item['Fecha_Fin']) {
+                    $minutos = (strtotime($item['Fecha_Fin']) - strtotime($item['Fecha_Inicio'])) / 60;
+                    $horasTrabajadas = $minutos / 60;
+                    $minutosTotalesUsuario += $minutos;
+                }
+
+                $sheet->setCellValue("B$row", $item['TipoHabitacion'] ?: $item['NumeroHabitacion']);
+                $sheet->setCellValue("C$row", $usuario);
+                $sheet->setCellValue("D$row", $item['Fecha_Inicio'] ? date('d/m/Y', strtotime($item['Fecha_Inicio'])) : '—');
+                $sheet->setCellValue("E$row", $item['Fecha_Inicio'] ? date('H:i', strtotime($item['Fecha_Inicio'])) : '—');
+                $sheet->setCellValue("F$row", $item['Fecha_Fin'] ? date('H:i', strtotime($item['Fecha_Fin'])) : 'En proceso');
+                $sheet->setCellValue("G$row", $horasTrabajadas !== null ? round($horasTrabajadas, 2) : '');
+                $sheet->setCellValue("H$row", $item['TareasRealizadas'] ?: '');
+                $row++;
+            }
+
+            // Total de minutos trabajados de este empleado, resaltado en la última fila de su bloque (columna I).
+            $filaFinUsuario = $row - 1;
+            $sheet->setCellValue("I$filaFinUsuario", round($minutosTotalesUsuario) . ' Minutos Laborados');
+            $sheet->getStyle("I$filaFinUsuario")->getFill()
+                ->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)
+                ->getStartColor()->setRGB('40C4E8');
+            $sheet->getStyle("I$filaFinUsuario")->getFont()->setBold(true)->getColor()->setRGB('FFFFFF');
+        }
+
+        $ultimaFilaDetalle = $row - 1;
+
         if (count($limpiezas) > 0) {
-            $table = new Table("B6:F" . ($row - 1));
+            $table = new Table("B6:H$ultimaFilaDetalle");
             $tableStyle = new TableStyle();
             $tableStyle->setTheme(TableStyle::TABLE_STYLE_MEDIUM9);
             $tableStyle->setShowRowStripes(true);
             $table->setStyle($tableStyle);
             $sheet->addTable($table);
 
-            $sheet->getStyle("B6:F" . ($row - 1))->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+            $sheet->getStyle("B6:H$ultimaFilaDetalle")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
         }
 
-        $sheet->getStyle('B6:F6')->getFont()->setBold(true);
+        $sheet->getStyle('B6:H6')->getFont()->setBold(true);
 
-        foreach (range('B', 'F') as $col) {
+        foreach (range('B', 'I') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 

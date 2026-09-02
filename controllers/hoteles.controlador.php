@@ -88,6 +88,10 @@ $IdEstatus = isset($_POST["NuevoEstatus"]) ? intval($_POST["NuevoEstatus"]) : 0;
 				} elseif (is_array($respuesta) && isset($respuesta["validar"]) && intval($respuesta["validar"]) === 0) {
 					$moved = @move_uploaded_file($Contrato, $directorio);
 
+					if(!empty($_FILES["nuevoLogo"]["tmp_name"])){
+						self::ctrGuardarLogoHotel($respuesta["Id_Hotel"], $_FILES["nuevoLogo"]);
+					}
+
 					echo'<script>
 						Swal.fire({
 							icon: "success",
@@ -200,6 +204,10 @@ static public function ctrActualizarHotel()
 			   							);
 
 			   	$respuesta = ModeloHoteles::MdlActualizarHotel($hotel);
+
+				if(!empty($_FILES["editarLogo"]["tmp_name"])){
+					self::ctrGuardarLogoHotel($_POST["editarIdHotel"], $_FILES["editarLogo"]);
+				}
 
 				if($respuesta == "1"){
 
@@ -357,6 +365,35 @@ static public function crtObtenerHotelUsuario($valor){
 	$respuesta = ModeloHoteles::MdlObtenerNegocioUsuarioReporte($idUsuario);
 	return $respuesta;
 
+ }
+
+ private static function ctrGuardarLogoHotel($idHotel, $archivo){
+
+	$tipo = $archivo["type"];
+	$tamano = $archivo["size"];
+
+	if($tipo !== "image/jpeg" && $tipo !== "image/png"){
+		return false;
+	}
+
+	if($tamano > 3145728){
+		return false;
+	}
+
+	$nombreImagen = uniqid() . "_" . $archivo["name"];
+	$rutaWeb = "views/img/Logos_Hoteles/" . $nombreImagen;
+	$dirFisico = dirname(__DIR__) . "/views/img/Logos_Hoteles/";
+
+	if(!is_dir($dirFisico)){
+		mkdir($dirFisico, 0755, true);
+	}
+
+	if(@move_uploaded_file($archivo["tmp_name"], $dirFisico . $nombreImagen)){
+		ModeloHoteles::MdlActualizarLogoHotel($idHotel, $rutaWeb);
+		return true;
+	}
+
+	return false;
  }
 
 }

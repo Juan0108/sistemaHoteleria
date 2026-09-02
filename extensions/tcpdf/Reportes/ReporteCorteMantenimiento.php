@@ -16,6 +16,15 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Table;
 use PhpOffice\PhpSpreadsheet\Worksheet\Table\TableStyle;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Chart\Axis;
+use PhpOffice\PhpSpreadsheet\Chart\Chart;
+use PhpOffice\PhpSpreadsheet\Chart\DataSeries;
+use PhpOffice\PhpSpreadsheet\Chart\DataSeriesValues;
+use PhpOffice\PhpSpreadsheet\Chart\Layout;
+use PhpOffice\PhpSpreadsheet\Chart\Legend;
+use PhpOffice\PhpSpreadsheet\Chart\PlotArea;
+use PhpOffice\PhpSpreadsheet\Chart\Title;
 
 // Corte diario de Mantenimiento en Excel: cualquier movimiento de HOY (registro, cambio de
 // estatus, reapertura...), solo para el perfil Administrador — se manda directo al teléfono
@@ -40,8 +49,7 @@ class reporteCorteMantenimiento {
             return;
         }
 
-        // Mismos filtros que ya existen en pantalla (habitación/Desde/Hasta del tab
-        // Historial): si no se mandan, se comporta igual que antes (corte de HOY).
+        // Filtros de pantalla (habitación/Desde/Hasta del tab Historial); sin filtro, es el corte de HOY.
         $fechaDesde = trim((string) ($_GET["fechaDesde"] ?? ""));
         $fechaHasta = trim((string) ($_GET["fechaHasta"] ?? ""));
         $idHabitacion = isset($_GET["idHabitacion"]) ? (int) $_GET["idHabitacion"] : null;
@@ -62,8 +70,7 @@ class reporteCorteMantenimiento {
         $Negocio = ControladorHoteles::crtObtenerNegocioUsuarioReporte($idUsuario);
         $Tienda = $Negocio[0]["Razon_Social"] ?? "";
 
-        // Con filtro de rango, la etiqueta deja de decir "diario" y muestra el rango real;
-        // sin filtro (ambas fechas vacías) se ve exactamente igual que antes (corte de hoy).
+        // Con filtro de rango, la etiqueta deja de decir "diario" y muestra el rango real.
         if ($fechaDesde !== "" || $fechaHasta !== "") {
             $EtiquetaCorte = 'Corte de Mantenimiento:';
             $inicioMostrar = $fechaDesde !== "" ? date('d/m/Y', strtotime($fechaDesde)) : date('d/m/Y');
@@ -120,19 +127,20 @@ class reporteCorteMantenimiento {
         $sheet->getStyle('C2:C5')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
 
         $sheet->setCellValue('B7', 'Habitación');
-        $sheet->setCellValue('C7', 'Descripción');
-        $sheet->setCellValue('D7', 'Proveedor');
-        $sheet->setCellValue('E7', 'Inicio estimado');
-        $sheet->setCellValue('F7', 'Fin estimado');
-        $sheet->setCellValue('G7', 'Costo estimado');
-        $sheet->setCellValue('H7', 'Total abonado');
-        $sheet->setCellValue('I7', 'Saldo restante');
-        $sheet->setCellValue('J7', 'Estado');
-        $sheet->setCellValue('K7', 'Inicio');
-        $sheet->setCellValue('L7', 'Fin');
+        $sheet->setCellValue('C7', 'Proveedor');
+        $sheet->setCellValue('D7', 'Inicio estimado');
+        $sheet->setCellValue('E7', 'Fin estimado');
+        $sheet->setCellValue('F7', 'Costo estimado');
+        $sheet->setCellValue('G7', 'Total abonado');
+        $sheet->setCellValue('H7', 'Saldo restante');
+        $sheet->setCellValue('I7', 'Estado');
+        $sheet->setCellValue('J7', 'Inicio');
+        $sheet->setCellValue('K7', 'Fin');
+        $sheet->setCellValue('L7', 'Descripción');
 
         $row = 8;
         $totalCosto = 0;
+        $datosGrafica = [];
 
         foreach ($grupos as $filasIncidencia) {
             $primera = $filasIncidencia[0];
@@ -159,32 +167,40 @@ class reporteCorteMantenimiento {
             foreach ($filasIncidencia as $indice => $item) {
                 $siguiente = $filasIncidencia[$indice + 1] ?? null;
 
-                $sheet->setCellValue("J$row", ControladorMantenimiento::NOMBRES_ESTATUS[(int) $item['Id_Estatus']] ?? 'Otro');
-                $sheet->setCellValue("K$row", date('d/m/Y H:i', strtotime($item['Fecha'])));
-                $sheet->setCellValue("L$row", $siguiente ? date('d/m/Y H:i', strtotime($siguiente['Fecha'])) : '');
+                $sheet->setCellValue("I$row", ControladorMantenimiento::NOMBRES_ESTATUS[(int) $item['Id_Estatus']] ?? 'Otro');
+                $sheet->setCellValue("J$row", date('d/m/Y H:i', strtotime($item['Fecha'])));
+                $sheet->setCellValue("K$row", $siguiente ? date('d/m/Y H:i', strtotime($siguiente['Fecha'])) : '');
                 $row++;
             }
 
             $filaFin = $row - 1;
 
-            $sheet->setCellValue("B$filaInicio", $primera['TipoHabitacion'] ?: $primera['NumeroHabitacion']);
-            $sheet->setCellValue("C$filaInicio", $primera['Descripcion'] ?: '');
-            $sheet->setCellValue("D$filaInicio", $primera['Proveedor'] ?: '');
-            $sheet->setCellValue("E$filaInicio", $primera['Fecha_InicioEstimado'] ? date('d/m/Y', strtotime($primera['Fecha_InicioEstimado'])) : '');
-            $sheet->setCellValue("F$filaInicio", $primera['Fecha_FinEstimado'] ? date('d/m/Y', strtotime($primera['Fecha_FinEstimado'])) : '');
-            $sheet->setCellValue("G$filaInicio", $costo);
-            $sheet->setCellValue("H$filaInicio", $totalAbonado);
-            $sheet->setCellValue("I$filaInicio", $saldoRestante);
+            $habitacion = $primera['TipoHabitacion'] ?: $primera['NumeroHabitacion'];
+
+            $sheet->setCellValue("B$filaInicio", $habitacion);
+            $sheet->setCellValue("C$filaInicio", $primera['Proveedor'] ?: '');
+            $sheet->setCellValue("D$filaInicio", $primera['Fecha_InicioEstimado'] ? date('d/m/Y', strtotime($primera['Fecha_InicioEstimado'])) : '');
+            $sheet->setCellValue("E$filaInicio", $primera['Fecha_FinEstimado'] ? date('d/m/Y', strtotime($primera['Fecha_FinEstimado'])) : '');
+            $sheet->setCellValue("F$filaInicio", $costo);
+            $sheet->setCellValue("G$filaInicio", $totalAbonado);
+            $sheet->setCellValue("H$filaInicio", $saldoRestante);
+            $sheet->setCellValue("L$filaInicio", $primera['Descripcion'] ?: '');
 
             // El costo (y el resto de datos de la incidencia) va en UNA sola celda combinada
             // que abarca todos los estados por los que pasó hoy — repetirlo en cada renglón
             // daría a entender que cada estado tuvo un costo distinto.
             if ($filaFin > $filaInicio) {
-                foreach (['B', 'C', 'D', 'E', 'F', 'G', 'H', 'I'] as $col) {
+                foreach (['B', 'C', 'D', 'E', 'F', 'G', 'H', 'L'] as $col) {
                     $sheet->mergeCells("{$col}{$filaInicio}:{$col}{$filaFin}");
-                    $sheet->getStyle("{$col}{$filaInicio}")->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
                 }
             }
+
+            $datosGrafica[] = [
+                'habitacion' => $habitacion,
+                'costo' => $costo,
+                'abonado' => $totalAbonado,
+                'saldo' => $saldoRestante,
+            ];
         }
 
         $sheet->setCellValue('C5', $totalCosto);
@@ -193,28 +209,104 @@ class reporteCorteMantenimiento {
         $ultimaFila = $row - 1;
 
         if ($totalIncidencias > 0) {
-            $sheet->getStyle("G8:I$ultimaFila")->getNumberFormat()->setFormatCode('$#,##0.00');
+            $sheet->getStyle("F8:H$ultimaFila")->getNumberFormat()->setFormatCode('$#,##0.00');
 
-            $table = new Table("B7:L$ultimaFila");
-            $tableStyle = new TableStyle();
-            $tableStyle->setTheme(TableStyle::TABLE_STYLE_MEDIUM9);
-            $tableStyle->setShowRowStripes(true);
-            $table->setStyle($tableStyle);
-            $sheet->addTable($table);
+            // Las tablas dinámicas de Excel no soportan celdas combinadas dentro de su rango,
+            // así que aquí se colorea a mano con la paleta azul de Mantenimiento.
+            $sheet->getStyle("B7:L7")->getFill()
+                ->setFillType(Fill::FILL_SOLID)
+                ->getStartColor()->setRGB('4472C4');
+            $sheet->getStyle('B7:L7')->getFont()->setBold(true)->getColor()->setRGB('FFFFFF');
+
+            $sheet->getStyle("B8:L$ultimaFila")->getFill()
+                ->setFillType(Fill::FILL_SOLID)
+                ->getStartColor()->setRGB('D9E2F3');
 
             $sheet->getStyle("B7:L$ultimaFila")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
-        }
 
-        $sheet->getStyle('B7:L7')->getFont()->setBold(true);
+            $sheet->getStyle("B7:L$ultimaFila")->getAlignment()
+                ->setHorizontal(Alignment::HORIZONTAL_CENTER)
+                ->setVertical(Alignment::VERTICAL_CENTER);
+        } else {
+            $sheet->getStyle('B7:L7')->getFont()->setBold(true);
+        }
 
         foreach (range('B', 'L') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        // Gráfica de barras agrupadas (Costo estimado / Total abonado / Saldo restante) por
+        // habitación: las 3 series necesitan un rango de celdas CONTIGUO por columna para que
+        // el refresco de fórmulas de PhpSpreadsheet no truene, pero los datos de cada
+        // incidencia viven en celdas combinadas no contiguas — por eso se copian a columnas
+        // auxiliares ocultas (N-Q), una fila por incidencia.
+        if ($totalIncidencias > 0) {
+            $filaAux = 2;
+            foreach ($datosGrafica as $dato) {
+                $sheet->setCellValue("N$filaAux", $dato['habitacion']);
+                $sheet->setCellValue("O$filaAux", $dato['costo']);
+                $sheet->setCellValue("P$filaAux", $dato['abonado']);
+                $sheet->setCellValue("Q$filaAux", $dato['saldo']);
+                $filaAux++;
+            }
+            $ultimaFilaAux = $filaAux - 1;
+            $sheet->getColumnDimension('N')->setVisible(false);
+            $sheet->getColumnDimension('O')->setVisible(false);
+            $sheet->getColumnDimension('P')->setVisible(false);
+            $sheet->getColumnDimension('Q')->setVisible(false);
+
+            $etiquetas = new DataSeriesValues(DataSeriesValues::DATASERIES_TYPE_STRING, "'Corte Mantenimiento'!\$N\$2:\$N\$$ultimaFilaAux", null, $totalIncidencias);
+
+            $valoresCosto = new DataSeriesValues(DataSeriesValues::DATASERIES_TYPE_NUMBER, "'Corte Mantenimiento'!\$O\$2:\$O\$$ultimaFilaAux", null, $totalIncidencias);
+            $valoresCosto->setFillColor(array_fill(0, $totalIncidencias, '4472C4'));
+
+            $valoresAbonado = new DataSeriesValues(DataSeriesValues::DATASERIES_TYPE_NUMBER, "'Corte Mantenimiento'!\$P\$2:\$P\$$ultimaFilaAux", null, $totalIncidencias);
+            $valoresAbonado->setFillColor(array_fill(0, $totalIncidencias, '70AD47'));
+
+            $valoresSaldo = new DataSeriesValues(DataSeriesValues::DATASERIES_TYPE_NUMBER, "'Corte Mantenimiento'!\$Q\$2:\$Q\$$ultimaFilaAux", null, $totalIncidencias);
+            $valoresSaldo->setFillColor(array_fill(0, $totalIncidencias, 'FFC000'));
+
+            $etiquetaCosto = new DataSeriesValues(DataSeriesValues::DATASERIES_TYPE_STRING, null, null, 1, ['Costo estimado']);
+            $etiquetaAbonado = new DataSeriesValues(DataSeriesValues::DATASERIES_TYPE_STRING, null, null, 1, ['Total abonado']);
+            $etiquetaSaldo = new DataSeriesValues(DataSeriesValues::DATASERIES_TYPE_STRING, null, null, 1, ['Saldo restante']);
+
+            $layoutEtiquetas = new Layout();
+            $layoutEtiquetas->setShowVal(true);
+            $layoutEtiquetas->setNumFmtCode('$#,##0.00');
+            $layoutEtiquetas->setNumFmtLinked(false);
+            $layoutEtiquetas->setDLblPos('outEnd');
+
+            $valoresCosto->setLabelLayout($layoutEtiquetas);
+            $valoresAbonado->setLabelLayout($layoutEtiquetas);
+            $valoresSaldo->setLabelLayout($layoutEtiquetas);
+
+            $series = new DataSeries(
+                DataSeries::TYPE_BARCHART,
+                DataSeries::GROUPING_CLUSTERED,
+                range(0, 2),
+                [$etiquetaCosto, $etiquetaAbonado, $etiquetaSaldo],
+                [$etiquetas, $etiquetas, $etiquetas],
+                [$valoresCosto, $valoresAbonado, $valoresSaldo]
+            );
+            $series->setPlotDirection(DataSeries::DIRECTION_COL);
+
+            $areaGrafica = new PlotArea(null, [$series]);
+            $leyenda = new Legend(Legend::POSITION_BOTTOM, null, false);
+            $titulo = new Title('Costo, abonos y saldo por habitación');
+
+            $grafica = new Chart('graficaMantenimiento', $titulo, $leyenda, $areaGrafica);
+            $grafica->setTopLeftPosition('B' . ($ultimaFila + 2));
+            $grafica->setBottomRightPosition('L' . ($ultimaFila + 26));
+            $grafica->setPlotVisibleOnly(false);
+
+            $sheet->addChart($grafica);
         }
 
         $nombreArchivo = 'corte_mantenimiento_' . date('Ymd') . '_' . $idUsuario . '.xlsx';
         $rutaArchivo = dirname(__DIR__, 3) . '/tickets/' . $nombreArchivo;
 
         $writer = new Xlsx($spreadsheet);
+        $writer->setIncludeCharts(true);
         $writer->save($rutaArchivo);
 
         // Se manda el archivo embebido en base64 (en vez de una URL pública): así funciona

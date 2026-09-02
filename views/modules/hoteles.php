@@ -187,7 +187,13 @@
               <input type="file" class="nuevoContrato" name="nuevoContrato">
               <p class="help-block"><i class="fa fa-exclamation-triangle"></i> Peso maximo de la foto 3MB </p>
             </div>
-        </div> 
+
+            <div class="form-group">
+              <div class="panel">Agregar Logo</div>
+              <input type="file" class="nuevoLogo" name="nuevoLogo" accept="image/png, image/jpeg">
+              <p class="help-block"><i class="fa fa-exclamation-triangle"></i> Formato JPG o PNG, peso maximo 3MB </p>
+            </div>
+        </div>
       </div>
 
       <div class="modal-footer">
@@ -210,7 +216,7 @@
 <div id="modalEditarHotel" class="modal fade" role="dialog">
   <div class="modal-dialog">
     <div class="modal-content">
-      <form role="form" method="post">
+      <form role="form" method="post" enctype="multipart/form-data">
 
       <div class="modal-header" style="background:#3f342e; color:#f6ecdb">
         <button type="button" class="close" data-dismiss="modal">&times;</button>
@@ -340,7 +346,14 @@
                </tr>
              </tbody>
            </table>
-        </div> 
+
+            <div class="form-group">
+              <div class="panel">Logo</div>
+              <img id="editarLogoActual" src="" alt="Logo actual" style="display:none; max-height:60px; margin-bottom:8px;">
+              <input type="file" class="editarLogo" name="editarLogo" accept="image/png, image/jpeg">
+              <p class="help-block"><i class="fa fa-exclamation-triangle"></i> Formato JPG o PNG, peso maximo 3MB. Déjalo vacío para conservar el logo actual </p>
+            </div>
+        </div>
       </div>
 
       <div class="modal-footer">
@@ -452,4 +465,18 @@
 #modalEditarHotel .modal-footer .btn-success{ background:#81412d; border-color:#81412d; }
 #modalAgregarHotel .modal-footer .btn-success:hover,
 #modalEditarHotel .modal-footer .btn-success:hover{ background:#b96a37; border-color:#b96a37; }
+
+/* Esquinas redondeadas: modales de Agregar/Editar Hotel y la tabla de hoteles */
+#modalAgregarHotel .modal-content,
+#modalEditarHotel .modal-content{
+  border-radius:14px; overflow:hidden;
+}
+#modalAgregarHotel .modal-header,
+#modalEditarHotel .modal-header{
+  border-top-left-radius:14px; border-top-right-radius:14px;
+}
+
+.administrar-hotel table.tablaHoteles{
+  border-radius:12px; overflow:hidden; border-collapse:separate !important; border-spacing:0;
+}
 </style>

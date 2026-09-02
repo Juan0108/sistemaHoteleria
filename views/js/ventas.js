@@ -1606,6 +1606,36 @@ function ObtenerReporteVentas(){
     }
 }
 
+function ObtenerReporteVentasExcel(){
+
+    var _IdUsuario = $("#usuario").val();
+
+    // Los campos ocultos #FInicio/#Ffin solo se llenan cuando el usuario cambia el rango a
+    // mano; con el rango por defecto se leen vacíos, así que se lee el texto del botón.
+    var textoFechas = $("#daterange-btn span").text().trim();
+
+    var FechaInicio = '';
+    var FFin = '';
+
+    if(textoFechas !== "Rango de Fechas" && textoFechas !== ""){
+        var fechas = textoFechas.split(' - ');
+        FechaInicio = fechas[0];
+        FFin = fechas[1];
+    }
+
+    if (FechaInicio === '') {
+        Swal.fire({
+            icon: "error",
+            title : "Sistema PosDit",
+            text: "¡Favor de seleccionar un rango de fechas!",
+            showConfirmButton: true,
+            confirmButtonText: "Cerrar"
+        });
+    } else {
+        window.open("extensions/tcpdf/Reportes/ReporteVentasExcel.php?Cu="+_IdUsuario+"&fi="+FechaInicio+"&ff="+FFin, "_blank");
+    }
+}
+
 function ImprimirTicket(_Ticket,_Cambio,_Pago ){
 
 var _idNegocio = $("#usuario").val();;

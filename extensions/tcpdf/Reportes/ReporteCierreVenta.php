@@ -18,10 +18,12 @@ use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Worksheet\Table;
 use PhpOffice\PhpSpreadsheet\Worksheet\Table\TableStyle;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Chart\Axis;
 use PhpOffice\PhpSpreadsheet\Chart\Chart;
 use PhpOffice\PhpSpreadsheet\Chart\DataSeries;
 use PhpOffice\PhpSpreadsheet\Chart\DataSeriesValues;
+use PhpOffice\PhpSpreadsheet\Chart\Layout;
 use PhpOffice\PhpSpreadsheet\Chart\Legend;
 use PhpOffice\PhpSpreadsheet\Chart\PlotArea;
 use PhpOffice\PhpSpreadsheet\Chart\Title;
@@ -71,9 +73,9 @@ class generaReporteDia
          $sheet->setCellValue('B2', 'Hotel:');
          $sheet->setCellValue('B3', 'Vendedor:');
          $sheet->setCellValue('B4', 'Venta Reportada:');
-         $sheet->setCellValue('B5', 'Caja:');
-         $sheet->setCellValue('B6', 'Cargos mantenimiento:');
-         $sheet->setCellValue('B7', 'Venta Sistema:');
+         $sheet->setCellValue('B5', 'Venta Sistema:');
+         $sheet->setCellValue('B6', 'Caja:');
+         $sheet->setCellValue('B7', 'Cargos mantenimiento:');
          $sheet->setCellValue('B8', 'Diferencia:');
 
          $totalSistema = 0;
@@ -93,9 +95,9 @@ class generaReporteDia
          $sheet->setCellValue('C2', $Negocio[0]["Razon_Social"]);
          $sheet->setCellValue('C3', $Usuario["Nombre"]);
          $sheet->setCellValue('C4', $ValorCierre);
-         $sheet->setCellValue('C5', $ValorCaja);
-         $sheet->setCellValue('C6', $cargosMantenimiento);
-         $sheet->setCellValue('C7', $totalSistema);
+         $sheet->setCellValue('C5', $totalSistema);
+         $sheet->setCellValue('C6', $ValorCaja);
+         $sheet->setCellValue('C7', $cargosMantenimiento);
          $sheet->setCellValue('C8', $diferencia);
 
          // Crear una tabla con estilo azul
@@ -109,9 +111,31 @@ class generaReporteDia
          $table2->setStyle($tableStyle2);
 
          $sheet->getStyle("C4:C8")->getNumberFormat()->setFormatCode('$#,##0.00');
+         // Los valores numéricos se alinean a la derecha por default en Excel; se fuerzan a
+         // la izquierda para que queden parejos con Hotel/Vendedor (texto).
+         $sheet->getStyle("C4:C8")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
 
          // Add the table to the sheet
          $sheet->addTable($table2);
+
+         // Tabla independiente de Ganancia/Cargos/Total (E2:G3), mismo tema de color que la
+         // tabla del Hotel para que se vea consistente con la identidad del reporte. El valor
+         // de "Total Ganancia" se llena más abajo, una vez calculado $totalGanancia con el
+         // detalle de ventas del día.
+         $sheet->setCellValue('E2', 'Total Ganancia');
+         $sheet->setCellValue('F2', 'Total Cargos');
+         $sheet->setCellValue('G2', 'Total');
+         $sheet->setCellValue('F3', $cargosMantenimiento);
+
+         $tableGanancias = new Table('E2:G3');
+         $estiloGanancias = new TableStyle();
+         $estiloGanancias->setTheme(TableStyle::TABLE_STYLE_DARK10);
+         $estiloGanancias->setShowRowStripes(true);
+         $tableGanancias->setStyle($estiloGanancias);
+         $sheet->addTable($tableGanancias);
+
+         $sheet->getStyle('E3:G3')->getNumberFormat()->setFormatCode('$#,##0.00');
+         $sheet->getStyle('E3:G3')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
 
 
          // Establecer títulos (fila 10, con un renglón de separación después de la tabla de
@@ -170,6 +194,12 @@ class generaReporteDia
          $sheet->setCellValue("H$row", $totalVenta);
          $sheet->setCellValue("I$row", $totalGanancia);
 
+         // Termina de llenar la tabla de Ganancia/Cargos/Total (E2:G3): ya se conoce
+         // $totalGanancia (suma de la columna Ganancia del detalle) y $cargosMantenimiento
+         // (calculado al inicio del método).
+         $sheet->setCellValue('E3', $totalGanancia);
+         $sheet->setCellValue('G3', $totalGanancia - $cargosMantenimiento);
+
 
          // Aplicar formato de moneda mexicana a las columnas relevantes
          $sheet->getStyle("F$filaEncabezado:F$row")->getNumberFormat()->setFormatCode('$#,##0.00');
@@ -181,9 +211,7 @@ class generaReporteDia
          $sheet->getStyle("H$row")->getNumberFormat()->setFormatCode('$#,##0.00');
          $sheet->getStyle("I$row")->getNumberFormat()->setFormatCode('$#,##0.00');
 
-         // Crear una tabla con estilo azul — el rango llega hasta L (Cliente), antes solo
-         // llegaba hasta K y por eso la columna Cliente se quedaba fuera del formato de la
-         // tabla dinámica (sin las bandas de color ni el filtro de encabezado).
+         // Crear una tabla con estilo azul
          $tableRange = "B$filaEncabezado:L$row"; // Rango completo de la tabla
          $table = new Table($tableRange);
 
@@ -210,13 +238,23 @@ class generaReporteDia
         $sheet->setTitle('Corte ' . date('d-m-Y'));
 
         // Gráfica de columnas verticales debajo de las tablas: eje X = las 4 etiquetas del
-        // resumen (Venta Reportada, Caja, Cargos mantenimiento, Venta Sistema — Diferencia
+        // resumen (Venta Reportada, Venta Sistema, Caja, Cargos mantenimiento — Diferencia
         // se deja fuera a propósito, no es una cifra "de origen" sino un cálculo derivado),
-        // eje Y = dinero, con el máximo = Venta Reportada + $1,500 de margen.
+        // eje Y = dinero, con el máximo = Venta Reportada + $1,500 de margen. Cada barra con
+        // su propio color, y la cifra en formato moneda arriba de cada una.
         $hojaNombre = $sheet->getTitle();
+        $filaInicioGraficas = $row + 2;
 
         $etiquetas = new DataSeriesValues(DataSeriesValues::DATASERIES_TYPE_STRING, "'$hojaNombre'!\$B\$4:\$B\$7", null, 4);
         $valores = new DataSeriesValues(DataSeriesValues::DATASERIES_TYPE_NUMBER, "'$hojaNombre'!\$C\$4:\$C\$7", null, 4);
+        $valores->setFillColor(['4472C4', '70AD47', 'FFC000', 'C00000']);
+
+        $etiquetasDatos = new Layout();
+        $etiquetasDatos->setShowVal(true);
+        $etiquetasDatos->setNumFmtCode('$#,##0.00');
+        $etiquetasDatos->setNumFmtLinked(false);
+        $etiquetasDatos->setDLblPos('outEnd');
+        $valores->setLabelLayout($etiquetasDatos);
 
         $serie = new DataSeries(
             DataSeries::TYPE_BARCHART,
@@ -239,10 +277,41 @@ class generaReporteDia
             0,
             (float) $ValorCierre + 1500
         );
-        $grafica->setTopLeftPosition('B' . ($row + 2));
-        $grafica->setBottomRightPosition('L' . ($row + 20));
+        $grafica->setTopLeftPosition('B' . $filaInicioGraficas);
+        $grafica->setBottomRightPosition('F' . ($filaInicioGraficas + 24));
 
         $sheet->addChart($grafica);
+
+        // Gráfica de pastel: Ingresos (Total Ganancia) vs Egresos (Total Cargos), tomando la
+        // tabla E2:G3 de arriba. Al lado de la de barras, mismo alto (24 filas), columnas H a L.
+        $etiquetasPastel = new DataSeriesValues(DataSeriesValues::DATASERIES_TYPE_STRING, "'$hojaNombre'!\$E\$2:\$F\$2", null, 2);
+        $valoresPastel = new DataSeriesValues(DataSeriesValues::DATASERIES_TYPE_NUMBER, "'$hojaNombre'!\$E\$3:\$F\$3", null, 2);
+        $valoresPastel->setFillColor(['70AD47', 'C00000']);
+
+        $etiquetasDatosPastel = new Layout();
+        $etiquetasDatosPastel->setShowVal(true);
+        $etiquetasDatosPastel->setShowCatName(true);
+        $etiquetasDatosPastel->setNumFmtCode('$#,##0.00');
+        $etiquetasDatosPastel->setNumFmtLinked(false);
+        $valoresPastel->setLabelLayout($etiquetasDatosPastel);
+
+        $seriePastel = new DataSeries(
+            DataSeries::TYPE_PIECHART,
+            null,
+            [0],
+            [],
+            [$etiquetasPastel],
+            [$valoresPastel]
+        );
+        $plotAreaPastel = new PlotArea(null, [$seriePastel]);
+        $legendPastel = new Legend(Legend::POSITION_RIGHT, null, false);
+        $tituloPastel = new Title('Ingresos vs Egresos');
+
+        $graficaPastel = new Chart('graficaIngresosEgresos', $tituloPastel, $legendPastel, $plotAreaPastel);
+        $graficaPastel->setTopLeftPosition('H' . $filaInicioGraficas);
+        $graficaPastel->setBottomRightPosition('L' . ($filaInicioGraficas + 24));
+
+        $sheet->addChart($graficaPastel);
 
         // ===== Hoja "Mantenimiento": abonos de HOY, uno por incidencia =====
         // Ya trae $abonosMtto calculado arriba (mismos datos que "Cargos mantenimiento" del
@@ -253,51 +322,70 @@ class generaReporteDia
 
         $hojaMtto->setCellValue('B2', 'Hotel:');
         $hojaMtto->setCellValue('C2', $Negocio[0]["Razon_Social"] ?? '');
-        $hojaMtto->setCellValue('B3', 'Abonos del día:');
-        $hojaMtto->setCellValue('C3', date('d/m/Y'));
-        $hojaMtto->setCellValue('B4', 'Total abonado:');
-        $hojaMtto->setCellValue('C4', $cargosMantenimiento);
-        $hojaMtto->getStyle('B2:B4')->getFont()->setBold(true);
-        $hojaMtto->getStyle('C4')->getNumberFormat()->setFormatCode('$#,##0.00');
+        $hojaMtto->setCellValue('B3', 'Vendedor:');
+        $hojaMtto->setCellValue('C3', $Usuario["Nombre"] ?? '');
+        $hojaMtto->setCellValue('B4', 'Venta Reportada:');
+        $hojaMtto->setCellValue('C4', $ValorCierre);
+        $hojaMtto->setCellValue('B5', 'Venta Sistema:');
+        $hojaMtto->setCellValue('C5', $totalSistema);
+        $hojaMtto->setCellValue('B6', 'Caja:');
+        $hojaMtto->setCellValue('C6', $ValorCaja);
+        $hojaMtto->setCellValue('B7', 'Abonos del día:');
+        $hojaMtto->setCellValue('C7', date('d/m/Y'));
+        $hojaMtto->setCellValue('B8', 'Cargos mantenimiento:');
+        $hojaMtto->setCellValue('C8', $cargosMantenimiento);
+        $hojaMtto->setCellValue('B9', 'Diferencia:');
+        $hojaMtto->setCellValue('C9', $diferencia);
+        $hojaMtto->getStyle('C4:C9')->getNumberFormat()->setFormatCode('$#,##0.00');
+        $hojaMtto->getStyle('C4:C9')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
 
-        $filaEncabezadoMtto = 6;
+        // Tabla azul para identificar la hoja de Mantenimiento (la de resumen usa morado/verde).
+        $tablaResumenMtto = new Table('B2:C9');
+        $estiloResumenMtto = new TableStyle();
+        $estiloResumenMtto->setTheme(TableStyle::TABLE_STYLE_DARK2);
+        $estiloResumenMtto->setShowRowStripes(true);
+        $tablaResumenMtto->setStyle($estiloResumenMtto);
+        $hojaMtto->addTable($tablaResumenMtto);
+
+        $filaEncabezadoMtto = 11;
         $hojaMtto->setCellValue("B$filaEncabezadoMtto", 'Habitación');
-        $hojaMtto->setCellValue("C$filaEncabezadoMtto", 'Descripción');
-        $hojaMtto->setCellValue("D$filaEncabezadoMtto", 'Proveedor');
-        $hojaMtto->setCellValue("E$filaEncabezadoMtto", 'Inicio estimado');
-        $hojaMtto->setCellValue("F$filaEncabezadoMtto", 'Fin estimado');
-        $hojaMtto->setCellValue("G$filaEncabezadoMtto", 'Costo estimado');
-        $hojaMtto->setCellValue("H$filaEncabezadoMtto", 'Total abonado');
-        $hojaMtto->setCellValue("I$filaEncabezadoMtto", 'Saldo restante');
-        $hojaMtto->setCellValue("J$filaEncabezadoMtto", 'Estado');
-        $hojaMtto->setCellValue("K$filaEncabezadoMtto", 'Inicio');
-        $hojaMtto->setCellValue("L$filaEncabezadoMtto", 'Fin');
+        $hojaMtto->setCellValue("C$filaEncabezadoMtto", 'Proveedor');
+        $hojaMtto->setCellValue("D$filaEncabezadoMtto", 'Inicio estimado');
+        $hojaMtto->setCellValue("E$filaEncabezadoMtto", 'Fin estimado');
+        $hojaMtto->setCellValue("F$filaEncabezadoMtto", 'Costo estimado');
+        $hojaMtto->setCellValue("G$filaEncabezadoMtto", 'Total abonado');
+        $hojaMtto->setCellValue("H$filaEncabezadoMtto", 'Saldo restante');
+        $hojaMtto->setCellValue("I$filaEncabezadoMtto", 'Estado');
+        $hojaMtto->setCellValue("J$filaEncabezadoMtto", 'Inicio');
+        $hojaMtto->setCellValue("K$filaEncabezadoMtto", 'Fin');
+        $hojaMtto->setCellValue("L$filaEncabezadoMtto", 'Descripción');
 
         $rowMtto = $filaEncabezadoMtto + 1;
 
         foreach ($abonosMtto as $abono) {
             $hojaMtto->setCellValue("B$rowMtto", $abono['TipoHabitacion'] ?: $abono['NumeroHabitacion']);
-            $hojaMtto->setCellValue("C$rowMtto", $abono['Descripcion'] ?: '');
-            $hojaMtto->setCellValue("D$rowMtto", $abono['Proveedor'] ?: '');
-            $hojaMtto->setCellValue("E$rowMtto", $abono['Fecha_InicioEstimado'] ? date('d/m/Y', strtotime($abono['Fecha_InicioEstimado'])) : '');
-            $hojaMtto->setCellValue("F$rowMtto", $abono['Fecha_FinEstimado'] ? date('d/m/Y', strtotime($abono['Fecha_FinEstimado'])) : '');
-            $hojaMtto->setCellValue("G$rowMtto", (float) $abono['CostoReparacion']);
-            $hojaMtto->setCellValue("H$rowMtto", (float) $abono['TotalAbonadoDia']);
-            $hojaMtto->setCellValue("I$rowMtto", (float) $abono['SaldoRestante']);
-            $hojaMtto->setCellValue("J$rowMtto", ControladorMantenimiento::NOMBRES_ESTATUS[(int) $abono['Id_Estatus']] ?? 'Otro');
-            $hojaMtto->setCellValue("K$rowMtto", $abono['FechaInicioEstado'] ? date('d/m/Y H:i', strtotime($abono['FechaInicioEstado'])) : '');
-            $hojaMtto->setCellValue("L$rowMtto", $abono['FechaFinEstado'] ? date('d/m/Y H:i', strtotime($abono['FechaFinEstado'])) : '');
+            $hojaMtto->setCellValue("C$rowMtto", $abono['Proveedor'] ?: '');
+            $hojaMtto->setCellValue("D$rowMtto", $abono['Fecha_InicioEstimado'] ? date('d/m/Y', strtotime($abono['Fecha_InicioEstimado'])) : '');
+            $hojaMtto->setCellValue("E$rowMtto", $abono['Fecha_FinEstimado'] ? date('d/m/Y', strtotime($abono['Fecha_FinEstimado'])) : '');
+            $hojaMtto->setCellValue("F$rowMtto", (float) $abono['CostoReparacion']);
+            $hojaMtto->setCellValue("G$rowMtto", (float) $abono['TotalAbonadoDia']);
+            $hojaMtto->setCellValue("H$rowMtto", (float) $abono['SaldoRestante']);
+            $hojaMtto->setCellValue("I$rowMtto", ControladorMantenimiento::NOMBRES_ESTATUS[(int) $abono['Id_Estatus']] ?? 'Otro');
+            $hojaMtto->setCellValue("J$rowMtto", $abono['FechaInicioEstado'] ? date('d/m/Y H:i', strtotime($abono['FechaInicioEstado'])) : '');
+            $hojaMtto->setCellValue("K$rowMtto", $abono['FechaFinEstado'] ? date('d/m/Y H:i', strtotime($abono['FechaFinEstado'])) : '');
+            $hojaMtto->setCellValue("L$rowMtto", $abono['Descripcion'] ?: '');
             $rowMtto++;
         }
 
         $ultimaFilaMtto = $rowMtto - 1;
 
         if (count($abonosMtto) > 0) {
-            $hojaMtto->getStyle("G$filaEncabezadoMtto:I$ultimaFilaMtto")->getNumberFormat()->setFormatCode('$#,##0.00');
+            $hojaMtto->getStyle("F$filaEncabezadoMtto:H$ultimaFilaMtto")->getNumberFormat()->setFormatCode('$#,##0.00');
 
+            // Azul: color de identidad de la hoja Mantenimiento; morado/verde queda para "Corte dd-mm-aaaa".
             $tablaMtto = new Table("B$filaEncabezadoMtto:L$ultimaFilaMtto");
             $estiloMtto = new TableStyle();
-            $estiloMtto->setTheme(TableStyle::TABLE_STYLE_MEDIUM9);
+            $estiloMtto->setTheme(TableStyle::TABLE_STYLE_DARK2);
             $estiloMtto->setShowRowStripes(true);
             $tablaMtto->setStyle($estiloMtto);
             $hojaMtto->addTable($tablaMtto);
@@ -326,9 +414,8 @@ class generaReporteDia
         // Ruta completa para guardar el archivo en el servidor
         $rutaArchivo = $_SERVER['DOCUMENT_ROOT'] . "/sistema.posdit.com.mx/reportes/" . $nombreArchivo;
 
-        // En local (XAMPP) esta carpeta no existe todavía; en producción normalmente ya está
-        // creada, pero crearla aquí si falta evita que Xlsx::save() truene con una excepción
-        // sin capturar (eso era lo que mandaba HTML de error en vez de JSON al navegador).
+        // Crear la carpeta si no existe evita que Xlsx::save() truene con una excepción sin
+        // capturar, que mandaría HTML de error en vez de JSON al navegador.
         $dirReportes = dirname($rutaArchivo);
         if (!is_dir($dirReportes)) {
             mkdir($dirReportes, 0755, true);
@@ -343,13 +430,13 @@ class generaReporteDia
         // Guardar el archivo en la ruta definida
         $writer->save($rutaArchivo);
 
-        // Antes el navegador armaba y mandaba esta petición él mismo, usando la URL pública
-        // del archivo (https://posdit.com.mx/.../reportes/...) — eso nunca podía funcionar en
-        // local, porque el archivo solo existe en la máquina del que lo genera. Igual que en
-        // TicketReservacion.php y los reportes de Mantenimiento/Limpieza, se manda embebido en
-        // base64: así funciona igual en producción y en local, sin depender de que la API de
-        // WhatsApp pueda alcanzar el archivo por su cuenta. No es un ajuste temporal para
-        // pruebas: se queda así también en producción.
+        // PhpSpreadsheet deja fijo el espacio entre barras de una gráfica de columnas en 150%
+        // (c:gapWidth) — no hay ningún método público para cambiarlo. Se reduce aquí editando
+        // directamente el XML de la gráfica ya guardada, para que las barras queden más juntas.
+        self::crtEstrecharEspacioBarras($rutaArchivo, 40);
+
+        // Se manda embebido en base64 (no por URL pública) para que funcione igual en
+        // producción y en local, sin depender de que la API de WhatsApp alcance el archivo.
         $telefono = trim((string) ($_SESSION["Telefono"] ?? ""));
 
         if ($telefono === "") {
@@ -375,6 +462,36 @@ class generaReporteDia
 
         $resultado = $this->enviarMensajeAPI($apiUrl, $token, $data);
         echo json_encode($resultado, JSON_UNESCAPED_UNICODE);
+    }
+
+    // Reemplaza el "c:gapWidth" de TODAS las gráficas de columnas/barras dentro del .xlsx ya
+    // guardado (chart1.xml, chart2.xml, ...) por el valor pedido — PhpSpreadsheet no expone
+    // ningún método público para configurarlo en este tipo de gráfica.
+    private static function crtEstrecharEspacioBarras($rutaArchivo, $gapWidth) {
+        $zip = new \ZipArchive();
+
+        if ($zip->open($rutaArchivo) !== true) {
+            return;
+        }
+
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $nombre = $zip->getNameIndex($i);
+
+            if ($nombre === false || strpos($nombre, 'xl/charts/chart') !== 0) {
+                continue;
+            }
+
+            $contenido = $zip->getFromName($nombre);
+
+            if ($contenido === false || strpos($contenido, '<c:gapWidth') === false) {
+                continue;
+            }
+
+            $contenido = preg_replace('/<c:gapWidth val="\d+"\/>/', '<c:gapWidth val="' . (int) $gapWidth . '"/>', $contenido);
+            $zip->addFromString($nombre, $contenido);
+        }
+
+        $zip->close();
     }
 
     // Mismo criterio que TicketReservacion.php: se revisa el HTTP code y el cuerpo de la

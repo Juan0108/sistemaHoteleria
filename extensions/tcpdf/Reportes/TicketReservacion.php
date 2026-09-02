@@ -68,6 +68,13 @@ class imprimirTicketReservacion {
         $Calle = $Negocio[0]["Calle"] ?? "";
         $Telefono2 = $Negocio[0]["Telefono"] ?? "";
         $Correo = $Negocio[0]["Correo"] ?? "";
+        // Logo propio del hotel/negocio si ya cargó uno en Administrar Hoteles; si no, se usa
+        // el logo genérico. La ruta guardada en BD (views/img/Logos_Hoteles/...) es relativa a
+        // la raíz del proyecto, pero TCPDF resuelve las rutas de imagen relativas al directorio
+        // del script (extensions/tcpdf/Reportes/), así que aquí se vuelve absoluta.
+        $Logo = !empty($Negocio[0]["Logo"])
+            ? dirname(__DIR__, 3) . '/' . $Negocio[0]["Logo"]
+            : "images/DIT slogan.png";
         // Fecha y hora por separado (no en un solo string): así se pueden acomodar en columnas
         // de tabla (fecha a la izquierda, hora a la derecha) sin depender de que el HTML de
         // TCPDF respete white-space/nowrap, que es poco confiable en su parser.
@@ -95,7 +102,12 @@ class imprimirTicketReservacion {
 
         $pdf->AddPage();
 
+        // Logo en la esquina superior izquierda, dibujado aparte con Image() para que no
+        // herede el centrado del bloque de texto de abajo.
+        $pdf->Image($Logo, 2, 3, 20, 10, '', '', '', false, 300);
+
         $Cabecera = <<<EOF
+<div style="height: 8mm;"></div>
 <br style="color:red" align="center"> $Tienda </br>
 <br style="font-size:8px" align="center"> $Calle </br>
 <br style="font-size:8px" align="center"> $Colonia </br>
@@ -103,8 +115,7 @@ class imprimirTicketReservacion {
 <br style="font-size:8px" align="center"> $Estado </br>
 <br style="font-size:8px" align="center"> $Telefono2 </br>
 <br style="font-size:8px" align="center"> $Correo </br>
-<div style="font-size:6px; text-align:center; "></div>
-<br style="font-size:9px" align="center"> Folio: $idReservacion </br>
+<br style="font-size:8px" align="center"> Folio: $idReservacion </br>
 EOF;
 
         $pdf->writeHTML($Cabecera, false, false, false, false, '');
@@ -158,15 +169,17 @@ EOF;
 
         $totalFormateadoGeneral = number_format($totalEstadia, 2);
 
-        // Misma tabla de 180px (18+52+55+55, igual que la de los conceptos) para que la cifra
-        // del Total quede exactamente debajo de la columna "Total" de arriba, en vez de en una
-        // tabla aparte de otro ancho que no se alinea con las demás cifras.
+        // Mismas 4 columnas (18/52/55/55px) que la tabla de conceptos de arriba, para que la
+        // cifra quede bajo el encabezado "Total". Las celdas vacías llevan &nbsp; porque TCPDF
+        // no reserva el ancho de un <td> realmente vacío.
         $Totales = <<<EOF
 <div style="font-size:6px; text-align:center; "></div>
 <table style="border: none; width: 180px;">
 <tbody>
     <tr>
-        <td align="right" style="border: none; width: 125px; font-size: 7px;">Total:</td>
+        <td style="border: none; width: 18px; font-size: 7px;">&nbsp;</td>
+        <td align="right" style="border: none; width: 52px; font-size: 7px;">Total:</td>
+        <td style="border: none; width: 55px; font-size: 7px;">&nbsp;</td>
         <td align="right" style="border: none; width: 55px; font-size: 7px; white-space: nowrap;">$&nbsp;$totalFormateadoGeneral</td>
     </tr>
 </tbody>
@@ -227,12 +240,8 @@ EOF;
         echo json_encode($resultado, JSON_UNESCAPED_UNICODE);
     }
 
-    // Antes esta función solo regresaba el texto crudo de la respuesta y todo se trataba
-    // como "éxito" mientras el navegador no viera un error de red — así que un rechazo de
-    // la API (token vencido, número mal formateado, instancia de WhatsApp desconectada...)
-    // se mostraba igual como "Ticket enviado". Ahora se revisa el código HTTP y el cuerpo
-    // de la respuesta para regresar un "ok" real, y siempre se manda la respuesta cruda
-    // para poder diagnosticar si algo falla.
+    // Se revisa el código HTTP y el cuerpo de la respuesta antes de dar por enviado el
+    // ticket, y siempre se manda la respuesta cruda para poder diagnosticar si algo falla.
     private function enviarMensajeAPI($url, $token, $data) {
         $ch = curl_init($url);
 

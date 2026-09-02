@@ -36,6 +36,14 @@ class imprimirTicket {
         $Correo = $Negocio[0]["Correo"];
         $Fecha = date('YmdHi');
 
+        // Logo propio del hotel/negocio si ya cargó uno en Administrar Hoteles; si no, se usa
+        // el logo genérico de siempre. La ruta guardada en BD (views/img/Logos_Hoteles/...) es
+        // relativa a la raíz del proyecto, pero TCPDF resuelve las rutas de <img> relativas al
+        // directorio del script (extensions/tcpdf/Reportes/), así que aquí se vuelve absoluta.
+        $Logo = !empty($Negocio[0]["Logo"])
+            ? dirname(__DIR__, 3) . '/' . $Negocio[0]["Logo"]
+            : "images/DIT slogan.png";
+
         // Include the main TCPDF library (search for installation path).
         require_once('tcpdf_include.php');
 
@@ -58,11 +66,13 @@ class imprimirTicket {
         // add a page
         $pdf->AddPage();
 
+        // Logo en la esquina superior izquierda, dibujado aparte con Image() para que no
+        // herede el centrado del bloque de texto de abajo.
+        $pdf->Image($Logo, 2, 3, 20, 10, '', '', '', false, 300);
+
         // set some text to print
         $Cabecera = <<<EOF
-<div style="text-align: center;">
-<img src="images/DIT slogan.png" width="80px" height="40px">
-</div>
+<div style="height: 8mm;"></div>
 
 <br style="color:red" align="center"> $Tienda </br>
 <br style="font-size:8px" align="center"> $Calle </br>
@@ -71,6 +81,7 @@ class imprimirTicket {
 <br style="font-size:8px" align="center"> $Estado </br>
 <br style="font-size:8px" align="center"> $Telefono2 </br>
 <br style="font-size:8px" align="center"> $Correo </br>
+<br style="font-size:8px" align="center"> Folio: $idTicket </br>
 <div style="font-size:6px; text-align:center; "></div>
 EOF;
 
@@ -87,8 +98,8 @@ EOF;
         <tr>  
            <th align="center" style="width: 20px;">N°</th>
            <th align="center" style="width: 65px;">Articulos</th>
-           <th align="center">Precio</th>
-           <th align="center">Total</th>
+           <th align="center" style="width: 40px;">Precio</th>
+           <th align="center" style="width: 45px;">Total</th>
         </tr>
     </thead>
 </table> 
@@ -104,17 +115,20 @@ EOF;
         foreach ($ventas as $key => $value) {
             $superCompra = $superCompra + $value['Total'];
 
+            $precioVentaFormat = number_format($value['PrecioVenta'], 2);
+            $totalFormat = number_format($value['Total'], 2);
+
             $Complemento = <<<EOF
 <table>
     <tbody>
         <tr>
-            <td style="width: 20px;">$value[Cantidad]</td>  
+            <td style="width: 20px;">$value[Cantidad]</td>
             <td style="width: 65px;">$value[Producto]</td>
-            <td align="right">$ $value[PrecioVenta]</td>
-            <td align="right">$ $value[Total]</td>
+            <td align="right" style="width: 40px;">$ $precioVentaFormat</td>
+            <td align="right" style="width: 45px;">$ $totalFormat</td>
         </tr>
     </tbody>
-</table> 
+</table>
 EOF;
 
             // print a block of text using Write()
@@ -122,6 +136,10 @@ EOF;
         }
 
         $superCambio = $superEfectivo - $superCompra;
+
+        $superCompraFormat = number_format($superCompra, 2);
+        $superEfectivoFormat = number_format($superEfectivo, 2);
+        $superCambioFormat = number_format($superCambio, 2);
 
         $Totales = <<<EOF
 <div style="font-size:6px; text-align:center; "></div>
@@ -133,16 +151,16 @@ EOF;
             <table style="width: 90px;">
             <tbody>
                 <tr>
-                    <td>Total:</td>
-                    <td align="right">$ $superCompra</td>
+                    <td style="width: 45px;">Total:</td>
+                    <td align="right" style="width: 45px;">$ $superCompraFormat</td>
                 </tr>
                 <tr>
-                    <td>Efectivo:</td>
-                    <td align="right">$ $superEfectivo</td>
+                    <td style="width: 45px;">Efectivo:</td>
+                    <td align="right" style="width: 45px;">$ $superEfectivoFormat</td>
                 </tr>
                 <tr>
-                    <td>Cambio:</td>
-                    <td align="right">$ $superCambio</td>
+                    <td style="width: 45px;">Cambio:</td>
+                    <td align="right" style="width: 45px;">$ $superCambioFormat</td>
                 </tr>
             </tbody>
             </table>

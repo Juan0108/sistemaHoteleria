@@ -122,6 +122,19 @@ static public function MdlActualizarHotel($hotel){
 }
 
 /**
+Actualizar Logo del Hotel
+ */
+static public function MdlActualizarLogoHotel($idHotel, $logo){
+
+	$stmt = Conexion::conectar()->prepare("CALL ActualizarLogoHotel(?, ?)");
+	$stmt->bindParam(1, $idHotel, PDO::PARAM_INT);
+	$stmt->bindParam(2, $logo, PDO::PARAM_STR);
+
+	return $stmt -> execute();
+
+}
+
+/**
 Obtener Hotel
  */
 static public function MdlObtenerHotel($valor){

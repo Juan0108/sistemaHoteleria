@@ -31,7 +31,11 @@
           <input type="hidden" class="form-control" id="Ffin" readonly>
 
           <button class="btn btn-success pull-right" onclick="ObtenerReporteVentas();">
-              Generar reporte 
+              Generar reporte
+          </button>
+
+          <button class="btn btn-info pull-right" style="margin-right:8px;" onclick="ObtenerReporteVentasExcel();">
+              Generar Excel
           </button>
         </div>
 

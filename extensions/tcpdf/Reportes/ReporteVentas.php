@@ -190,7 +190,7 @@ $Contenido = <<<EOF
            <th align="center" style="width: 70px;">Prec. Compra</th>
            <th align="center">Prec. Venta</th>
            <th align="center">Ganancias</th>
-           <th align="center" style="width: 40px;">Total</th>
+           <th align="center" style="width: 58px;">Total</th>
         </tr>
     </thead>
 </table> 
@@ -210,6 +210,11 @@ $total=$value['PrecioVenta']*$value['Cantidad'];
 $superVenta=$superVenta+$total;
 $superGanancia=$superGanancia+$ganancia;
 
+$precioCompraFormat = number_format($value['PrecioCompra'], 2);
+$precioVentaFormat = number_format($value['PrecioVenta'], 2);
+$gananciaFormat = number_format($ganancia, 2);
+$totalFormat = number_format($total, 2);
+
 $Complemento = <<<EOF
 
 <style>
@@ -227,10 +232,10 @@ $Complemento = <<<EOF
             <td>$value[Submarca]</td>
             <td>$value[Producto]</td>
             <td align="right" style="width: 43px;">$value[Cantidad]</td>
-            <td align="right" style="width: 70px;">$ $value[PrecioCompra]</td>
-            <td align="right">$ $value[PrecioVenta]</td>
-            <td align="right">$ $ganancia</td>
-            <td align="right" style="width: 40px;">$ $total</td>
+            <td align="right" style="width: 70px;">$ $precioCompraFormat</td>
+            <td align="right">$ $precioVentaFormat</td>
+            <td align="right">$ $gananciaFormat</td>
+            <td align="right" style="width: 58px;">$ $totalFormat</td>
         </tr>
     </tbody>
  </table> 
@@ -242,6 +247,9 @@ $pdf->writeHTML($Complemento, false, false, false, false, '');
 
 }
 
+
+$superVentaFormat = number_format($superVenta, 2);
+$superGananciaFormat = number_format($superGanancia, 2);
 
 $Totales = <<<EOF
 
@@ -262,11 +270,11 @@ $Totales = <<<EOF
 			<tbody>
 				<tr>
 					<td>Ventas</td>
-					<td align="right">$ $superVenta</td>
+					<td align="right">$ $superVentaFormat</td>
 				</tr>
 				<tr>
 					<td>Ganancias</td>
-					<td align="right">$ $superGanancia</td>
+					<td align="right">$ $superGananciaFormat</td>
 				</tr>
 			</tbody>
 			</table>

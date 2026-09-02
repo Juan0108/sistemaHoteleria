@@ -78,6 +78,43 @@ $(".nuevoContrato").change(function(){
 })
 
 /*=============================================
+ Validar Logo (Agregar y Editar Hotel): debe ser imagen y pesar máximo 3MB
+ =============================================*/
+$(".nuevoLogo, .editarLogo").change(function(){
+
+	var _this = $(this);
+	var imagen = this.files[0];
+
+	if(!imagen){
+		return;
+	}
+
+	if(imagen["type"] != "image/jpeg" && imagen["type"] != "image/png"){
+
+		_this.val("");
+
+		Swal.fire({
+			title: "Sistema PosDit",
+			text: "¡El Logo debe ser una imagen JPG o PNG!",
+			icon: "error",
+			confirmButtonText: "¡Cerrar!"
+		});
+
+	}else if(imagen["size"] > 3145728){
+
+		_this.val("");
+
+		Swal.fire({
+			title: "Sistema PosDit",
+			text: "¡Error al subir el Logo, no debe pesar más de 3MB!",
+			icon: "error",
+			confirmButtonText: "¡Cerrar!"
+		});
+
+	}
+})
+
+/*=============================================
  Obtener Tipo de Pago  y Giro Combobox Agregar
  =============================================*/
  $(document).on("click", ".btnEditarHotel", function(){
@@ -114,7 +151,14 @@ $(".nuevoContrato").change(function(){
  			$("#editarSAire").val(respuesta["SAire"]);
  			$("#editarSServicios").val(respuesta["SServicios"]);
 
- 		} 
+ 			$(".editarLogo").val("");
+ 			if(respuesta["Logo"]){
+ 				$("#editarLogoActual").attr("src", respuesta["Logo"]).show();
+ 			}else{
+ 				$("#editarLogoActual").hide();
+ 			}
+
+ 		}
 
  	});
 
