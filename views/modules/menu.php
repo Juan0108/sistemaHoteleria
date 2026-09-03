@@ -91,8 +91,8 @@ if ($currentPage !== "reset"): ?>
                         </a>
                     </li>
                     <li>
-                        <a href="servicio">
-                            <img src="views/img/Iconos/limpieza.png" alt="" style="width:14px;height:14px;object-fit:contain;margin-right:10px;vertical-align:-1px;filter:brightness(0) invert(1);">
+                        <a href="servicio" class="sv-menu-item-icono">
+                            <img src="views/img/Iconos/limpieza.png" alt="" class="sv-icono-menu">
                             <span>Limpieza</span>
                         </a>
                     </li>
@@ -136,8 +136,8 @@ if ($currentPage !== "reset"): ?>
                         </a>
                     </li>
                     <li>
-                        <a href="servicio">
-                            <img src="views/img/Iconos/limpieza.png" alt="" style="width:14px;height:14px;object-fit:contain;margin-right:10px;vertical-align:-1px;filter:brightness(0) invert(1);">
+                        <a href="servicio" class="sv-menu-item-icono">
+                            <img src="views/img/Iconos/limpieza.png" alt="" class="sv-icono-menu">
                             <span>Limpieza</span>
                         </a>
                     </li>
@@ -205,8 +205,8 @@ if ($currentPage !== "reset"): ?>
 
             if ($_SESSION["Perfil"] == "Limpieza") {
                 echo '<li class="active">
-                        <a href="servicio">
-                            <img src="views/img/Iconos/limpieza.png" alt="" style="width:14px;height:14px;object-fit:contain;margin-right:10px;vertical-align:-1px;filter:brightness(0) invert(1);">
+                        <a href="servicio" class="sv-menu-item-icono">
+                            <img src="views/img/Iconos/limpieza.png" alt="" class="sv-icono-menu">
                             <span>Limpieza</span>
                         </a>
                     </li>';

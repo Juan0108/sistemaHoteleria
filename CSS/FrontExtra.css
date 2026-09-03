@@ -3,6 +3,28 @@
   opacity: 0.5; /* Opcional: para dar un efecto visual de deshabilitado */
 }
 
+/* Ícono de "Limpieza" en el menú lateral: es una imagen (views/img/Iconos/limpieza.png),
+   no un ícono de Font Awesome. El link se pone en flex para que el ícono y el texto queden
+   centrados verticalmente en una sola fila, con el mismo padding que ya trae AdminLTE.css
+   para el resto de los links del sidebar (".sidebar-menu > li > a"), declarado aquí también
+   por si el flex lo pisa. */
+.sidebar-menu a.sv-menu-item-icono{
+  display:flex;
+  align-items:center;
+  padding:12px 5px 12px 15px;
+}
+.sidebar-menu .sv-icono-menu{
+  width:20px;
+  height:20px;
+  object-fit:contain;
+  margin-right:10px;
+  filter:brightness(0) invert(1);
+  flex-shrink:0;
+}
+.sidebar-mini.sidebar-collapse .sidebar-menu .sv-icono-menu{
+  margin-right:0;
+}
+
 /* El popup del calendario nativo (input type="date") es UI del propio navegador, no de la
    página; se fuerza a claro en todo el sistema para que no herede un tema oscuro y se vea
    siempre con su apariencia normal/predeterminada, sin importar el módulo. */

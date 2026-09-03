@@ -129,8 +129,282 @@ $(document).ready(function(){
 		      labels: ['Ventas', 'Ganancias'],
 		      preUnits : '$',
 		      hideHover: 'auto'
-		    }); 			
- 		} 
+		    });
+ 		}
+ 	})
+})
+
+/*=============================================
+//Grafica Consumo de Habitaciones (mensual, todo el año en curso) //
+ =============================================*/
+$(document).ready(function(){
+
+    // Igual que las otras dos gráficas del dashboard: solo vive ahí, donde existe #bar-chart-habitaciones.
+    if ($("#bar-chart-habitaciones").length === 0){
+        return;
+    }
+
+    // Se usa Chart.js (Bar) en vez de Morris porque acá sí se necesita mostrar la cifra de
+    // ventas fija encima de cada barra ("en la cresta"), cosa que Morris no soporta sin
+    // depender solo del hover. Se extiende el tipo Bar una sola vez con esa cifra dibujada
+    // encima de cada barra al terminar la animación.
+    if (!Chart.types.BarConEtiquetas) {
+
+        Chart.types.Bar.extend({
+
+            name: "BarConEtiquetas",
+
+            draw: function(){
+
+                Chart.types.Bar.prototype.draw.apply(this, arguments);
+
+                var ctx = this.chart.ctx;
+                ctx.font = "bold 12px 'Helvetica Neue', Helvetica, Arial, sans-serif";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "bottom";
+
+                this.datasets.forEach(function(dataset){
+                    dataset.bars.forEach(function(bar){
+                        if(bar.value){
+                            // Contorno blanco detrás del número para que se lea encima de
+                            // cualquier color de barra o línea de la cuadrícula.
+                            ctx.strokeStyle = "#fff";
+                            ctx.lineWidth = 3;
+                            ctx.strokeText(bar.value, bar.x, bar.y - 4);
+
+                            ctx.fillStyle = "#333";
+                            ctx.fillText(bar.value, bar.x, bar.y - 4);
+                        }
+                    });
+                });
+
+            },
+
+            // Por default, con más de un dataset (acá hay uno por habitación), Chart.js
+            // siempre resalta y muestra en el tooltip TODAS las barras del mes bajo el
+            // cursor (su getBarsAtEvent original junta todos los datasets en ese índice).
+            // Se sobreescribe para que solo tome la barra puntual que está bajo el mouse.
+            getBarsAtEvent: function(e){
+
+                var eventPosition = Chart.helpers.getRelativePosition(e);
+
+                for (var datasetIndex = 0; datasetIndex < this.datasets.length; datasetIndex++){
+                    var bars = this.datasets[datasetIndex].bars;
+                    for (var barIndex = 0; barIndex < bars.length; barIndex++){
+                        if (bars[barIndex].inRange(eventPosition.x, eventPosition.y)){
+                            return [bars[barIndex]];
+                        }
+                    }
+                }
+
+                return [];
+
+            },
+
+            // showTooltip original decide mostrar el cuadro "MultiTooltip" (todas las
+            // habitaciones juntas) con solo mirar this.datasets.length > 1, sin importar
+            // cuántas barras venían resaltadas — así que aunque getBarsAtEvent ya devuelva
+            // una sola barra, igual junta las demás. Además, Chart.Tooltip (el cuadro nativo)
+            // solo pinta una línea de texto. Acá se reemplaza por un dibujo propio de 3
+            // líneas (habitación / N° de ventas / monto), siempre para una sola barra.
+            showTooltip: function(ChartElements, forceRedraw){
+
+                if (typeof this.activeElements === 'undefined') this.activeElements = [];
+
+                var isChanged = (function(Elements){
+                    if (Elements.length !== this.activeElements.length) return true;
+                    var changed = false;
+                    Chart.helpers.each(Elements, function(element, index){
+                        if (element !== this.activeElements[index]) changed = true;
+                    }, this);
+                    return changed;
+                }).call(this, ChartElements);
+
+                if (!isChanged && !forceRedraw){
+                    return;
+                }
+
+                this.activeElements = ChartElements;
+                this.draw();
+
+                Chart.helpers.each(ChartElements, function(Element){
+
+                    var tooltipPosition = Element.tooltipPosition();
+
+                    this.dibujarTooltipHabitacion(Math.round(tooltipPosition.x), Math.round(tooltipPosition.y), [
+                        Element.datasetLabel,
+                        Element.value + " venta(s)",
+                        Element.montoTexto
+                    ]);
+
+                }, this);
+
+                return this;
+
+            },
+
+            // Cuadro de tooltip de 3 renglones (habitación, ventas, monto), dibujado a mano
+            // porque Chart.Tooltip (el de la librería) solo soporta una sola línea de texto.
+            dibujarTooltipHabitacion: function(x, y, lineas){
+
+                var ctx = this.chart.ctx;
+                var fontSize = this.options.tooltipFontSize;
+                var xPadding = this.options.tooltipXPadding;
+                var yPadding = this.options.tooltipYPadding;
+                var caretHeight = this.options.tooltipCaretSize;
+                var caretPadding = 2;
+                var lineHeight = fontSize + 6;
+
+                ctx.font = this.options.tooltipFontStyle + " " + fontSize + "px " + this.options.tooltipFontFamily;
+
+                var anchoMax = 0;
+                lineas.forEach(function(linea){
+                    var ancho = ctx.measureText(linea).width;
+                    if(ancho > anchoMax) anchoMax = ancho;
+                });
+
+                var boxWidth = anchoMax + (xPadding * 2);
+                var boxHeight = (lineHeight * lineas.length) + (yPadding * 2);
+
+                var boxX = x - (boxWidth / 2);
+                // Siempre arriba de la barra (nunca abajo); si no cabe contra el borde
+                // superior del canvas, se recorta hacia abajo pero sin voltearse.
+                var boxY = Math.max(0, y - boxHeight - caretHeight - caretPadding);
+
+                // No dejar que el cuadro se salga del canvas por los lados.
+                if(boxX < 0) boxX = 0;
+                if(boxX + boxWidth > this.chart.width) boxX = this.chart.width - boxWidth;
+
+                ctx.fillStyle = this.options.tooltipFillColor;
+
+                // Triangulito ("cresta") que apunta a la barra, siempre hacia abajo (el
+                // cuadro va arriba).
+                ctx.beginPath();
+                ctx.moveTo(x, y - caretPadding);
+                ctx.lineTo(x + caretHeight, y - caretPadding - caretHeight);
+                ctx.lineTo(x - caretHeight, y - caretPadding - caretHeight);
+                ctx.closePath();
+                ctx.fill();
+
+                Chart.helpers.drawRoundedRectangle(ctx, boxX, boxY, boxWidth, boxHeight, this.options.tooltipCornerRadius);
+                ctx.fill();
+
+                ctx.fillStyle = this.options.tooltipFontColor;
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+
+                lineas.forEach(function(linea, i){
+                    ctx.fillText(linea, boxX + (boxWidth / 2), boxY + yPadding + (lineHeight * i) + (lineHeight / 2));
+                });
+
+            }
+
+        });
+
+    }
+
+    // Misma paleta AdminLTE (rojo/verde/aqua/etc.) que ya usa el resto del sistema
+    // (ver TopProductos-vendidos.php), aquí en su equivalente hexadecimal para Chart.js.
+    var paletaDefault = ["#00c0ef", "#00a65a", "#f39c12", "#605ca8", "#dd4b39", "#3d9970", "#0073b7", "#39CCCC"];
+
+ 	$.ajax({
+
+ 		url:"ajax/graficaVentasHabitaciones.ajax.php",
+ 		method: "POST",
+ 		cache: false,
+ 		dataType: "json",
+ 		success: function(respuesta){
+
+ 			// Todo este bloque va en try/catch a propósito: el spinner global de
+ 			// plantilla.php se engancha a ajaxStart/ajaxStop de jQuery, y una excepción
+ 			// sin capturar dentro de un callback "success" corta la cadena interna de
+ 			// jQuery ANTES de que dispare "ajaxStop" — dejaría el spinner pegado en toda
+ 			// la página (no solo en esta gráfica) aunque el resto ya haya cargado bien.
+ 			try{
+
+ 				var datasets = (respuesta.habitaciones || []).map(function(nombre, i){
+
+ 					var color = (respuesta.colores && respuesta.colores[i]) || paletaDefault[i % paletaDefault.length];
+
+ 					return {
+ 						label: nombre,
+ 						fillColor: color,
+ 						strokeColor: color,
+ 						highlightFill: color,
+ 						highlightStroke: color,
+ 						data: (respuesta.datos && respuesta.datos[i]) || []
+ 					};
+
+ 				});
+
+ 				var data = {
+ 					labels: respuesta.meses || [],
+ 					datasets: datasets
+ 				};
+
+ 				// Un paso extra de "aire" arriba de la barra más alta, para que el número que se
+ 				// dibuja en la cresta (ver draw() arriba) no se corte contra el borde del canvas.
+ 				var maxVentas = 0;
+ 				(respuesta.datos || []).forEach(function(serie){
+ 					(serie || []).forEach(function(valor){
+ 						if(valor > maxVentas) maxVentas = valor;
+ 					});
+ 				});
+
+ 				var ctxHabitaciones = $("#bar-chart-habitaciones").get(0).getContext("2d");
+
+ 				// BarConEtiquetas(...) devuelve la instancia real de la gráfica (con .datasets),
+ 				// no "new Chart(ctx)"; hay que quedarse con ese valor de retorno.
+ 				var chartHabitaciones = new Chart(ctxHabitaciones).BarConEtiquetas(data, {
+ 					scaleOverride: true,
+ 					scaleSteps: maxVentas + 1,
+ 					scaleStepWidth: 1,
+ 					scaleStartValue: 0,
+ 					responsive: true,
+ 					maintainAspectRatio: false,
+ 					barValueSpacing: 4,
+ 					barDatasetSpacing: 2
+ 					// El tooltip (habitación / ventas / monto, uno por línea) lo arma
+ 					// dibujarTooltipHabitacion() de la extensión BarConEtiquetas de arriba.
+ 				});
+
+ 				// El monto en dinero no viene en dataset.data (Chart.js solo guarda ahí el valor
+ 				// que dibuja la barra, o sea el conteo de ventas), así que se pega aparte en cada
+ 				// barra ya creada para poder usarlo en el tooltip de arriba.
+ 				chartHabitaciones.datasets.forEach(function(dataset, i){
+ 					var serieMontos = (respuesta.montos && respuesta.montos[i]) || [];
+ 					dataset.bars.forEach(function(bar, j){
+ 						var monto = Number(serieMontos[j]) || 0;
+ 						bar.montoTexto = "$" + monto.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+ 					});
+ 				});
+
+ 				// Leyenda armada a mano (en vez de chart.generateLegend()): esa función evalúa
+ 				// el nombre de cada habitación dentro de una plantilla con eval de Chart.js, y
+ 				// un nombre con comilla simple (u otro caracter especial) la rompe. $("<span>").text()
+ 				// escapa el nombre solo, sin ese riesgo.
+ 				var _legend = $("#legend-habitaciones").empty();
+ 				var _lista = $('<ul class="chart-legend clearfix"></ul>').appendTo(_legend);
+
+ 				datasets.forEach(function(dataset){
+ 					$('<li></li>')
+ 						.append($('<span></span>').css({
+ 							"background-color": dataset.fillColor,
+ 							"display": "inline-block",
+ 							"width": "10px",
+ 							"height": "10px",
+ 							"border-radius": "50%",
+ 							"margin-right": "5px"
+ 						}))
+ 						.append(document.createTextNode(" " + dataset.label))
+ 						.appendTo(_lista);
+ 				});
+
+ 			}catch(error){
+ 				console.error("No se pudo dibujar el gráfico de Consumo de Habitaciones:", error);
+ 			}
+
+ 		}
  	})
 })
 

@@ -53,8 +53,9 @@ class ServicioAjax
 	public function finalizar(){
 
 		$id_servicio = isset($_POST["id_servicio"]) ? $_POST["id_servicio"] : 0;
+		$id_habitacion = isset($_POST["id_habitacion"]) ? $_POST["id_habitacion"] : 0;
 		$archivoFoto = $_FILES["evidencia"] ?? null;
-		$respuesta = ControladorServicio::crtFinalizarServicio($id_servicio, $archivoFoto);
+		$respuesta = ControladorServicio::crtFinalizarServicio($id_servicio, $archivoFoto, $id_habitacion);
 
 		echo json_encode($respuesta, JSON_UNESCAPED_UNICODE);
 	}

@@ -55,6 +55,19 @@
       <div class="row">
       <?php
 
+        if($_SESSION["Perfil"] =="Soporte Tecnico" || $_SESSION["Perfil"] =="Administrador"){
+
+          include "reportes/grafico-habitaciones-vendidas.php";
+
+        }
+
+      ?>
+
+      </div>
+
+      <div class="row">
+      <?php
+
         if($_SESSION["Perfil"] =="Soporte Tecnico"|| $_SESSION["Perfil"] =="Administrador"){
 
           include "reportes/grafico-balance.php";

@@ -44,7 +44,7 @@ if (isset($_SESSION["IniciarSesion"]) && $_SESSION["IniciarSesion"] == "ok" && i
   <!-- AdminLTE Skins.-->
   <link rel="stylesheet" href="views/dist/css/skins/_all-skins.min.css">
     <!-- Theme style --> 
-  <link rel="stylesheet" href="CSS/FrontExtra.css">
+  <link rel="stylesheet" href="CSS/FrontExtra.css?v=<?php echo filemtime(__DIR__ . '/../CSS/FrontExtra.css'); ?>">
   <!-- Google Font -->
   <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,600,700,300italic,400italic,600italic">
 

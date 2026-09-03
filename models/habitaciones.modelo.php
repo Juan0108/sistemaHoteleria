@@ -29,6 +29,25 @@ class ModeloHabitaciones{
 		return $stmt->fetchAll();
 	}
 
+	// Catálogo de tipos de habitación del hotel (para saber cuáles series/colores
+	// pintar en la gráfica de consumo, aunque alguno no haya tenido ventas en el año).
+	static public function MdlObtenerTiposHabitacion($id_hotel){
+		$stmt = Conexion::conectar()->prepare("CALL ObtenerTiposHabitacion(:id_hotel)");
+		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
+		$stmt->execute();
+		return $stmt->fetchAll();
+	}
+
+	// Ventas (reservaciones no canceladas) agrupadas por mes y tipo de habitación de un
+	// año dado, para la gráfica de consumo de habitaciones del Tablero de Control.
+	static public function MdlObtenerVentasPorTipoHabitacionMensual($id_hotel, $anio){
+		$stmt = Conexion::conectar()->prepare("CALL ObtenerVentasPorTipoHabitacionMensual(:id_hotel, :anio)");
+		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
+		$stmt->bindParam(":anio", $anio, PDO::PARAM_INT);
+		$stmt->execute();
+		return $stmt->fetchAll();
+	}
+
 	// Obtener catálogo de hoteles (para el select del formulario)
 	static public function MdlObtenerHoteles(){
 		$stmt = Conexion::conectar()->prepare("CALL ObtenerHoteles()");

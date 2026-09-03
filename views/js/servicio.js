@@ -254,6 +254,7 @@ $(document).ready(function(){
 		var datos = new FormData();
 		datos.append("accion", "finalizar");
 		datos.append("id_servicio", idServicio);
+		datos.append("id_habitacion", $("#servIdHabitacion").val());
 		datos.append("evidencia", archivo);
 
 		mostrarCargaServicio();
@@ -295,6 +296,19 @@ $(document).ready(function(){
 		$("#servEvidenciaPreview").hide().attr("src", "");
 		$("#servFotoInicio").val("");
 		$("#servFotoInicioPreview").hide().attr("src", "");
+	});
+
+	$(document).on("click", ".servFinalizarFila", function(){
+
+		var $boton = $(this);
+		var idHabitacion = $boton.data("idHabitacion");
+		var idServicio = $boton.data("idServicio");
+		var nombreHabitacion = $boton.data("habitacionNombre");
+
+		$("#servModalHabitacion").text(nombreHabitacion);
+		$("#modalRealizarTarea").modal("show");
+
+		servMostrarPasoChecklist(idHabitacion, idServicio);
 	});
 
 	$(document).on("click", ".servVerFoto", function(){
@@ -393,12 +407,29 @@ function servPintarHistorial(lista){
 	var $cuerpo = $("#servHistorialCuerpo");
 	$cuerpo.empty();
 
+	// La columna Acción no existe en el <thead> para el Administrador (ver servicio.php);
+	// el modal de "Iniciar limpieza" tampoco se renderiza para ese perfil, así que se usa su
+	// ausencia para saber si hay que pintar esa columna también en cada fila.
+	var hayModalRealizarTarea = $("#modalRealizarTarea").length > 0;
+	var colspanVacio = hayModalRealizarTarea ? 9 : 8;
+
 	if (lista.length === 0){
-		$cuerpo.append('<tr><td colspan="8" class="text-center text-muted" style="padding:15px;">Todavía no hay limpiezas registradas.</td></tr>');
+		$cuerpo.append('<tr><td colspan="' + colspanVacio + '" class="text-center text-muted" style="padding:15px;">Todavía no hay limpiezas registradas.</td></tr>');
 		return;
 	}
 
 	lista.forEach(function(s, indice){
+
+		var accion = '<span class="serv-sin-dato">—</span>';
+
+		if (s.enProceso && hayModalRealizarTarea){
+			accion = '<button type="button" class="btn btn-success btn-xs servFinalizarFila"' +
+				' data-id-habitacion="' + s.idHabitacion + '"' +
+				' data-id-servicio="' + s.idServicio + '"' +
+				' data-habitacion-nombre="' + escaparHtmlServicio(s.habitacion) + '">' +
+				'<i class="fa fa-check"></i> Finalizar</button>';
+		}
+
 		$cuerpo.append(
 			'<tr>' +
 				'<td>' + (indice + 1) + '</td>' +
@@ -406,9 +437,10 @@ function servPintarHistorial(lista){
 				'<td>' + escaparHtmlServicio(s.usuario) + '</td>' +
 				'<td>' + (s.fechaInicio ? escaparHtmlServicio(s.fechaInicio) : '<span class="serv-sin-dato">—</span>') + '</td>' +
 				'<td>' + (s.fotoInicio ? ('<button type="button" class="serv-ver-foto servVerFoto" data-foto="' + escaparHtmlServicio(s.fotoInicio) + '" data-titulo="Foto inicial">Ver foto</button>') : '<span class="serv-sin-dato">Sin foto</span>') + '</td>' +
-				'<td>' + (s.fechaFin ? escaparHtmlServicio(s.fechaFin) : '<span class="serv-sin-dato">—</span>') + '</td>' +
+				'<td>' + (s.fechaFin ? escaparHtmlServicio(s.fechaFin) : '<span class="serv-sin-dato">En proceso…</span>') + '</td>' +
 				'<td>' + (s.fotoResultado ? ('<button type="button" class="serv-ver-foto servVerFoto" data-foto="' + escaparHtmlServicio(s.fotoResultado) + '" data-titulo="Foto resultado">Ver foto</button>') : '<span class="serv-sin-dato">Sin foto</span>') + '</td>' +
 				'<td>' + (s.tareasRealizadas ? escaparHtmlServicio(s.tareasRealizadas) : '<span class="serv-sin-dato">Ninguna</span>') + '</td>' +
+				(hayModalRealizarTarea ? ('<td>' + accion + '</td>') : '') +
 			'</tr>'
 		);
 	});
@@ -431,7 +463,8 @@ function servCargarHistorial(){
 			servAplicarFiltros();
 		},
 		error: function(){
-			$("#servHistorialCuerpo").html('<tr><td colspan="8" class="text-center text-muted" style="padding:15px;">No se pudo cargar el historial.</td></tr>');
+			var _colspan = $("#modalRealizarTarea").length > 0 ? 9 : 8;
+			$("#servHistorialCuerpo").html('<tr><td colspan="' + _colspan + '" class="text-center text-muted" style="padding:15px;">No se pudo cargar el historial.</td></tr>');
 		}
 	});
 }
@@ -441,6 +474,18 @@ function servCargarHistorial(){
  teléfono guardado en la sesión, sin pedirlo (a diferencia del ticket de checkout).
  =============================================*/
 $(document).on("click", "#servBtnReporteCorte", function(){
+
+	var _fechaDesde = $("#servFiltroFechaDesde").val();
+	var _fechaHasta = $("#servFiltroFechaHasta").val();
+
+	if (!_fechaDesde || !_fechaHasta){
+		Swal.fire({
+			icon: "warning",
+			title: "Selecciona un rango de fechas",
+			text: "Para generar el reporte primero elige \"Desde\" y \"Hasta\" en los filtros de arriba."
+		});
+		return;
+	}
 
 	Swal.fire({
 		title: "¿Generar el corte diario?",

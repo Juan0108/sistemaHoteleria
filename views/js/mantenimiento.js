@@ -1308,6 +1308,18 @@ $(document).on("click", ".btnRestaurarMtto", function(){
  =============================================*/
 $(document).on("click", "#mttoBtnReporteCorte", function(){
 
+	var _fechaDesde = $("#mttoHistorialDesde").val();
+	var _fechaHasta = $("#mttoHistorialHasta").val();
+
+	if (!_fechaDesde || !_fechaHasta){
+		Swal.fire({
+			icon: "warning",
+			title: "Selecciona un rango de fechas",
+			text: "Para generar el reporte primero elige \"Desde\" y \"Hasta\" en los filtros del historial."
+		});
+		return;
+	}
+
 	Swal.fire({
 		title: "¿Generar el corte diario?",
 		text: "Se mandará por WhatsApp al teléfono registrado en tu cuenta.",

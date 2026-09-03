@@ -99,12 +99,14 @@ class ControladorServicio{
 		return ["ok" => true, "idServicio" => (int) $resultado["Id_Servicio"]];
 	}
 
-	// Historial de limpiezas ya finalizadas, para la tabla debajo del botón "Iniciar
-	// limpieza": una fila por sesión completada, con su habitación, usuario, fechas,
-	// fotos y las tareas que sí se marcaron como realizadas.
+	// Historial de limpiezas, para la tabla debajo del botón "Iniciar limpieza": una fila
+	// por sesión, con su habitación, usuario, fechas, fotos y las tareas que sí se marcaron
+	// como realizadas. Incluye tanto las ya completadas como las que quedaron en proceso
+	// (alguien le dio "Comenzar" pero no llegó a "Finalizar"), para poder retomarlas y
+	// terminarlas desde la columna de acción.
 	// Solo el Administrador ve el historial de TODO el personal de limpieza; cualquier otro
 	// perfil (p.ej. un usuario de Limpieza) solo ve sus propias sesiones, nunca las de un
-	// compañero.
+	// compañero — cada quien únicamente puede finalizar lo que él mismo empezó.
 	static public function crtObtenerHistorialServicios(){
 		$id_hotel = self::crtObtenerIdHotelSesion();
 
@@ -122,6 +124,9 @@ class ControladorServicio{
 			if(!$esAdministrador && (int) $fila["Id_Usuario"] !== $idUsuarioSesion){
 				continue;
 			}
+
+			$enProceso = (int) $fila["Id_Estatus"] === self::ESTATUS_ACTIVO;
+
 			$historial[] = [
 				"idServicio"       => (int) $fila["Id_Servicio"],
 				"idHabitacion"     => (int) $fila["Id_Habitacion"],
@@ -133,6 +138,7 @@ class ControladorServicio{
 				"fechaFin"         => $fila["Fecha_Fin"] ? date("d/m/Y g:i a", strtotime($fila["Fecha_Fin"])) : null,
 				"fotoResultado"    => $fila["Foto_Evidencia"] ?: null,
 				"tareasRealizadas" => $fila["TareasRealizadas"] ?: null,
+				"enProceso"        => $enProceso,
 			];
 		}
 
@@ -175,7 +181,10 @@ class ControladorServicio{
 	}
 
 	// Finaliza el servicio: la evidencia final es obligatoria, sin ella no se puede cerrar.
-	static public function crtFinalizarServicio($id_servicio, $archivoFoto){
+	// Solo lo puede finalizar quien lo empezó (o el Administrador); $id_habitacion es para
+	// validar esa autoría contra el servicio activo real, no solo confiar en el id_servicio
+	// que mande el cliente.
+	static public function crtFinalizarServicio($id_servicio, $archivoFoto, $id_habitacion = null){
 		$id_servicio = (int) $id_servicio;
 
 		if($id_servicio <= 0){
@@ -186,6 +195,21 @@ class ControladorServicio{
 
 		if($id_hotel === null){
 			return ["ok" => false, "mensaje" => "Tu negocio no tiene un hotel registrado, contacta a soporte técnico."];
+		}
+
+		$esAdministrador = ($_SESSION["Perfil"] ?? "") === "Administrador";
+
+		if(!$esAdministrador){
+			$idUsuarioSesion = (int) ($_SESSION["IdUsuario"] ?? 0);
+			$servicioActivo = self::crtObtenerServicioActivo($id_habitacion);
+
+			if(
+				$servicioActivo === null ||
+				(int) $servicioActivo["Id_Servicio"] !== $id_servicio ||
+				(int) $servicioActivo["Id_Usuario"] !== $idUsuarioSesion
+			){
+				return ["ok" => false, "mensaje" => "Solo la persona que inició esta limpieza puede finalizarla."];
+			}
 		}
 
 		if(!is_array($archivoFoto) || empty($archivoFoto["tmp_name"])){

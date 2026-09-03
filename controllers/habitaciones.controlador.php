@@ -33,6 +33,81 @@ class ControladorHabitaciones{
 		return $respuesta;
 	}
 
+	// Paleta AdminLTE (mismos hex que usa el resto del sistema) para pintar cada tipo
+	// de habitación con un color distinto en la gráfica de consumo.
+	const PALETA_COLORES_HABITACIONES = ['#00c0ef', '#00a65a', '#f39c12', '#605ca8', '#dd4b39', '#3d9970', '#0073b7', '#39CCCC', '#ff851b', '#d81b60'];
+
+	// Ventas por mes y tipo de habitación de un año (Consumo de Habitaciones del Tablero
+	// de Control): un mes por columna del año completo, una serie por tipo de habitación
+	// (incluye los que no tuvieron ninguna venta ese mes, con 0, para que las 12 columnas
+	// de todos los tipos queden alineadas).
+	static public function crtObtenerVentasPorTipoHabitacionMensual($anio = null){
+		$id_hotel = self::crtObtenerIdHotelSesion();
+
+		if($id_hotel === null){
+			return ["meses" => [], "habitaciones" => [], "colores" => [], "datos" => [], "montos" => []];
+		}
+
+		$anio = ($anio !== null && preg_match('/^\d{4}$/', (string) $anio)) ? (int) $anio : (int) date('Y');
+
+		$tipos = ModeloHabitaciones::MdlObtenerTiposHabitacion($id_hotel);
+		$ventasMensuales = ModeloHabitaciones::MdlObtenerVentasPorTipoHabitacionMensual($id_hotel, $anio);
+
+		// Del año en curso solo se muestran los meses que ya empezaron (nada de columnas
+		// vacías para meses futuros, ej. octubre/noviembre/diciembre si hoy es septiembre).
+		// De un año anterior sí se muestran los 12; de uno futuro, ninguno.
+		$anioActual = (int) date('Y');
+		if($anio > $anioActual){
+			$ultimoMes = 0;
+		}elseif($anio === $anioActual){
+			$ultimoMes = (int) date('n');
+		}else{
+			$ultimoMes = 12;
+		}
+
+		$meses = [];
+		for($mes = 1; $mes <= $ultimoMes; $mes++){
+			$meses[] = sprintf('%04d-%02d', $anio, $mes);
+		}
+
+		// Índice rápido: $indice["2026-01"]["Familiar"] = ["ventas" => 3, "monto" => 4500.00]
+		$indice = [];
+		foreach($ventasMensuales as $fila){
+			$indice[$fila["Mes"]][$fila["TipoHabitacion"]] = [
+				"ventas" => (int) $fila["Ventas"],
+				"monto" => (float) $fila["Monto"]
+			];
+		}
+
+		$habitaciones = [];
+		$colores = [];
+		$datos = [];
+		$montos = [];
+
+		foreach($tipos as $i => $tipo){
+			$nombre = $tipo["TipoHabitacion"];
+			$habitaciones[] = $nombre;
+			$colores[] = self::PALETA_COLORES_HABITACIONES[$i % count(self::PALETA_COLORES_HABITACIONES)];
+
+			$serieVentas = [];
+			$serieMontos = [];
+			foreach($meses as $mes){
+				$serieVentas[] = $indice[$mes][$nombre]["ventas"] ?? 0;
+				$serieMontos[] = $indice[$mes][$nombre]["monto"] ?? 0.0;
+			}
+			$datos[] = $serieVentas;
+			$montos[] = $serieMontos;
+		}
+
+		return [
+			"meses" => $meses,
+			"habitaciones" => $habitaciones,
+			"colores" => $colores,
+			"datos" => $datos,
+			"montos" => $montos
+		];
+	}
+
 	// (Disponible/Ocupado/Reservado), calculado a partir de Tb_Reservaciones.
 	static public function crtObtenerHabitacionesRecepcion($fecha = null){
 		$id_hotel = self::crtObtenerIdHotelSesion();

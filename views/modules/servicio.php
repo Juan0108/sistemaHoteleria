@@ -92,10 +92,13 @@ $HabitacionesServ = $ctlServicio->crtObtenerHabitaciones();
                 <th>Fecha fin</th>
                 <th>Foto resultado</th>
                 <th>Tareas realizadas</th>
+                <?php if (($_SESSION["Perfil"] ?? "") !== "Administrador"): ?>
+                <th>Acción</th>
+                <?php endif; ?>
               </tr>
             </thead>
             <tbody id="servHistorialCuerpo">
-              <tr><td colspan="8" class="text-center text-muted" style="padding:15px;">Cargando…</td></tr>
+              <tr><td colspan="<?php echo (($_SESSION["Perfil"] ?? "") !== "Administrador") ? 9 : 8; ?>" class="text-center text-muted" style="padding:15px;">Cargando…</td></tr>
             </tbody>
           </table>
         </div>
