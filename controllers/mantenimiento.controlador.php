@@ -852,11 +852,12 @@ class ControladorMantenimiento{
 	}
 
 	// Corte de Mantenimiento (historial completo de incidencias con movimiento en el rango
-	// dado, o de HOY si no se manda rango) para el reporte de WhatsApp. Solo lo puede pedir
-	// el Administrador — se revalida aquí también, no solo se oculta el botón. Las fechas se
-	// validan contra el formato Y-m-d antes de pasarlas al SP, por si llegan manipuladas.
+	// dado, o de HOY si no se manda rango) para el reporte de WhatsApp. Solo lo pueden pedir
+	// Administrador o Soporte Tecnico — se revalida aquí también, no solo se oculta el botón.
+	// Las fechas se validan contra el formato Y-m-d antes de pasarlas al SP, por si llegan
+	// manipuladas.
 	static public function crtObtenerCorteDiarioMantenimiento($fecha_inicio = null, $fecha_fin = null, $id_habitacion = null){
-		if(($_SESSION["Perfil"] ?? "") !== "Administrador"){
+		if(!in_array($_SESSION["Perfil"] ?? "", ["Administrador", "Soporte Tecnico"], true)){
 			return null;
 		}
 

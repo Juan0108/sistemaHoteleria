@@ -73,7 +73,7 @@ $HabitacionesServ = $ctlServicio->crtObtenerHabitaciones();
             <option value="100">100</option>
           </select>
           <span>registros</span>
-          <?php if (($_SESSION["Perfil"] ?? "") === "Administrador"): ?>
+          <?php if (in_array($_SESSION["Perfil"] ?? "", ["Administrador", "Soporte Tecnico"], true)): ?>
           <button type="button" class="btn serv-btn-reporte-corte" id="servBtnReporteCorte" title="Manda el corte diario de hoy por WhatsApp a tu teléfono">
             <i class="fa fa-whatsapp"></i> Generar reporte
           </button>

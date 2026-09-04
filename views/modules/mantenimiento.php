@@ -120,7 +120,7 @@ $motivosMtto = ControladorMantenimiento::crtObtenerMotivos();
 						<input type="text" id="mttoHistorialHasta" class="form-control" title="Hasta" placeholder="Hasta" autocomplete="off" readonly>
 					</div>
 					<button type="button" class="mtto-btn-limpiar-filtro" id="mttoHistorialLimpiarFecha" title="Quitar filtro de fecha" ><i class="fa fa-times"></i> Limpiar fechas</button>
-					<?php if (($_SESSION["Perfil"] ?? "") === "Administrador"): ?>
+					<?php if (in_array($_SESSION["Perfil"] ?? "", ["Administrador", "Soporte Tecnico"], true)): ?>
 					<button type="button" class="mtto-btn-reporte-corte" id="mttoBtnReporteCorte" title="Manda el corte diario de hoy por WhatsApp a tu teléfono">
 						<i class="fa fa-whatsapp"></i> Generar reporte
 					</button>

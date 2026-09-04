@@ -24,9 +24,9 @@ class reporteCorteLimpieza {
 
     public function enviar() {
 
-        if (($_SESSION["Perfil"] ?? "") !== "Administrador") {
+        if (!in_array($_SESSION["Perfil"] ?? "", ["Administrador", "Soporte Tecnico"], true)) {
             header('Content-Type: application/json; charset=utf-8');
-            echo json_encode(["ok" => false, "mensaje" => "Este reporte solo lo puede generar el Administrador."]);
+            echo json_encode(["ok" => false, "mensaje" => "Este reporte solo lo puede generar el Administrador o Soporte Técnico."]);
             return;
         }
 

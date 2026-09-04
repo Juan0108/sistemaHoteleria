@@ -2,4 +2,7 @@ Options All -indexes
 
 RewriteEngine On
 
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
 RewriteRule ^([-a-zA-Z0-9/]+)$ index.php?ruta=$1
