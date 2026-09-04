@@ -213,17 +213,14 @@ EOF;
         $pdfFilePath = dirname(__DIR__, 3) . '/tickets/' . $nombreArchivo;
         $pdf->Output($pdfFilePath, 'F');
 
-        // Se manda el PDF embebido en base64 (en vez de una URL pública): así funciona
-        // igual en producción y en local, ya que la API de WhatsApp no necesita alcanzar
-        // ningún archivo por su cuenta — el contenido va directo en la petición.
-        $mediaBase64 = base64_encode(file_get_contents($pdfFilePath));
+        $urlArchivo = "https://posdit.com.mx/sistema.posdit.com.mx/tickets/" . $nombreArchivo;
 
         $apiUrl = 'https://apiwsp.factiliza.com/api/v1/message/sendMedia/NTI1NTI1MzI3MzA0';
         $token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2MjciLCJuYW1lIjoiSnVhbiBEYXZpZCBBZ3VpbGFyIEJhcnJvbiAiLCJlbWFpbCI6ImFndWlsYXJiYXJyb25qdWFuZGF2aWRAZ21haWwuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiY29uc3VsdG9yIn0.r5cvSNgCntPbf4OCjqx1JlS885CxHSN7FyxCLlVBAus';
         $data = array(
             "number" => $Celular,
             "mediatype" => "document",
-            "media" => $mediaBase64,
+            "media" => $urlArchivo,
             "filename" => "Ticket de estadia.pdf",
             "caption" => "¡Gracias por su estadía en " . $Tienda . "!"
         );

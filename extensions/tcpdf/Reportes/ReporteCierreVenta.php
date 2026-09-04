@@ -451,8 +451,6 @@ class generaReporteDia
             );
         }
 
-        // Se manda embebido en base64 (no por URL pública) para que funcione igual en
-        // producción y en local, sin depender de que la API de WhatsApp alcance el archivo.
         $telefono = trim((string) ($_SESSION["Telefono"] ?? ""));
 
         if ($telefono === "") {
@@ -464,14 +462,14 @@ class generaReporteDia
         $Celular = $Prefijo . str_replace([' ', '(', ')', '-'], '', $telefono);
         $Tienda = $Negocio[0]["Razon_Social"] ?? "";
 
-        $mediaBase64 = base64_encode(file_get_contents($rutaArchivo));
+        $urlArchivo = "https://posdit.com.mx/sistema.posdit.com.mx/reportes/" . $nombreArchivo;
 
         $apiUrl = 'https://apiwsp.factiliza.com/api/v1/message/sendMedia/NTI1NTI1MzI3MzA0';
         $token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2MjciLCJuYW1lIjoiSnVhbiBEYXZpZCBBZ3VpbGFyIEJhcnJvbiAiLCJlbWFpbCI6ImFndWlsYXJiYXJyb25qdWFuZGF2aWRAZ21haWwuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiY29uc3VsdG9yIn0.r5cvSNgCntPbf4OCjqx1JlS885CxHSN7FyxCLlVBAus';
         $data = array(
             "number" => $Celular,
             "mediatype" => "document",
-            "media" => $mediaBase64,
+            "media" => $urlArchivo,
             "filename" => $nombreArchivo,
             "caption" => "Venta Reportada: $" . number_format((float) $ValorCierre, 2) . ", Caja: $" . number_format((float) $ValorCaja, 2) . ", para más detalles favor de consultar el archivo adjunto."
         );

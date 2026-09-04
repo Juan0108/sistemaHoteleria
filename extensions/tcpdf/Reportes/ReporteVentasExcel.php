@@ -462,20 +462,18 @@ class reporteVentasExcel {
             $hojaAnual->setCellValue("{$colEgresosAnual}{$filaTotalAnual}", "=SUM({$colEgresosAnual}{$filaAnualInicio}:{$colEgresosAnual}{$filaAnualFin})");
 
             $hojaAnual->getStyle("C{$filaTotalAnual}:{$colEgresosAnual}{$filaTotalAnual}")->getNumberFormat()->setFormatCode('$#,##0.00');
-            $hojaAnual->getStyle("B{$filaTotalAnual}:{$colEgresosAnual}{$filaTotalAnual}")->getFont()->setBold(true);
+            $hojaAnual->getStyle("B{$filaTotalAnual}:{$colEgresosAnual}{$filaTotalAnual}")->getFont()->setBold(true)->getColor()->setRGB('FFFFFF');
+            $hojaAnual->getStyle("B{$filaTotalAnual}:{$colEgresosAnual}{$filaTotalAnual}")->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setRGB('4472C4');
 
-            $tablaAnual = new Table("B2:{$colEgresosAnual}{$filaTotalAnual}");
+            // La fila de Total se deja FUERA del rango de la tabla (B2:{fin de datos}, sin
+            // incluir esta fila): usar la fila de totales nativa de una tabla de Excel junto
+            // con el autofiltro corrompe el archivo (Excel reporta "reparaciones" al abrirlo),
+            // por eso el "Total" se arma como una fila normal con estilo, no como parte de la tabla.
+            $tablaAnual = new Table("B2:{$colEgresosAnual}{$filaAnualFin}");
             $estiloAnual = new TableStyle();
             $estiloAnual->setTheme(TableStyle::TABLE_STYLE_MEDIUM9);
             $estiloAnual->setShowRowStripes(true);
             $tablaAnual->setStyle($estiloAnual);
-            $tablaAnual->setShowTotalsRow(true);
-            $tablaAnual->getColumn('B')->setTotalsRowLabel('Total');
-            foreach ($habitacionesAnual as $i => $nombre) {
-                $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(3 + $i);
-                $tablaAnual->getColumn($col)->setTotalsRowFunction('sum');
-            }
-            $tablaAnual->getColumn($colEgresosAnual)->setTotalsRowFunction('sum');
             $hojaAnual->addTable($tablaAnual);
 
             foreach (range('B', $colEgresosAnual) as $col) {
@@ -613,14 +611,14 @@ class reporteVentasExcel {
         $Prefijo = 52;
         $Celular = $Prefijo . str_replace([' ', '(', ')', '-'], '', $telefono);
 
-        $mediaBase64 = base64_encode(file_get_contents($rutaArchivo));
+        $urlArchivo = "https://posdit.com.mx/sistema.posdit.com.mx/reportes/" . $nombreArchivo;
 
         $apiUrl = 'https://apiwsp.factiliza.com/api/v1/message/sendMedia/NTI1NTI1MzI3MzA0';
         $token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2MjciLCJuYW1lIjoiSnVhbiBEYXZpZCBBZ3VpbGFyIEJhcnJvbiAiLCJlbWFpbCI6ImFndWlsYXJiYXJyb25qdWFuZGF2aWRAZ21haWwuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiY29uc3VsdG9yIn0.r5cvSNgCntPbf4OCjqx1JlS885CxHSN7FyxCLlVBAus';
         $data = array(
             "number" => $Celular,
             "mediatype" => "document",
-            "media" => $mediaBase64,
+            "media" => $urlArchivo,
             "filename" => $nombreArchivo,
             "caption" => "Reporte de Ventas: $" . number_format($totalVenta, 2) . ", Ganancias: $" . number_format($totalGanancia, 2) . " (" . $fiFormato . " - " . $ffFormato . ")"
         );
