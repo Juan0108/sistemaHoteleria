@@ -1906,7 +1906,50 @@ function ObtenerReporteVentasExcel(){
             confirmButtonText: "Cerrar"
         });
     } else {
-        window.open("extensions/tcpdf/Reportes/ReporteVentasExcel.php?Cu="+_IdUsuario+"&fi="+FechaInicio+"&ff="+FFin, "_blank");
+        Swal.fire({
+            title: "Confirmación",
+            html: `¿Enviar el Reporte de Ventas del periodo <strong>${FechaInicio}</strong> al <strong>${FFin}</strong> por WhatsApp?`,
+            icon: "question",
+            showCancelButton: true,
+            confirmButtonText: "Sí, enviar",
+            cancelButtonText: "Cancelar"
+        }).then((confirmation) => {
+            if (!confirmation.isConfirmed) {
+                return;
+            }
+
+            $.ajax({
+                url: "extensions/tcpdf/Reportes/ReporteVentasExcel.php",
+                method: "GET",
+                data: { Cu: _IdUsuario, fi: FechaInicio, ff: FFin },
+                dataType: "json",
+                success: function(respuesta){
+                    if (respuesta && respuesta.ok){
+                        Swal.fire({
+                            icon: "success",
+                            title: "Reporte enviado",
+                            text: "El reporte se envió exitosamente por WhatsApp.",
+                            confirmButtonText: "Aceptar"
+                        });
+                    }else{
+                        Swal.fire({
+                            icon: "error",
+                            title: "No se pudo enviar el reporte",
+                            text: (respuesta && respuesta.mensaje) || "La API de WhatsApp no confirmó el envío.",
+                            confirmButtonText: "Aceptar"
+                        });
+                    }
+                },
+                error: function(){
+                    Swal.fire({
+                        icon: "error",
+                        title: "Error",
+                        text: "Hubo un problema al generar el reporte. Intenta nuevamente.",
+                        confirmButtonText: "Aceptar"
+                    });
+                }
+            });
+        });
     }
 }
 

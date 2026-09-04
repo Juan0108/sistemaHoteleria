@@ -69,6 +69,18 @@ static public function crtObtenerTopVentas($IdUsuario){
 
  }
 
+static public function crtGuardarCorteDiario($id_hotel, $id_usuario, $venta_reportada, $venta_sistema, $monto_caja, $cargos_mantenimiento, $diferencia, $archivo_excel){
+
+	return ModeloVentas::MdlGuardarCorteDiario($id_hotel, $id_usuario, $venta_reportada, $venta_sistema, $monto_caja, $cargos_mantenimiento, $diferencia, $archivo_excel);
+
+}
+
+static public function crtObtenerCortesDiarios($id_hotel, $fecha_inicio, $fecha_fin){
+
+	return ModeloVentas::MdlObtenerCortesDiarios($id_hotel, $fecha_inicio, $fecha_fin);
+
+}
+
 }
 
 

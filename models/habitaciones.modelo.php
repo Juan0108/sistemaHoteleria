@@ -48,6 +48,17 @@ class ModeloHabitaciones{
 		return $stmt->fetchAll();
 	}
 
+	// Ventas (reservaciones no canceladas) por día y tipo de habitación, dentro de un rango
+	// de fechas arbitrario, para la gráfica de consumo de habitaciones del Reporte de Ventas.
+	static public function MdlObtenerVentasPorTipoHabitacionRango($id_hotel, $fecha_inicio, $fecha_fin){
+		$stmt = Conexion::conectar()->prepare("CALL ObtenerVentasPorTipoHabitacionRango(:id_hotel, :fecha_inicio, :fecha_fin)");
+		$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
+		$stmt->bindParam(":fecha_inicio", $fecha_inicio);
+		$stmt->bindParam(":fecha_fin", $fecha_fin);
+		$stmt->execute();
+		return $stmt->fetchAll();
+	}
+
 	// Obtener catálogo de hoteles (para el select del formulario)
 	static public function MdlObtenerHoteles(){
 		$stmt = Conexion::conectar()->prepare("CALL ObtenerHoteles()");

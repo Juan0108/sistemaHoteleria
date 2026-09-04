@@ -120,24 +120,8 @@ EOF;
 
         $pdf->writeHTML($Cabecera, false, false, false, false, '');
 
-        $Contenido = <<<EOF
-<div style="font-size:6px; text-align:center; "></div>
-
-<table border="1" style="width: 180px; font-size: 8.5px; color: black; font-weight: bold;">
-    <tbody>
-        <tr>
-           <td align="center" style="width: 18px;">N°</td>
-           <td align="center" style="width: 52px;">Concepto</td>
-           <td align="center" style="width: 55px;">Precio</td>
-           <td align="center" style="width: 55px;">Total</td>
-        </tr>
-    </tbody>
-</table>
-EOF;
-
-        $pdf->writeHTML($Contenido, false, false, false, false, '');
-
         $totalEstadia = 0;
+        $filasConsumo = '';
 
         foreach ($consumo as $item) {
             $totalEstadia += (float) $item['Total'];
@@ -151,42 +135,50 @@ EOF;
             // $&nbsp;$cifra (espacio duro) en vez de "$ $cifra": con espacio normal, si la
             // celda no alcanza a caber la cifra completa, TCPDF corta la línea justo ahí y el
             // "$" queda solo arriba y el monto abajo — el &nbsp; evita ese salto.
-            $Complemento = <<<EOF
-<table>
-    <tbody>
+            // border:none en cada celda: las únicas líneas visibles de la tabla deben ser las
+            // del encabezado (N°/Concepto/Precio/Total), no las de cada renglón de consumo.
+            $filasConsumo .= <<<EOF
         <tr>
-            <td style="width: 18px; font-size: 7px;">$item[Cantidad]</td>
-            <td style="width: 52px; font-size: 7px;">$item[Producto]</td>
-            <td align="right" style="width: 55px; font-size: 7px; white-space: nowrap;">$&nbsp;$precioFormateado</td>
-            <td align="right" style="width: 55px; font-size: 7px; white-space: nowrap;">$&nbsp;$totalFormateado</td>
+            <td style="border: none; width: 18px; font-size: 7px;">$item[Cantidad]</td>
+            <td style="border: none; width: 52px; font-size: 7px;">$item[Producto]</td>
+            <td align="right" style="border: none; width: 55px; font-size: 7px; white-space: nowrap;">$&nbsp;$precioFormateado</td>
+            <td align="right" style="border: none; width: 55px; font-size: 7px; white-space: nowrap;">$&nbsp;$totalFormateado</td>
+        </tr>
+
+EOF;
+        }
+
+        $totalFormateadoGeneral = number_format($totalEstadia, 2);
+
+        // Encabezado, renglones de consumo Y el Total van en UNA sola tabla (un solo
+        // writeHTML): TCPDF recalcula el ancho de columnas cada vez que abre una tabla nueva,
+        // así que varias tablas separadas con los mismos anchos declarados podían terminar
+        // desalineadas entre sí. Con una sola tabla, el ancho de cada columna se resuelve una
+        // sola vez para todos los renglones. "Total:" va bajo la columna Precio (alineado a la
+        // derecha) y la cifra bajo la columna Total, alineada con las demás cifras de consumo.
+        $Contenido = <<<EOF
+<div style="font-size:6px; text-align:center; "></div>
+
+<table border="0" style="width: 180px; font-size: 8.5px;">
+    <tbody>
+        <tr style="font-weight: bold;">
+           <td align="center" style="border: 1px solid #000000; width: 18px;">N°</td>
+           <td align="center" style="border: 1px solid #000000; width: 52px;">Concepto</td>
+           <td align="center" style="border: 1px solid #000000; width: 55px;">Precio</td>
+           <td align="center" style="border: 1px solid #000000; width: 55px;">Total</td>
+        </tr>
+$filasConsumo
+        <tr>
+            <td style="width: 18px; font-size: 7px;">&nbsp;</td>
+            <td style="width: 52px; font-size: 7px;">&nbsp;</td>
+            <td align="right" style="width: 55px; font-size: 7px; white-space: nowrap;">Total:</td>
+            <td align="right" style="width: 55px; font-size: 7px; white-space: nowrap;">$&nbsp;$totalFormateadoGeneral</td>
         </tr>
     </tbody>
 </table>
 EOF;
 
-            $pdf->writeHTML($Complemento, false, false, false, false, '');
-        }
-
-        $totalFormateadoGeneral = number_format($totalEstadia, 2);
-
-        // Mismas 4 columnas (18/52/55/55px) que la tabla de conceptos de arriba, para que la
-        // cifra quede bajo el encabezado "Total". Las celdas vacías llevan &nbsp; porque TCPDF
-        // no reserva el ancho de un <td> realmente vacío.
-        $Totales = <<<EOF
-<div style="font-size:6px; text-align:center; "></div>
-<table style="border: none; width: 180px;">
-<tbody>
-    <tr>
-        <td style="border: none; width: 18px; font-size: 7px;">&nbsp;</td>
-        <td align="right" style="border: none; width: 52px; font-size: 7px;">Total:</td>
-        <td style="border: none; width: 55px; font-size: 7px;">&nbsp;</td>
-        <td align="right" style="border: none; width: 55px; font-size: 7px; white-space: nowrap;">$&nbsp;$totalFormateadoGeneral</td>
-    </tr>
-</tbody>
-</table>
-EOF;
-
-        $pdf->writeHTML($Totales, false, false, false, false, '');
+        $pdf->writeHTML($Contenido, false, false, false, false, '');
 
         $nombreUsuario = $Usuario["Nombre"] ?? "";
 
@@ -212,6 +204,7 @@ EOF;
 </table>
 <div style="font-size:6px;"></div>
 <br align="center"> ¡Gracias por su estadía! </br>
+<br style="font-size:8px" align="center"> En su próximo consumo un 10% de descuento </br>
 EOF;
 
         $pdf->writeHTML($Final, false, false, false, false, '');

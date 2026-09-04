@@ -108,6 +108,82 @@ class ControladorHabitaciones{
 		];
 	}
 
+	// Ventas por tipo de habitación dentro de un rango de fechas arbitrario (Reporte de
+	// Ventas), agrupadas por día si el rango cabe en un mes, o por mes si abarca más de uno.
+	static public function crtObtenerVentasPorTipoHabitacionRango($id_hotel, $fecha_inicio, $fecha_fin){
+		if($id_hotel === null){
+			return ["etiquetas" => [], "habitaciones" => [], "colores" => [], "datos" => [], "montos" => []];
+		}
+
+		$tipos = ModeloHabitaciones::MdlObtenerTiposHabitacion($id_hotel);
+		$ventas = ModeloHabitaciones::MdlObtenerVentasPorTipoHabitacionRango($id_hotel, $fecha_inicio, $fecha_fin);
+		$indiceMonto = [];
+
+		$inicio = new \DateTime($fecha_inicio);
+		$fin = new \DateTime($fecha_fin);
+
+		// Mismo mes y año en ambos extremos del rango: se agrupa por día (más útil para un
+		// corte de pocos días). Si el rango cruza de un mes a otro, por mes.
+		$porDia = $inicio->format('Y-m') === $fin->format('Y-m');
+
+		$etiquetas = [];
+		$indice = [];
+
+		if($porDia){
+			foreach($ventas as $fila){
+				$indice[$fila["Fecha"]][$fila["TipoHabitacion"]] = (int) $fila["Ventas"];
+				$indiceMonto[$fila["Fecha"]][$fila["TipoHabitacion"]] = (float) $fila["Venta"];
+			}
+
+			$cursor = clone $inicio;
+			while($cursor <= $fin){
+				$etiquetas[] = $cursor->format('Y-m-d');
+				$cursor->modify('+1 day');
+			}
+		}else{
+			foreach($ventas as $fila){
+				$mes = substr($fila["Fecha"], 0, 7);
+				$indice[$mes][$fila["TipoHabitacion"]] = ($indice[$mes][$fila["TipoHabitacion"]] ?? 0) + (int) $fila["Ventas"];
+				$indiceMonto[$mes][$fila["TipoHabitacion"]] = ($indiceMonto[$mes][$fila["TipoHabitacion"]] ?? 0) + (float) $fila["Venta"];
+			}
+
+			$cursor = new \DateTime($inicio->format('Y-m-01'));
+			$finMes = new \DateTime($fin->format('Y-m-01'));
+			while($cursor <= $finMes){
+				$etiquetas[] = $cursor->format('Y-m');
+				$cursor->modify('+1 month');
+			}
+		}
+
+		$habitaciones = [];
+		$colores = [];
+		$datos = [];
+		$montos = [];
+
+		foreach($tipos as $i => $tipo){
+			$nombre = $tipo["TipoHabitacion"];
+			$habitaciones[] = $nombre;
+			$colores[] = self::PALETA_COLORES_HABITACIONES[$i % count(self::PALETA_COLORES_HABITACIONES)];
+
+			$serie = [];
+			$serieMonto = [];
+			foreach($etiquetas as $etiqueta){
+				$serie[] = $indice[$etiqueta][$nombre] ?? 0;
+				$serieMonto[] = $indiceMonto[$etiqueta][$nombre] ?? 0;
+			}
+			$datos[] = $serie;
+			$montos[] = $serieMonto;
+		}
+
+		return [
+			"etiquetas" => $etiquetas,
+			"habitaciones" => $habitaciones,
+			"colores" => $colores,
+			"datos" => $datos,
+			"montos" => $montos
+		];
+	}
+
 	// (Disponible/Ocupado/Reservado), calculado a partir de Tb_Reservaciones.
 	static public function crtObtenerHabitacionesRecepcion($fecha = null){
 		$id_hotel = self::crtObtenerIdHotelSesion();

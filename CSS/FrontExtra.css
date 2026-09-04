@@ -7,7 +7,11 @@
    no un ícono de Font Awesome. El link se pone en flex para que el ícono y el texto queden
    centrados verticalmente en una sola fila, con el mismo padding que ya trae AdminLTE.css
    para el resto de los links del sidebar (".sidebar-menu > li > a"), declarado aquí también
-   por si el flex lo pisa. */
+   por si el flex lo pisa.
+   margin-left:0 es la causa real de que se viera descuadrado: Bootstrap trae "img{margin-left:
+   auto;margin-right:auto}" para centrar imágenes sueltas — inofensivo en flujo normal, pero
+   dentro de un contenedor flex SÍ empuja el ícono, comiéndose el espacio libre de la caja
+   (confirmado con el inspector: el margin-left calculado era de 7px sin que nada lo pidiera). */
 .sidebar-menu a.sv-menu-item-icono{
   display:flex;
   align-items:center;
@@ -17,6 +21,7 @@
   width:20px;
   height:20px;
   object-fit:contain;
+  margin-left:0;
   margin-right:10px;
   filter:brightness(0) invert(1);
   flex-shrink:0;

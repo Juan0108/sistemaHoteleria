@@ -342,7 +342,7 @@ class generaReporteDia
         // Tabla azul para identificar la hoja de Mantenimiento (la de resumen usa morado/verde).
         $tablaResumenMtto = new Table('B2:C9');
         $estiloResumenMtto = new TableStyle();
-        $estiloResumenMtto->setTheme(TableStyle::TABLE_STYLE_DARK2);
+        $estiloResumenMtto->setTheme(TableStyle::TABLE_STYLE_MEDIUM9);
         $estiloResumenMtto->setShowRowStripes(true);
         $tablaResumenMtto->setStyle($estiloResumenMtto);
         $hojaMtto->addTable($tablaResumenMtto);
@@ -385,7 +385,7 @@ class generaReporteDia
             // Azul: color de identidad de la hoja Mantenimiento; morado/verde queda para "Corte dd-mm-aaaa".
             $tablaMtto = new Table("B$filaEncabezadoMtto:L$ultimaFilaMtto");
             $estiloMtto = new TableStyle();
-            $estiloMtto->setTheme(TableStyle::TABLE_STYLE_DARK2);
+            $estiloMtto->setTheme(TableStyle::TABLE_STYLE_MEDIUM9);
             $estiloMtto->setShowRowStripes(true);
             $tablaMtto->setStyle($estiloMtto);
             $hojaMtto->addTable($tablaMtto);
@@ -434,6 +434,22 @@ class generaReporteDia
         // (c:gapWidth) — no hay ningún método público para cambiarlo. Se reduce aquí editando
         // directamente el XML de la gráfica ya guardada, para que las barras queden más juntas.
         self::crtEstrecharEspacioBarras($rutaArchivo, 40);
+
+        // Antes de esto, los montos del corte solo vivían en el Excel/WhatsApp: no había
+        // forma de consultar el corte de un día anterior. Se guarda aquí, ya con todos los
+        // montos calculados y el Excel generado.
+        if ($id_hotel !== null) {
+            ControladorVentas::crtGuardarCorteDiario(
+                $id_hotel,
+                (int) $idusuario,
+                (float) $ValorCierre,
+                (float) $totalSistema,
+                (float) $ValorCaja,
+                (float) $cargosMantenimiento,
+                (float) $diferencia,
+                $nombreArchivo
+            );
+        }
 
         // Se manda embebido en base64 (no por URL pública) para que funcione igual en
         // producción y en local, sin depender de que la API de WhatsApp alcance el archivo.

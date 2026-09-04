@@ -181,6 +181,32 @@ static public function MdlObtenerTopVentas($IdUsuario){
 
 }
 
+// Guarda un corte diario ya generado (ver ReporteCierreVenta.php), para poder consultar
+// cortes de días anteriores más adelante.
+static public function MdlGuardarCorteDiario($id_hotel, $id_usuario, $venta_reportada, $venta_sistema, $monto_caja, $cargos_mantenimiento, $diferencia, $archivo_excel){
+	$stmt = Conexion::conectar()->prepare("CALL GuardarCorteDiario(:id_hotel, :id_usuario, :venta_reportada, :venta_sistema, :monto_caja, :cargos_mantenimiento, :diferencia, :archivo_excel)");
+	$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
+	$stmt->bindParam(":id_usuario", $id_usuario, PDO::PARAM_INT);
+	$stmt->bindParam(":venta_reportada", $venta_reportada);
+	$stmt->bindParam(":venta_sistema", $venta_sistema);
+	$stmt->bindParam(":monto_caja", $monto_caja);
+	$stmt->bindParam(":cargos_mantenimiento", $cargos_mantenimiento);
+	$stmt->bindParam(":diferencia", $diferencia);
+	$stmt->bindParam(":archivo_excel", $archivo_excel);
+	$stmt->execute();
+	return $stmt->fetch();
+}
+
+// Cortes diarios de un hotel dentro de un rango de fechas, para el Reporte de Ventas Excel.
+static public function MdlObtenerCortesDiarios($id_hotel, $fecha_inicio, $fecha_fin){
+	$stmt = Conexion::conectar()->prepare("CALL ObtenerCortesDiarios(:id_hotel, :fecha_inicio, :fecha_fin)");
+	$stmt->bindParam(":id_hotel", $id_hotel, PDO::PARAM_INT);
+	$stmt->bindParam(":fecha_inicio", $fecha_inicio);
+	$stmt->bindParam(":fecha_fin", $fecha_fin);
+	$stmt->execute();
+	return $stmt->fetchAll();
+}
+
 /**
 Inserta Recarga Telefonica
  */
