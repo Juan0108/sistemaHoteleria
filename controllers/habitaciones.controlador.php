@@ -627,7 +627,7 @@ class ControladorHabitaciones
 
 					if ($respuesta["validar"] == 1) {
 
-						//$fotoMovida = move_uploaded_file($foto, $rutaFisica);
+						$fotoMovida = move_uploaded_file($foto, $rutaFisica);
 
 						if (true) {
 							echo '<script>
