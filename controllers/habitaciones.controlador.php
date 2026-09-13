@@ -609,6 +609,8 @@ class ControladorHabitaciones
 					$dirPathFisico = $_SERVER['DOCUMENT_ROOT'] . "/views/img/Habitaciones/";
 					$rutaFisica = $dirPathFisico . $NombreImagen;
 
+					var_dump($rutaFisica);
+
 					if (!is_dir($dirPathFisico)) {
 						mkdir($dirPathFisico, 0755, true);
 					}
