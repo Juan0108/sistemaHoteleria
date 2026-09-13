@@ -1,19 +1,22 @@
 <?php
 
-class ControladorHabitaciones{
+class ControladorHabitaciones
+{
 
-	
+
 	const VENTANA_MAXIMA_CHECKIN_ANTICIPADO_HORAS = 4;
 
-	static public function crtObtenerHoteles(){
+	static public function crtObtenerHoteles()
+	{
 		$respuesta = ModeloHabitaciones::MdlObtenerHoteles();
 		return $respuesta;
 	}
 
 	// Resuelve el hotel del usuario en sesión a partir de su negocio.
 	// El usuario nunca elige ni ve el hotel: se deriva automáticamente.
-	static public function crtObtenerIdHotelSesion(){
-		if(!isset($_SESSION["IdNegocio"])){
+	static public function crtObtenerIdHotelSesion()
+	{
+		if (!isset($_SESSION["IdNegocio"])) {
 			return null;
 		}
 
@@ -22,10 +25,11 @@ class ControladorHabitaciones{
 		return $hotel ? $hotel["Id_Hotel"] : null;
 	}
 
-	static public function crtObtenerHabitaciones(){
+	static public function crtObtenerHabitaciones()
+	{
 		$id_hotel = self::crtObtenerIdHotelSesion();
 
-		if($id_hotel === null){
+		if ($id_hotel === null) {
 			return [];
 		}
 
@@ -41,10 +45,11 @@ class ControladorHabitaciones{
 	// de Control): un mes por columna del año completo, una serie por tipo de habitación
 	// (incluye los que no tuvieron ninguna venta ese mes, con 0, para que las 12 columnas
 	// de todos los tipos queden alineadas).
-	static public function crtObtenerVentasPorTipoHabitacionMensual($anio = null){
+	static public function crtObtenerVentasPorTipoHabitacionMensual($anio = null)
+	{
 		$id_hotel = self::crtObtenerIdHotelSesion();
 
-		if($id_hotel === null){
+		if ($id_hotel === null) {
 			return ["meses" => [], "habitaciones" => [], "colores" => [], "datos" => [], "montos" => []];
 		}
 
@@ -57,22 +62,22 @@ class ControladorHabitaciones{
 		// vacías para meses futuros, ej. octubre/noviembre/diciembre si hoy es septiembre).
 		// De un año anterior sí se muestran los 12; de uno futuro, ninguno.
 		$anioActual = (int) date('Y');
-		if($anio > $anioActual){
+		if ($anio > $anioActual) {
 			$ultimoMes = 0;
-		}elseif($anio === $anioActual){
+		} elseif ($anio === $anioActual) {
 			$ultimoMes = (int) date('n');
-		}else{
+		} else {
 			$ultimoMes = 12;
 		}
 
 		$meses = [];
-		for($mes = 1; $mes <= $ultimoMes; $mes++){
+		for ($mes = 1; $mes <= $ultimoMes; $mes++) {
 			$meses[] = sprintf('%04d-%02d', $anio, $mes);
 		}
 
 		// Índice rápido: $indice["2026-01"]["Familiar"] = ["ventas" => 3, "monto" => 4500.00]
 		$indice = [];
-		foreach($ventasMensuales as $fila){
+		foreach ($ventasMensuales as $fila) {
 			$indice[$fila["Mes"]][$fila["TipoHabitacion"]] = [
 				"ventas" => (int) $fila["Ventas"],
 				"monto" => (float) $fila["Monto"]
@@ -84,14 +89,14 @@ class ControladorHabitaciones{
 		$datos = [];
 		$montos = [];
 
-		foreach($tipos as $i => $tipo){
+		foreach ($tipos as $i => $tipo) {
 			$nombre = $tipo["TipoHabitacion"];
 			$habitaciones[] = $nombre;
 			$colores[] = self::PALETA_COLORES_HABITACIONES[$i % count(self::PALETA_COLORES_HABITACIONES)];
 
 			$serieVentas = [];
 			$serieMontos = [];
-			foreach($meses as $mes){
+			foreach ($meses as $mes) {
 				$serieVentas[] = $indice[$mes][$nombre]["ventas"] ?? 0;
 				$serieMontos[] = $indice[$mes][$nombre]["monto"] ?? 0.0;
 			}
@@ -110,8 +115,9 @@ class ControladorHabitaciones{
 
 	// Ventas por tipo de habitación dentro de un rango de fechas arbitrario (Reporte de
 	// Ventas), agrupadas por día si el rango cabe en un mes, o por mes si abarca más de uno.
-	static public function crtObtenerVentasPorTipoHabitacionRango($id_hotel, $fecha_inicio, $fecha_fin){
-		if($id_hotel === null){
+	static public function crtObtenerVentasPorTipoHabitacionRango($id_hotel, $fecha_inicio, $fecha_fin)
+	{
+		if ($id_hotel === null) {
 			return ["etiquetas" => [], "habitaciones" => [], "colores" => [], "datos" => [], "montos" => []];
 		}
 
@@ -129,19 +135,19 @@ class ControladorHabitaciones{
 		$etiquetas = [];
 		$indice = [];
 
-		if($porDia){
-			foreach($ventas as $fila){
+		if ($porDia) {
+			foreach ($ventas as $fila) {
 				$indice[$fila["Fecha"]][$fila["TipoHabitacion"]] = (int) $fila["Ventas"];
 				$indiceMonto[$fila["Fecha"]][$fila["TipoHabitacion"]] = (float) $fila["Venta"];
 			}
 
 			$cursor = clone $inicio;
-			while($cursor <= $fin){
+			while ($cursor <= $fin) {
 				$etiquetas[] = $cursor->format('Y-m-d');
 				$cursor->modify('+1 day');
 			}
-		}else{
-			foreach($ventas as $fila){
+		} else {
+			foreach ($ventas as $fila) {
 				$mes = substr($fila["Fecha"], 0, 7);
 				$indice[$mes][$fila["TipoHabitacion"]] = ($indice[$mes][$fila["TipoHabitacion"]] ?? 0) + (int) $fila["Ventas"];
 				$indiceMonto[$mes][$fila["TipoHabitacion"]] = ($indiceMonto[$mes][$fila["TipoHabitacion"]] ?? 0) + (float) $fila["Venta"];
@@ -149,7 +155,7 @@ class ControladorHabitaciones{
 
 			$cursor = new \DateTime($inicio->format('Y-m-01'));
 			$finMes = new \DateTime($fin->format('Y-m-01'));
-			while($cursor <= $finMes){
+			while ($cursor <= $finMes) {
 				$etiquetas[] = $cursor->format('Y-m');
 				$cursor->modify('+1 month');
 			}
@@ -160,14 +166,14 @@ class ControladorHabitaciones{
 		$datos = [];
 		$montos = [];
 
-		foreach($tipos as $i => $tipo){
+		foreach ($tipos as $i => $tipo) {
 			$nombre = $tipo["TipoHabitacion"];
 			$habitaciones[] = $nombre;
 			$colores[] = self::PALETA_COLORES_HABITACIONES[$i % count(self::PALETA_COLORES_HABITACIONES)];
 
 			$serie = [];
 			$serieMonto = [];
-			foreach($etiquetas as $etiqueta){
+			foreach ($etiquetas as $etiqueta) {
 				$serie[] = $indice[$etiqueta][$nombre] ?? 0;
 				$serieMonto[] = $indiceMonto[$etiqueta][$nombre] ?? 0;
 			}
@@ -185,14 +191,15 @@ class ControladorHabitaciones{
 	}
 
 	// (Disponible/Ocupado/Reservado), calculado a partir de Tb_Reservaciones.
-	static public function crtObtenerHabitacionesRecepcion($fecha = null){
+	static public function crtObtenerHabitacionesRecepcion($fecha = null)
+	{
 		$id_hotel = self::crtObtenerIdHotelSesion();
 
-		if($id_hotel === null){
+		if ($id_hotel === null) {
 			return [];
 		}
 
-		if($fecha === null){
+		if ($fecha === null) {
 			$fecha = date("Y-m-d");
 		}
 
@@ -203,7 +210,7 @@ class ControladorHabitaciones{
 
 		// Para las habitaciones que quedaron Disponibles, se busca la próxima reservación (si
 		// existe) para poder mostrar "Disponible hasta..." en la tarjeta.
-		foreach($resultado as &$hab){
+		foreach ($resultado as &$hab) {
 			$hab["ProximaReservacion"] = ($hab["EstadoClase"] === "disponible")
 				? self::crtObtenerProximaReservacionParaTarjeta((int) $hab["Id_Habitacion"], $fecha)
 				: null;
@@ -219,32 +226,34 @@ class ControladorHabitaciones{
 
 	// Agrega "ReservasProximas" a cada habitación: cuántas reservaciones Reservadas (no la
 	// estadía actual) tiene agendadas a futuro, para el badge de la tarjeta de Recepción.
-	static private function crtAplicarConteoReservasProximas(&$resultado, $id_hotel){
+	static private function crtAplicarConteoReservasProximas(&$resultado, $id_hotel)
+	{
 		$conteos = ModeloReservaciones::MdlObtenerConteoReservasProximas($id_hotel);
 
 		$conteoPorHabitacion = [];
-		foreach($conteos as $fila){
+		foreach ($conteos as $fila) {
 			$conteoPorHabitacion[(int) $fila["Id_Habitacion"]] = (int) $fila["Total"];
 		}
 
-		foreach($resultado as &$hab){
+		foreach ($resultado as &$hab) {
 			$hab["ReservasProximas"] = $conteoPorHabitacion[(int) $hab["Id_Habitacion"]] ?? 0;
 		}
 		unset($hab);
 	}
 
-	
-	static private function crtAplicarMantenimiento(&$resultado, $id_hotel){
+
+	static private function crtAplicarMantenimiento(&$resultado, $id_hotel)
+	{
 		$mantenimientos = ModeloMantenimiento::MdlObtenerHabitacionesEnMantenimiento($id_hotel);
 
 		// Una habitación puede tener varias incidencias activas a la vez: se agrupan todas
 		// sus descripciones para el tooltip del badge en Recepción.
 		$descripcionesPorHabitacion = [];
-		foreach($mantenimientos as $fila){
+		foreach ($mantenimientos as $fila) {
 			$descripcionesPorHabitacion[(int) $fila["Id_Habitacion"]][] = $fila["Descripcion"];
 		}
 
-		foreach($resultado as &$hab){
+		foreach ($resultado as &$hab) {
 			$descripciones = $descripcionesPorHabitacion[(int) $hab["Id_Habitacion"]] ?? [];
 
 			$hab["EnMantenimiento"] = count($descripciones) > 0;
@@ -256,10 +265,11 @@ class ControladorHabitaciones{
 	// Agrega "EnServicio" a cada habitación con un servicio de Intendencia en proceso ahora
 	// mismo, para el badge de aviso en Recepción. Se permite tener servicio en proceso aunque
 	// la habitación esté Ocupada (limpieza de rutina con huésped adentro).
-	static private function crtAplicarServicio(&$resultado, $id_hotel){
+	static private function crtAplicarServicio(&$resultado, $id_hotel)
+	{
 		$servicios = ControladorServicio::crtObtenerHabitacionesEnServicio($id_hotel);
 
-		foreach($resultado as &$hab){
+		foreach ($resultado as &$hab) {
 			$serv = $servicios[(int) $hab["Id_Habitacion"]] ?? null;
 
 			$hab["EnServicio"] = $serv !== null;
@@ -270,10 +280,11 @@ class ControladorHabitaciones{
 
 	// Calcula, con la misma fórmula que usa Punto de Venta (ObtenerSiguienteReservacion), cuántas
 	// horas de margen hay antes de que llegue la próxima reservación de una habitación Disponible.
-	static private function crtObtenerProximaReservacionParaTarjeta($id_habitacion, $fecha){
+	static private function crtObtenerProximaReservacionParaTarjeta($id_habitacion, $fecha)
+	{
 		$proxima = ModeloReservaciones::MdlObtenerProximaReservacionHabitacion($id_habitacion, $fecha . " 00:00:00");
 
-		if(!$proxima){
+		if (!$proxima) {
 			return null;
 		}
 
@@ -285,10 +296,11 @@ class ControladorHabitaciones{
 
 	// Reservaciones vigentes (Ocupado/Reservado) cuyo folio o cliente coincide con $termino,
 	// sin importar la fecha. Solo regresa las habitaciones que sí coinciden.
-	static public function crtBuscarHabitacionesRecepcion($termino){
+	static public function crtBuscarHabitacionesRecepcion($termino)
+	{
 		$id_hotel = self::crtObtenerIdHotelSesion();
 
-		if($id_hotel === null){
+		if ($id_hotel === null) {
 			return [];
 		}
 
@@ -305,10 +317,11 @@ class ControladorHabitaciones{
 	}
 
 
-	static public function crtObtenerHabitacionesReserva($anio, $mes){
+	static public function crtObtenerHabitacionesReserva($anio, $mes)
+	{
 		$id_hotel = self::crtObtenerIdHotelSesion();
 
-		if($id_hotel === null){
+		if ($id_hotel === null) {
 			return [];
 		}
 
@@ -327,10 +340,10 @@ class ControladorHabitaciones{
 		$claseParaEstatus = [8 => "ocupada", 9 => "reservada", 12 => "cancelada-estadia", 13 => "cancelada-reserva", 20 => "completada"];
 		$segmentosPorHabitacion = [];
 
-		foreach($reservaciones as $res){
+		foreach ($reservaciones as $res) {
 			$idEstatusRes = (int) $res["Id_Estatus"];
 
-			if(!isset($claseParaEstatus[$idEstatusRes])){
+			if (!isset($claseParaEstatus[$idEstatusRes])) {
 				continue;
 			}
 
@@ -344,7 +357,7 @@ class ControladorHabitaciones{
 			$diaInicio = max(1, (int) (($tsEntrada - $tsMesInicio) / 86400) + 1);
 			$diaFin = min($totalDias, (int) (($tsSalida - $tsMesInicio) / 86400) + 1);
 
-			if($diaFin < $diaInicio){
+			if ($diaFin < $diaInicio) {
 				// La reservación no toca ningún día visible de este mes.
 				continue;
 			}
@@ -364,17 +377,17 @@ class ControladorHabitaciones{
 			// La hora de entrada/salida ya viene sumada/restada por anticipada/extra; la nota
 			// de cuántas horas fueron va aparte, ya no se marca con un ícono en la barra.
 			$tituloBarra = ($nombreCliente !== "" ? $nombreCliente . "\n" : "")
-						 . "Entrada: " . date("d/m/Y g:i a", $tsEntradaReal) . "\n"
-						 . "Salida: " . date("d/m/Y g:i a", $tsSalidaReal);
+				. "Entrada: " . date("d/m/Y g:i a", $tsEntradaReal) . "\n"
+				. "Salida: " . date("d/m/Y g:i a", $tsSalidaReal);
 
-			if($horaAnticipada > 0){
+			if ($horaAnticipada > 0) {
 				$tituloBarra .= "\nIncluye " . $horaAnticipada . "h anticipada";
 			}
-			if($horasExtras > 0){
+			if ($horasExtras > 0) {
 				$tituloBarra .= "\nIncluye " . $horasExtras . "h extra";
 			}
 
-			if(!isset($segmentosPorHabitacion[$idHab])){
+			if (!isset($segmentosPorHabitacion[$idHab])) {
 				$segmentosPorHabitacion[$idHab] = [];
 			}
 
@@ -397,10 +410,10 @@ class ControladorHabitaciones{
 
 		$resultado = [];
 
-		foreach($habitaciones as $hab){
+		foreach ($habitaciones as $hab) {
 			$idEstatus = isset($hab["Id_Estatus"]) ? (int) $hab["Id_Estatus"] : 1;
 
-			if($idEstatus === 2){
+			if ($idEstatus === 2) {
 				// Inhabilitada en Habitaciones: no se muestra en Recepción/Reserva.
 				continue;
 			}
@@ -413,16 +426,19 @@ class ControladorHabitaciones{
 		return $resultado;
 	}
 
-	static private function crtAsignarCarriles($segmentos){
-		usort($segmentos, function($a, $b){ return $a["inicio"] <=> $b["inicio"]; });
+	static private function crtAsignarCarriles($segmentos)
+	{
+		usort($segmentos, function ($a, $b) {
+			return $a["inicio"] <=> $b["inicio"];
+		});
 
 		$carriles = [];
 
-		foreach($segmentos as $seg){
+		foreach ($segmentos as $seg) {
 			$colocado = false;
 
-			foreach($carriles as &$carril){
-				if($seg["inicio"] > $carril["finUltimo"]){
+			foreach ($carriles as &$carril) {
+				if ($seg["inicio"] > $carril["finUltimo"]) {
 					$carril["mapa"][$seg["inicio"]] = $seg;
 					$carril["finUltimo"] = $seg["fin"];
 					$colocado = true;
@@ -431,29 +447,32 @@ class ControladorHabitaciones{
 			}
 			unset($carril);
 
-			if(!$colocado){
+			if (!$colocado) {
 				$carriles[] = ["finUltimo" => $seg["fin"], "mapa" => [$seg["inicio"] => $seg]];
 			}
 		}
 
-		if(count($carriles) === 0){
+		if (count($carriles) === 0) {
 			return [[]];
 		}
 
-		return array_map(function($carril){ return $carril["mapa"]; }, $carriles);
+		return array_map(function ($carril) {
+			return $carril["mapa"];
+		}, $carriles);
 	}
 
-	
-	static private function crtFusionarHabitacionesConReservaciones($habitaciones, $reservaciones, $soloConReserva){
-		
+
+	static private function crtFusionarHabitacionesConReservaciones($habitaciones, $reservaciones, $soloConReserva)
+	{
+
 		$claseParaEstatus = [8 => "ocupada", 9 => "reservada"];
 		$estadoPorHabitacion = [];
 
-		foreach($reservaciones as $res){
+		foreach ($reservaciones as $res) {
 			$idHab = (int) $res["Id_Habitacion"];
 			$clase = $claseParaEstatus[(int) $res["Id_Estatus"]] ?? "reservada";
 
-			if(!isset($estadoPorHabitacion[$idHab]) || $clase === "ocupada"){
+			if (!isset($estadoPorHabitacion[$idHab]) || $clase === "ocupada") {
 				$nombreCliente = trim($res["Nombre"] . " " . $res["APaterno"] . " " . $res["AMaterno"]);
 
 				$estadoPorHabitacion[$idHab] = [
@@ -476,17 +495,17 @@ class ControladorHabitaciones{
 
 		$resultado = [];
 
-		foreach($habitaciones as $hab){
+		foreach ($habitaciones as $hab) {
 			$idEstatus = isset($hab["Id_Estatus"]) ? (int) $hab["Id_Estatus"] : 1;
 
-			if($idEstatus === 2){
+			if ($idEstatus === 2) {
 				// Inhabilitada en Habitaciones: no se muestra en Recepción/Reserva.
 				continue;
 			}
 
 			$reserva = $estadoPorHabitacion[(int) $hab["Id_Habitacion"]] ?? null;
 
-			if($soloConReserva && $reserva === null){
+			if ($soloConReserva && $reserva === null) {
 				continue;
 			}
 
@@ -525,8 +544,9 @@ class ControladorHabitaciones{
 	// Traduce por qué move_uploaded_file() falló, para que el mensaje al usuario diga
 	// algo accionable (archivo muy pesado, carpeta sin permisos, etc.) en vez de un
 	// "no pudo subirse" genérico que no ayuda a diagnosticar.
-	static private function crtMotivoFallaSubida($codigoError, $dirPath){
-		switch($codigoError){
+	static private function crtMotivoFallaSubida($codigoError, $dirPath)
+	{
+		switch ($codigoError) {
 			case UPLOAD_ERR_INI_SIZE:
 			case UPLOAD_ERR_FORM_SIZE:
 				return "el archivo pesa más de lo permitido por el servidor";
@@ -539,7 +559,7 @@ class ControladorHabitaciones{
 				return "una extensión del servidor bloqueó la subida";
 		}
 
-		if(!is_writable($dirPath)){
+		if (!is_writable($dirPath)) {
 			return "la carpeta de fotos no tiene permisos de escritura";
 		}
 
@@ -548,140 +568,160 @@ class ControladorHabitaciones{
 
 	static public function crtInsertarHabitacion()
 	{
-		if(isset($_POST["nuevaHabitacion"])){
+		if (isset($_POST["nuevaHabitacion"])) {
 
 			$_POST["nuevoPrecio"] = str_replace(',', '', $_POST["nuevoPrecio"]);
 			$_POST["nuevaDescripcion"] = mb_substr($_POST["nuevaDescripcion"], 0, 255);
 			$_POST["nuevoTipo"] = mb_substr($_POST["nuevoTipo"], 0, 100);
 
-			if(preg_match('/^[a-zA-Z0-9 ]+$/', $_POST["nuevoNumero"]) &&
-			   preg_match('/^[0-9]+$/', $_POST["nuevaCapacidad"]) &&
-			   preg_match('/^[0-9.]+$/', $_POST["nuevoPrecio"])) {
+			if (
+				preg_match('/^[a-zA-Z0-9 ]+$/', $_POST["nuevoNumero"]) &&
+				preg_match('/^[0-9]+$/', $_POST["nuevaCapacidad"]) &&
+				preg_match('/^[0-9.]+$/', $_POST["nuevoPrecio"])
+			) {
 
 				$id_hotel = self::crtObtenerIdHotelSesion();
 
-				if($id_hotel === null){
+				if ($id_hotel === null) {
 
 					echo '<script>
-						Swal.fire({
-							icon: "error",
-							title : "Sistema PosDit",
-							text: "¡Tu negocio no tiene un hotel registrado, contacta a soporte técnico!",
-							confirmButtonText: "Cerrar"
-						});
-					</script>';
+                        Swal.fire({
+                            icon: "error",
+                            title : "Sistema PosDit",
+                            text: "¡Tu negocio no tiene un hotel registrado, contacta a soporte técnico!",
+                            confirmButtonText: "Cerrar"
+                        });
+                    </script>';
 					return;
 				}
 
 				$foto = $_FILES["nuevaFoto"]["tmp_name"];
 
-				if($foto != ""){
+				if ($foto != "") {
 
 					$NombreImagen = $_FILES["nuevaFoto"]["name"];
-					$dirPath = "views/img/Habitaciones/";
-					if (!is_dir($dirPath)) {
-						mkdir($dirPath, 0755, true);
-					}
-					$directorio = $dirPath.$NombreImagen;
 
-					$Habitacion = new habitacion(0,
-									 $id_hotel,
-									 $_POST["nuevoNumero"],
-									 $_POST["nuevaDescripcion"],
-									 $_POST["nuevoTipo"],
-									 $_POST["nuevaCapacidad"],
-									 $_POST["nuevoPrecio"],
-									 $directorio,
-									 1); // Estatus activo por defecto
+					// 1. Ruta relativa (web) que se guarda en la base de datos
+					$rutaWeb = "views/img/Habitaciones/" . $NombreImagen;
+
+					// 2. Ruta absoluta (física) para crear el directorio y mover el archivo en el servidor
+					// IMPORTANTE: Cambia "tu_proyecto" por la carpeta real en tu htdocs, o quítalo si estás en producción/hosting.
+					$dirPathFisico = $_SERVER['DOCUMENT_ROOT'] . "/views/img/Habitaciones/";
+					$rutaFisica = $dirPathFisico . $NombreImagen;
+
+					if (!is_dir($dirPathFisico)) {
+						mkdir($dirPathFisico, 0755, true);
+					}
+
+					$Habitacion = new habitacion(
+						0,
+						$id_hotel,
+						$_POST["nuevoNumero"],
+						$_POST["nuevaDescripcion"],
+						$_POST["nuevoTipo"],
+						$_POST["nuevaCapacidad"],
+						$_POST["nuevoPrecio"],
+						$rutaWeb, // Se inserta la ruta web, NO la física
+						1
+					);
+
 
 					$respuesta = ModeloHabitaciones::MdlInsertarHabitacion($Habitacion);
 
-					if($respuesta[0][0] == "1"){
+					if ($respuesta[0][0] == "1") {
 
-						$fotoMovida = move_uploaded_file($foto, $directorio);
+						// Se eliminó el primer Swal.fire que bloqueaba la visibilidad del segundo.
+						$fotoMovida = move_uploaded_file($foto, $rutaFisica);
 
-						if($fotoMovida){
+						if ($fotoMovida) {
 							echo '<script>
-								Swal.fire({
-								icon: "success",
-								title : "Sistema PosDit",
-								text: "¡La habitación ha sido guardada correctamente!",
-								showConfirmButton: true,
-								confirmButtonText: "Cerrar"
-								});
-							</script>';
-						}else{
-							$motivo = self::crtMotivoFallaSubida($_FILES["nuevaFoto"]["error"], $dirPath);
+                                Swal.fire({
+                                icon: "success",
+                                title : "Sistema PosDit",
+                                text: "¡La habitación ha sido guardada correctamente!",
+                                showConfirmButton: true,
+                                confirmButtonText: "Cerrar"
+                                }).then(function(result){
+                                    if(result.value){
+                                        window.location = "habitaciones"; 
+                                    }
+                                });
+                            </script>';
+						} else {
+							$motivo = self::crtMotivoFallaSubida($_FILES["nuevaFoto"]["error"], $dirPathFisico);
 							echo '<script>
-								Swal.fire({
-								icon: "warning",
-								title : "Sistema PosDit",
-								text: "¡La habitación se guardó, pero la foto no pudo subirse'.($motivo !== "" ? " (".$motivo.")" : "").', intenta editarla de nuevo!",
-								showConfirmButton: true,
-								confirmButtonText: "Cerrar"
-								});
-							</script>';
+                                Swal.fire({
+                                icon: "warning",
+                                title : "Sistema PosDit",
+                                text: "¡La habitación se guardó, pero la foto no pudo subirse' . ($motivo !== "" ? " (" . $motivo . ")" : "") . ', intenta editarla de nuevo!",
+                                showConfirmButton: true,
+                                confirmButtonText: "Cerrar"
+                                }).then(function(result){
+                                    if(result.value){
+                                        window.location = "habitaciones";
+                                    }
+                                });
+                            </script>';
 						}
-
-					}else{
+					} else {
 
 						echo '<script>
-							Swal.fire({
-								icon: "error",
-								title : "Sistema PosDit",
-								text: "¡La habitación ya existe, favor de validar!",
-								showConfirmButton: true,
-								confirmButtonText: "Cerrar"
-							}).then(function(result){
-								if(result.value){
-									window.location = "habitaciones";
-								}
-							});
-						</script>';
+                            Swal.fire({
+                                icon: "error",
+                                title : "Sistema PosDit",
+                                text: "¡La habitación ya existe, favor de validar!",
+                                showConfirmButton: true,
+                                confirmButtonText: "Cerrar"
+                            }).then(function(result){
+                                if(result.value){
+                                    window.location = "habitaciones";
+                                }
+                            });
+                        </script>';
 					}
-
-				}else{
+				} else {
 
 					echo '<script>
-						Swal.fire({
-							title : "Sistema PosDit",
-							text: "¡Favor de cargar una foto para la habitación!",
-							icon: "error",
-							confirmButtonText: "¡Cerrar!"
-						});
-					</script>';
+                        Swal.fire({
+                            title : "Sistema PosDit",
+                            text: "¡Favor de cargar una foto para la habitación!",
+                            icon: "error",
+                            confirmButtonText: "¡Cerrar!"
+                        });
+                    </script>';
 				}
-
-			}else{
+			} else {
 
 				echo '<script>
-					Swal.fire({
-						icon: "error",
-						title : "Sistema PosDit",
-						text: "¡Los datos no pueden ir vacíos o llevar caracteres inválidos!",
-						showConfirmButton: true,
-						confirmButtonText: "Cerrar"
-					});
-				</script>';
+                    Swal.fire({
+                        icon: "error",
+                        title : "Sistema PosDit",
+                        text: "¡Los datos no pueden ir vacíos o llevar caracteres inválidos!",
+                        showConfirmButton: true,
+                        confirmButtonText: "Cerrar"
+                    });
+                </script>';
 			}
 		}
 	}
 
 	static public function crtActualizarHabitacion()
 	{
-		if(isset($_POST["editarHabitacion"])){
+		if (isset($_POST["editarHabitacion"])) {
 
 			$_POST["editarPrecio"] = str_replace(',', '', $_POST["editarPrecio"]);
 			$_POST["editarDescripcion"] = mb_substr($_POST["editarDescripcion"], 0, 255);
 			$_POST["editarTipo"] = mb_substr($_POST["editarTipo"], 0, 100);
 
-			if(preg_match('/^[a-zA-Z0-9 ]+$/', $_POST["editarNumero"]) &&
-			   preg_match('/^[0-9]+$/', $_POST["editarCapacidad"]) &&
-			   preg_match('/^[0-9.]+$/', $_POST["editarPrecio"])) {
+			if (
+				preg_match('/^[a-zA-Z0-9 ]+$/', $_POST["editarNumero"]) &&
+				preg_match('/^[0-9]+$/', $_POST["editarCapacidad"]) &&
+				preg_match('/^[0-9.]+$/', $_POST["editarPrecio"])
+			) {
 
 				$id_hotel = self::crtObtenerIdHotelSesion();
 
-				if($id_hotel === null){
+				if ($id_hotel === null) {
 
 					echo '<script>
 						Swal.fire({
@@ -696,14 +736,14 @@ class ControladorHabitaciones{
 
 				$fotoNueva = $_FILES["editarFoto"]["tmp_name"];
 
-				if($fotoNueva != ""){
+				if ($fotoNueva != "") {
 					$NombreImagen = $_FILES["editarFoto"]["name"];
 					$dirPath = "views/img/Habitaciones/";
 					if (!is_dir($dirPath)) {
 						mkdir($dirPath, 0755, true);
 					}
-					$directorio = $dirPath.$NombreImagen;
-				}else{
+					$directorio = $dirPath . $NombreImagen;
+				} else {
 					// No se seleccionó una foto nueva: conservar la que ya tenía
 					$directorio = $_POST["editarFotoActual"];
 				}
@@ -712,26 +752,27 @@ class ControladorHabitaciones{
 				$Estatus = isset($_POST["editarEstatus"]) ? 1 : 2;
 
 				$Habitacion = new habitacion(
-								 $_POST["editarIdHabitacion"],
-								 $id_hotel,
-								 $_POST["editarNumero"],
-								 $_POST["editarDescripcion"],
-								 $_POST["editarTipo"],
-								 $_POST["editarCapacidad"],
-								 $_POST["editarPrecio"],
-								 $directorio,
-								 $Estatus);
+					$_POST["editarIdHabitacion"],
+					$id_hotel,
+					$_POST["editarNumero"],
+					$_POST["editarDescripcion"],
+					$_POST["editarTipo"],
+					$_POST["editarCapacidad"],
+					$_POST["editarPrecio"],
+					$directorio,
+					$Estatus
+				);
 
 				$respuesta = ModeloHabitaciones::MdlActualizarHabitacion($Habitacion);
 
-				if($respuesta == 1){
+				if ($respuesta == 1) {
 
 					$fotoMovida = true;
-					if($fotoNueva != ""){
+					if ($fotoNueva != "") {
 						$fotoMovida = move_uploaded_file($fotoNueva, $directorio);
 					}
 
-					if($fotoMovida){
+					if ($fotoMovida) {
 						echo '<script>
 							Swal.fire({
 							icon: "success",
@@ -741,20 +782,19 @@ class ControladorHabitaciones{
 							confirmButtonText: "Cerrar"
 							});
 						</script>';
-					}else{
+					} else {
 						$motivo = self::crtMotivoFallaSubida($_FILES["editarFoto"]["error"], $dirPath);
 						echo '<script>
 							Swal.fire({
 							icon: "warning",
 							title : "Sistema PosDit",
-							text: "¡La habitación se modificó, pero la foto no pudo subirse'.($motivo !== "" ? " (".$motivo.")" : "").', intenta editarla de nuevo!",
+							text: "¡La habitación se modificó, pero la foto no pudo subirse' . ($motivo !== "" ? " (" . $motivo . ")" : "") . ', intenta editarla de nuevo!",
 							showConfirmButton: true,
 							confirmButtonText: "Cerrar"
 							});
 						</script>';
 					}
-
-				}else{
+				} else {
 
 					echo '<script>
 						Swal.fire({
@@ -766,8 +806,7 @@ class ControladorHabitaciones{
 						});
 					</script>';
 				}
-
-			}else{
+			} else {
 
 				echo '<script>
 					Swal.fire({

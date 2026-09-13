@@ -92,7 +92,6 @@ class ModeloHabitaciones{
 			'$Habitacion->tipoHabitacion',
 			'$Habitacion->capacidad',
 			'$Habitacion->precioNoche',
-			'$Habitacion->foto',
 			'$Habitacion->id_estatus')");
 
 		return $stmt->execute();
