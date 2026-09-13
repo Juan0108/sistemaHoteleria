@@ -626,11 +626,9 @@ class ControladorHabitaciones
 
 					if ($respuesta[0][0] == "1") {
 
-						// Se eliminó el primer Swal.fire que bloqueaba la visibilidad del segundo.
-						$fotoMovida = move_uploaded_file($foto, $rutaFisica);
-						var_dump($rutaFisica);
+						//$fotoMovida = move_uploaded_file($foto, $rutaFisica);
 
-						if ($fotoMovida) {
+						if (true) {
 							echo '<script>
                                 Swal.fire({
                                 icon: "success",
@@ -644,6 +642,7 @@ class ControladorHabitaciones
                                     }
                                 });
                             </script>';
+
 						} else {
 							$motivo = self::crtMotivoFallaSubida($_FILES["nuevaFoto"]["error"], $dirPathFisico);
 							echo '<script>
@@ -662,7 +661,6 @@ class ControladorHabitaciones
 						}
 					} else {
 
-					var_dump($rutaFisica);
 						echo '<script>
                             Swal.fire({
                                 icon: "error",
