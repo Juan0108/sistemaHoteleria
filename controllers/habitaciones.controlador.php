@@ -623,8 +623,9 @@ class ControladorHabitaciones
 					);
 
 					$respuesta = ModeloHabitaciones::MdlInsertarHabitacion($Habitacion);
+					var_dump($respuesta);
 
-					if ($respuesta[0][0] == "0") {
+					/* if ($respuesta[0][0] == "0") {
 
 						//$fotoMovida = move_uploaded_file($foto, $rutaFisica);
 
@@ -674,7 +675,8 @@ class ControladorHabitaciones
                                 }
                             });
                         </script>';
-					}
+					} */
+
 				} else {
 
 					echo '<script>
