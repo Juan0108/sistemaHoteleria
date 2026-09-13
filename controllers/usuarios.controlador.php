@@ -141,7 +141,7 @@ class ControladorUsuarios
 
 					$respuesta = ModeloUsuarios::MdlInsertarUsuario($Usuario);
 
-					if ($respuesta["validar"] == 1) {
+					if ($respuesta["resultado"] == 1) {
 
 						move_uploaded_file($foto, $rutaFisica);
 
