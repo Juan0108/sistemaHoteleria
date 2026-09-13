@@ -624,7 +624,7 @@ class ControladorHabitaciones
 
 					$respuesta = ModeloHabitaciones::MdlInsertarHabitacion($Habitacion);
 
-					if ($respuesta[0][0] == "1") {
+					if ($respuesta[0][0] == "0") {
 
 						//$fotoMovida = move_uploaded_file($foto, $rutaFisica);
 
