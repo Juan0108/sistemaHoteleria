@@ -627,8 +627,8 @@ class ControladorHabitaciones
 						1
 					);
 
-
-					$respuesta = ModeloHabitaciones::MdlInsertarHabitacion($Habitacion);
+					$respuesta = "1";
+					//$respuesta = ModeloHabitaciones::MdlInsertarHabitacion($Habitacion);
 
 					if ($respuesta[0][0] == "1") {
 
