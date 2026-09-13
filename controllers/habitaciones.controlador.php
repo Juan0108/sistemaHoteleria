@@ -606,7 +606,7 @@ class ControladorHabitaciones
 
 					// 2. Ruta absoluta (física) para crear el directorio y mover el archivo en el servidor
 					// IMPORTANTE: Cambia "tu_proyecto" por la carpeta real en tu htdocs, o quítalo si estás en producción/hosting.
-					$dirPathFisico = $_SERVER['DOCUMENT_ROOT'] . "/views/img/Habitaciones/";
+					$dirPathFisico = $dirPathFisico = dirname(__DIR__) . "/views/img/Habitaciones/";
 					$rutaFisica = $dirPathFisico . $NombreImagen;
 
 					if (!is_dir($dirPathFisico)) {
