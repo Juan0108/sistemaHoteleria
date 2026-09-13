@@ -1,25 +1,28 @@
 <?php
- 
- class ControladorUsuarios{
 
- //Login Usuario	
- static	public function ctrIngresoUsuario()
- 	{
+class ControladorUsuarios
+{
 
- 		if(isset($_POST["ingUsuario"])){
+	//Login Usuario	
+	static	public function ctrIngresoUsuario()
+	{
 
- 			if(preg_match('/^[a-zA-Z0-9]+$/', $_POST["ingUsuario"]) &&
- 			   preg_match('/^[a-zA-Z0-9]+$/', $_POST["ingPassword"])){
+		if (isset($_POST["ingUsuario"])) {
 
- 				$valor = $_POST["ingUsuario"];
+			if (
+				preg_match('/^[a-zA-Z0-9]+$/', $_POST["ingUsuario"]) &&
+				preg_match('/^[a-zA-Z0-9]+$/', $_POST["ingPassword"])
+			) {
 
- 				$respuesta = ModeloUsuarios::MdlObtenerUsuario($valor);
+				$valor = $_POST["ingUsuario"];
 
- 				if($respuesta){
+				$respuesta = ModeloUsuarios::MdlObtenerUsuario($valor);
 
- 					$EncriptarPass = crypt($_POST["ingPassword"],'$2a$07$asxx54ahjppf45sd87a5a4dDDGsystemdev$');
- 					
- 					if($respuesta["usuario"] == $_POST["ingUsuario"] && $respuesta["password"] == $EncriptarPass){
+				if ($respuesta) {
+
+					$EncriptarPass = crypt($_POST["ingPassword"], '$2a$07$asxx54ahjppf45sd87a5a4dDDGsystemdev$');
+
+					if ($respuesta["usuario"] == $_POST["ingUsuario"] && $respuesta["password"] == $EncriptarPass) {
 
 						// Validar estatus del usuario
 						if ($respuesta["id_estatus"] == 2) {
@@ -27,13 +30,13 @@
 							return;
 						}
 
-						$_SESSION["IniciarSesion"]= "ok";
-						$_SESSION["NombreUser"]= $respuesta["Nombre"] . " ". $respuesta["Apaterno"] ." ". $respuesta["Amaterno"];
-						$_SESSION["Perfil"]= $respuesta["NombrePerfil"];
-						$_SESSION["RutaFoto"]= $respuesta["foto"];
-						$_SESSION["RazonSocial"]= $respuesta["Razon_Social"];
-						$_SESSION["IdNegocio"]= $respuesta["id_negocio"];
-						$_SESSION["IdUsuario"]= $respuesta["id_usuario"];
+						$_SESSION["IniciarSesion"] = "ok";
+						$_SESSION["NombreUser"] = $respuesta["Nombre"] . " " . $respuesta["Apaterno"] . " " . $respuesta["Amaterno"];
+						$_SESSION["Perfil"] = $respuesta["NombrePerfil"];
+						$_SESSION["RutaFoto"] = $respuesta["foto"];
+						$_SESSION["RazonSocial"] = $respuesta["Razon_Social"];
+						$_SESSION["IdNegocio"] = $respuesta["id_negocio"];
+						$_SESSION["IdUsuario"] = $respuesta["id_usuario"];
 						$_SESSION["Telefono"] = $respuesta["Telefono"];
 						$_SESSION["Estatus"] = $respuesta["id_estatus"];
 
@@ -49,68 +52,67 @@
 						} else {
 							echo '<script>window.location = "inicio";</script>';
 						}
-					}else{
+					} else {
 
 						echo '<br><div class="alert alert-danger">Error al ingresar, vuelve a intentarlo</div>';
 					}
-				}else{
+				} else {
 
 					echo '<br><div class="alert alert-danger">Error al ingresar, vuelve a intentarlo</div>';
-
 				}
 			}
 		}
 	}
 
+	static public function crtObtenerPerfiles()
+	{
 
- static public function crtObtenerPerfiles(){
+		$respuesta = ModeloUsuarios::MdlObtenerPerfiles();
+		return $respuesta;
+	}
 
-	$respuesta = ModeloUsuarios::MdlObtenerPerfiles();
-	return $respuesta;
+	static public function crtObtenerUsuarios()
+	{
 
- }
+		$respuesta = ModeloUsuarios::MdlObtenerUsuarios();
+		return $respuesta;
+	}
 
-static public function crtObtenerUsuarios(){
+	static public function crtObtenerUsuariosHotel()
+	{
 
-	$respuesta = ModeloUsuarios::MdlObtenerUsuarios();
-	return $respuesta;
-
- }
-
-static public function crtObtenerUsuariosHotel(){
-
-	$respuesta = ModeloUsuarios::MdlObtenerUsuariosHotel($_SESSION["IdNegocio"]);
-	return $respuesta;
-
- }
-
+		$respuesta = ModeloUsuarios::MdlObtenerUsuariosHotel($_SESSION["IdNegocio"]);
+		return $respuesta;
+	}
 
 
- static public function crtInsertarUsuario()
- 	{
- 			
- 		if(isset($_POST["nuevoUsuario"])){
-			if(preg_match('/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$/', $_POST["nuevoNombre"]) &&
-			   preg_match('/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$/', $_POST["Apaterno"]) &&
-			   preg_match('/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$/', $_POST["Amaterno"]) &&
-			   preg_match('/^[a-zA-Z0-9]+$/', $_POST["nuevoUsuario"]) &&
-			   filter_var($_POST["nuevoCorreo"], FILTER_VALIDATE_EMAIL) &&
-			   preg_match('/^[a-zA-Z0-9]+$/', $_POST["Password"])) {
+	static public function crtInsertarUsuario()
+	{
+
+		if (isset($_POST["nuevoUsuario"])) {
+			if (
+				preg_match('/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$/', $_POST["nuevoNombre"]) &&
+				preg_match('/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$/', $_POST["Apaterno"]) &&
+				preg_match('/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$/', $_POST["Amaterno"]) &&
+				preg_match('/^[a-zA-Z0-9]+$/', $_POST["nuevoUsuario"]) &&
+				filter_var($_POST["nuevoCorreo"], FILTER_VALIDATE_EMAIL) &&
+				preg_match('/^[a-zA-Z0-9]+$/', $_POST["Password"])
+			) {
 
 				$foto = $_FILES["nuevaFoto"]["tmp_name"];
 
-			   if($foto != ""){
+				if ($foto != "") {
 
 					$NombreImagen = $_FILES["nuevaFoto"]["name"];
-					$directorio = "views/img/Users/".$NombreImagen;
-					$EncriptarPass = crypt($_POST["Password"],'$2a$07$asxx54ahjppf45sd87a5a4dDDGsystemdev$');
 
-					// El catálogo cat_colonias no cubre todos los municipios; cuando el combo
-					// de Colonia se queda sin opciones, el formulario deja escribirla a mano
-					// (NuevaColoniaTexto) y aquí se da de alta esa colonia (o se reutiliza si
-					// ya existe) para seguir guardando con un Id_Colonia real.
+					$rutaWeb = "views/img/Habitaciones/" . $NombreImagen;
+
+					$dirPathFisico = $dirPathFisico = dirname(__DIR__) . "/views/img/Habitaciones/";
+					$rutaFisica = $dirPathFisico . $NombreImagen;
+					$EncriptarPass = crypt($_POST["Password"], '$2a$07$asxx54ahjppf45sd87a5a4dDDGsystemdev$');
+
 					$idColonia = $_POST["NuevaColonia"];
-					if(empty($idColonia) && !empty($_POST["NuevaColoniaTexto"])){
+					if (empty($idColonia) && !empty($_POST["NuevaColoniaTexto"])) {
 						$coloniaNueva = ModeloHoteles::MdlInsertarColoniaSiNoExiste(
 							$_POST["NuevoMunicipio"],
 							trim($_POST["NuevaColoniaTexto"]),
@@ -119,30 +121,29 @@ static public function crtObtenerUsuariosHotel(){
 						$idColonia = $coloniaNueva ? $coloniaNueva["Id_Colonia"] : "";
 					}
 
-					// El negocio SIEMPRE es el de la sesión activa, nunca el que venga
-					// en el formulario, para que no se pueda dar de alta un usuario
-					// en un negocio/hotel distinto al propio.
-					$Usuario = new usuario(0,
-									 $_POST["nuevoNombre"],
-									 $_POST["Apaterno"],
-									 $_POST["Amaterno"],
-									 $_SESSION["IdNegocio"],
-									 $_POST["Calle"],
-									 $_POST["NuevoEstado"],
-									 $_POST["NuevoMunicipio"],
-									 $idColonia,
-									 $_POST["Perfil"],
-									 $_POST["nuevoUsuario"],
-									 $_POST["nuevoCorreo"],
-									 $EncriptarPass,
-									 $directorio,
-									 5);
-				  
-				  $respuesta = ModeloUsuarios::MdlInsertarUsuario($Usuario);
+					$Usuario = new usuario(
+						0,
+						$_POST["nuevoNombre"],
+						$_POST["Apaterno"],
+						$_POST["Amaterno"],
+						$_SESSION["IdNegocio"],
+						$_POST["Calle"],
+						$_POST["NuevoEstado"],
+						$_POST["NuevoMunicipio"],
+						$idColonia,
+						$_POST["Perfil"],
+						$_POST["nuevoUsuario"],
+						$_POST["nuevoCorreo"],
+						$EncriptarPass,
+						$rutaWeb,
+						5
+					);
 
-					if($respuesta[0][0] == "1"){
+					$respuesta = ModeloUsuarios::MdlInsertarUsuario($Usuario);
 
-						move_uploaded_file($foto, $directorio);
+					if ($respuesta["validar"] == 1) {
+
+						move_uploaded_file($foto, $rutaFisica);
 
 						echo '<script>
 							Swal.fire({
@@ -161,8 +162,7 @@ static public function crtObtenerUsuariosHotel(){
 							});
 						
 						</script>';
-
-					}else{
+					} else {
 
 						echo '<script>
 
@@ -182,13 +182,10 @@ static public function crtObtenerUsuariosHotel(){
 						});
 								
 						</script>';
+					}
+				} else {
 
-				}
-				
-
-			   }else{
-
-			   echo '<script>
+					echo '<script>
 					 Swal.fire({
 						title : "Sistema PosDit",
 						text: "¡Favor de cargar una foto para el perfil!",
@@ -197,10 +194,8 @@ static public function crtObtenerUsuariosHotel(){
 					});
 				
 				</script>';
-					
-			   }
-						
-			}else{
+				}
+			} else {
 
 				echo '<script>
 					Swal.fire({
@@ -222,24 +217,22 @@ static public function crtObtenerUsuariosHotel(){
 				
 
 				</script>';
-
 			}
 		}
 	}
 
-// Variante que regresa un arreglo (status/message) en vez de imprimir HTML,
-// para poder editar por AJAX sin recargar la página completa a medias.
-static public function crtActualizarUsuarioAjax()
+
+	static public function crtActualizarUsuarioAjax()
 	{
 		if (!isset($_POST["editarUsuario"])) {
 			return ["status" => "error", "message" => "Faltan datos para modificar el usuario"];
 		}
 
 		if (!(preg_match('/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$/', $_POST["editarNombre"]) &&
-			  preg_match('/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$/', $_POST["editarApaterno"]) &&
-			  preg_match('/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$/', $_POST["editarAmaterno"]) &&
-			  preg_match('/^[a-zA-Z0-9]+$/', $_POST["editarUsuario"]) &&
-			  filter_var($_POST["editarCorreo"], FILTER_VALIDATE_EMAIL))) {
+			preg_match('/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$/', $_POST["editarApaterno"]) &&
+			preg_match('/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$/', $_POST["editarAmaterno"]) &&
+			preg_match('/^[a-zA-Z0-9]+$/', $_POST["editarUsuario"]) &&
+			filter_var($_POST["editarCorreo"], FILTER_VALIDATE_EMAIL))) {
 			return ["status" => "error", "message" => "El usuario no puede ir vacío, llevar caracteres especiales, o el correo no es válido"];
 		}
 
@@ -250,7 +243,7 @@ static public function crtActualizarUsuarioAjax()
 		}
 
 		$idColonia = $_POST["editarColonia"];
-		if(empty($idColonia) && !empty($_POST["editarColoniaTexto"])){
+		if (empty($idColonia) && !empty($_POST["editarColoniaTexto"])) {
 			$coloniaNueva = ModeloHoteles::MdlInsertarColoniaSiNoExiste(
 				$_POST["editarMunicipio"],
 				trim($_POST["editarColoniaTexto"]),
@@ -262,21 +255,23 @@ static public function crtActualizarUsuarioAjax()
 		// El negocio SIEMPRE es el de la sesión activa, nunca el que venga
 		// en el formulario, para que no se pueda reasignar un usuario
 		// a un negocio/hotel distinto al propio.
-		$Usuario = new usuario(0,
-						 $_POST["editarNombre"],
-						 $_POST["editarApaterno"],
-						 $_POST["editarAmaterno"],
-						 $_SESSION["IdNegocio"],
-						 $_POST["editarCalle"],
-						 $_POST["editarEstado"],
-						 $_POST["editarMunicipio"],
-						 $idColonia,
-						 $_POST["editarPerfil"],
-						 $_POST["editarUsuario"],
-						 $_POST["editarCorreo"],
-						 $EncriptarPass,
-						 null,
-						 1);
+		$Usuario = new usuario(
+			0,
+			$_POST["editarNombre"],
+			$_POST["editarApaterno"],
+			$_POST["editarAmaterno"],
+			$_SESSION["IdNegocio"],
+			$_POST["editarCalle"],
+			$_POST["editarEstado"],
+			$_POST["editarMunicipio"],
+			$idColonia,
+			$_POST["editarPerfil"],
+			$_POST["editarUsuario"],
+			$_POST["editarCorreo"],
+			$EncriptarPass,
+			null,
+			1
+		);
 
 		$respuesta = ModeloUsuarios::MdlActualizarUsuario($Usuario);
 
@@ -312,50 +307,53 @@ static public function crtActualizarUsuarioAjax()
 		return ["status" => "success", "message" => "¡El usuario ha sido modificado correctamente!"];
 	}
 
-static public function crtActualizarUsuario()
- 	{
 
- 		if(isset($_POST["editarUsuario"])){
-			if(preg_match('/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$/', $_POST["editarNombre"]) &&
-			   preg_match('/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$/', $_POST["editarApaterno"]) &&
-			   preg_match('/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$/', $_POST["editarAmaterno"]) &&
-			   preg_match('/^[a-zA-Z0-9]+$/', $_POST["editarUsuario"]) &&
-			   filter_var($_POST["editarCorreo"], FILTER_VALIDATE_EMAIL)) {
+	static public function crtActualizarUsuario()
+	{
 
-				if($_POST["editarPassword"] != ""){
+		if (isset($_POST["editarUsuario"])) {
+			if (
+				preg_match('/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$/', $_POST["editarNombre"]) &&
+				preg_match('/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$/', $_POST["editarApaterno"]) &&
+				preg_match('/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ ]+$/', $_POST["editarAmaterno"]) &&
+				preg_match('/^[a-zA-Z0-9]+$/', $_POST["editarUsuario"]) &&
+				filter_var($_POST["editarCorreo"], FILTER_VALIDATE_EMAIL)
+			) {
 
-					$EncriptarPass = crypt($_POST["editarPassword"],'$2a$07$asxx54ahjppf45sd87a5a4dDDGsystemdev$');
+				if ($_POST["editarPassword"] != "") {
 
-				}else{
+					$EncriptarPass = crypt($_POST["editarPassword"], '$2a$07$asxx54ahjppf45sd87a5a4dDDGsystemdev$');
+				} else {
 
 					$EncriptarPass = null;
-
 				}
 
-					// El negocio SIEMPRE es el de la sesión activa, nunca el que venga
-					// en el formulario, para que no se pueda reasignar un usuario
-					// a un negocio/hotel distinto al propio.
-					$Usuario = new usuario(0,
-									 $_POST["editarNombre"],
-									 $_POST["editarApaterno"],
-									 $_POST["editarAmaterno"],
-									 $_SESSION["IdNegocio"],
-									 $_POST["editarCalle"],
-									 $_POST["editarEstado"],
-									 $_POST["editarMunicipio"],
-									 $_POST["editarColonia"],
-									 $_POST["editarPerfil"],
-									 $_POST["editarUsuario"],
-									 $_POST["editarCorreo"],
-									 $EncriptarPass,
-									 null,
-									 1);
-			  
-			    $respuesta = ModeloUsuarios::MdlActualizarUsuario($Usuario);
+				// El negocio SIEMPRE es el de la sesión activa, nunca el que venga
+				// en el formulario, para que no se pueda reasignar un usuario
+				// a un negocio/hotel distinto al propio.
+				$Usuario = new usuario(
+					0,
+					$_POST["editarNombre"],
+					$_POST["editarApaterno"],
+					$_POST["editarAmaterno"],
+					$_SESSION["IdNegocio"],
+					$_POST["editarCalle"],
+					$_POST["editarEstado"],
+					$_POST["editarMunicipio"],
+					$_POST["editarColonia"],
+					$_POST["editarPerfil"],
+					$_POST["editarUsuario"],
+					$_POST["editarCorreo"],
+					$EncriptarPass,
+					null,
+					1
+				);
 
-					if($respuesta == 1){
+				$respuesta = ModeloUsuarios::MdlActualizarUsuario($Usuario);
 
-						echo '<script>
+				if ($respuesta == 1) {
+
+					echo '<script>
 							Swal.fire({
 							icon: "success",
 							title : "Sistema PosDit",
@@ -372,10 +370,9 @@ static public function crtActualizarUsuario()
 							});
 						
 							</script>';
+				} else {
 
-					}else{
-
-						echo '<script>
+					echo '<script>
 
 						Swal.fire({
 							icon: "error",
@@ -393,11 +390,8 @@ static public function crtActualizarUsuario()
 						});
 								
 						</script>';
-
 				}
-				  
-					 
-			}else{
+			} else {
 
 				echo '<script>
 					Swal.fire({
@@ -419,22 +413,21 @@ static public function crtActualizarUsuario()
 				
 
 				</script>';
-
 			}
 		}
-	 	
 	}
 
-	//Funciona
-	static public function ctrActualizarContrasena() {
+
+	static public function ctrActualizarContrasena()
+	{
 		if (isset($_POST["newPassword"])) {
 			// Obtén los datos enviados por el formulario
 			$id_usuario = $_POST['id_usuario'];
 			$password = crypt($_POST["newPassword"], '$2a$07$asxx54ahjppf45sd87a5a4dDDGsystemdev$');
-	
+
 			// Llama al modelo para actualizar la contraseña
 			$resultado = ModeloUsuarios::MdlActualizarContraseña($id_usuario, $password);
-	
+
 			// Verifica si la actualización fue exitosa
 			if ($resultado) {
 				// Mensaje de éxito con SweetAlert2
