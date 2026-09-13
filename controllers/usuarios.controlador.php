@@ -105,9 +105,9 @@ class ControladorUsuarios
 
 					$NombreImagen = $_FILES["nuevaFoto"]["name"];
 
-					$rutaWeb = "views/img/Habitaciones/" . $NombreImagen;
+					$rutaWeb = "views/img/Users/" . $NombreImagen;
 
-					$dirPathFisico = $dirPathFisico = dirname(__DIR__) . "/views/img/Habitaciones/";
+					$dirPathFisico = dirname(__DIR__) . "/views/img/Users/";
 					$rutaFisica = $dirPathFisico . $NombreImagen;
 					$EncriptarPass = crypt($_POST["Password"], '$2a$07$asxx54ahjppf45sd87a5a4dDDGsystemdev$');
 
