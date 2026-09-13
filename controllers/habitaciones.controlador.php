@@ -609,8 +609,6 @@ class ControladorHabitaciones
 					$dirPathFisico = $_SERVER['DOCUMENT_ROOT'] . "/views/img/Habitaciones/";
 					$rutaFisica = $dirPathFisico . $NombreImagen;
 
-					var_dump($rutaFisica);
-
 					if (!is_dir($dirPathFisico)) {
 						mkdir($dirPathFisico, 0755, true);
 					}
@@ -634,6 +632,7 @@ class ControladorHabitaciones
 
 						// Se eliminó el primer Swal.fire que bloqueaba la visibilidad del segundo.
 						$fotoMovida = move_uploaded_file($foto, $rutaFisica);
+						var_dump($rutaFisica);
 
 						if ($fotoMovida) {
 							echo '<script>
@@ -667,6 +666,7 @@ class ControladorHabitaciones
 						}
 					} else {
 
+					var_dump($rutaFisica);
 						echo '<script>
                             Swal.fire({
                                 icon: "error",
