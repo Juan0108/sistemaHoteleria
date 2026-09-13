@@ -1125,7 +1125,7 @@ $(document).on("click", "#coConfirmar", function(){
 						timer: 2500,
 						showConfirmButton: false
 					}).then(function(){
-						//coOfrecerEnvioTicketWhatsapp(idReservacion);
+						coOfrecerEnvioTicketWhatsapp(idReservacion);
 					});
 					refrescarRecepcion();
 				}else{

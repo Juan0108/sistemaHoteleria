@@ -213,7 +213,7 @@ EOF;
         $pdfFilePath = dirname(__DIR__, 3) . '/tickets/' . $nombreArchivo;
         $pdf->Output($pdfFilePath, 'F');
 
-        $urlArchivo = "https://posdit.com.mx/sistema.posdit.com.mx/tickets/" . $nombreArchivo;
+        $urlArchivo = "https://posdit.com.mx/sistema.hotel.com.mx/tickets/" . $nombreArchivo;
 
         $apiUrl = 'https://apiwsp.factiliza.com/api/v1/message/sendMedia/NTI1NTI1MzI3MzA0';
         $token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2MjciLCJuYW1lIjoiSnVhbiBEYXZpZCBBZ3VpbGFyIEJhcnJvbiAiLCJlbWFpbCI6ImFndWlsYXJiYXJyb25qdWFuZGF2aWRAZ21haWwuY29tIiwiaHR0cDovL3NjaGVtYXMubWljcm9zb2Z0LmNvbS93cy8yMDA4LzA2L2lkZW50aXR5L2NsYWltcy9yb2xlIjoiY29uc3VsdG9yIn0.r5cvSNgCntPbf4OCjqx1JlS885CxHSN7FyxCLlVBAus';
