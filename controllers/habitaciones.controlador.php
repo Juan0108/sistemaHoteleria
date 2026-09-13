@@ -601,11 +601,8 @@ class ControladorHabitaciones
 
 					$NombreImagen = $_FILES["nuevaFoto"]["name"];
 
-					// 1. Ruta relativa (web) que se guarda en la base de datos
 					$rutaWeb = "views/img/Habitaciones/" . $NombreImagen;
 
-					// 2. Ruta absoluta (física) para crear el directorio y mover el archivo en el servidor
-					// IMPORTANTE: Cambia "tu_proyecto" por la carpeta real en tu htdocs, o quítalo si estás en producción/hosting.
 					$dirPathFisico = $dirPathFisico = dirname(__DIR__) . "/views/img/Habitaciones/";
 					$rutaFisica = $dirPathFisico . $NombreImagen;
 
@@ -625,8 +622,7 @@ class ControladorHabitaciones
 						1
 					);
 
-					$respuesta = "1";
-					//$respuesta = ModeloHabitaciones::MdlInsertarHabitacion($Habitacion);
+					$respuesta = ModeloHabitaciones::MdlInsertarHabitacion($Habitacion);
 
 					if ($respuesta[0][0] == "1") {
 
