@@ -23,7 +23,7 @@ Obtener Cierre Día
  */
 static public function MdlObtenerCierreDia($IdUsuario){
 
-	$stmt = Conexion::conectar()->prepare("CALL ObtenerCierreDia('$IdUsuario')");
+	$stmt = Conexion::conectar()->prepare("CALL ObtenerCierreDiaHotel('$IdUsuario')");
 	$stmt -> execute();
 	return $stmt -> fetchall();
 
