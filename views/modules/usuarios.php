@@ -492,6 +492,9 @@
 
       <div class="modal-footer">
         <button type="button" class="btn btn-primary pull-left" data-dismiss="modal">Salir</button>
+          <a href="#" id="btnDescargarGafete" target="_blank" class="btn" style="background:#5a4a40; color:#f6ecdb; border-color:#5a4a40;">
+            <i class="fa fa-id-card"></i> Descargar Gafete
+          </a>
         <button type="submit" class="btn btn-success">Modificar Usuario</button>
       </div>
 
