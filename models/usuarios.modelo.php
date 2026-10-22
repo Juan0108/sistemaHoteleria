@@ -209,4 +209,45 @@ Insertar  Usuario
 		return $stmt->execute();
 	}
 
+	static public function MdlObtenerNombreEstadoPorId($idEstado) {
+        $stmt = Conexion::conectar()->prepare("CALL ObtenerEstados()");
+        $stmt->execute();
+        while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            if($row["Id_Estado"] == $idEstado) {
+                $stmt->closeCursor();
+                return $row["Nombre"];
+            }
+        }
+        $stmt->closeCursor();
+        return "";
+    }
+
+    static public function MdlObtenerNombreMunicipioPorId($idEstado, $idMunicipio) {
+        $stmt = Conexion::conectar()->prepare("CALL ObtenerMunicipios(?)");
+        $stmt->bindParam(1, $idEstado, PDO::PARAM_INT);
+        $stmt->execute();
+        while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            if($row["Id_Municipio"] == $idMunicipio) {
+                $stmt->closeCursor();
+                return $row["Nombre"];
+            }
+        }
+        $stmt->closeCursor();
+        return "";
+    }
+
+    static public function MdlObtenerNombreColoniaPorId($idMunicipio, $idColonia) {
+        $stmt = Conexion::conectar()->prepare("CALL ObtenerColonias(?)");
+        $stmt->bindParam(1, $idMunicipio, PDO::PARAM_INT);
+        $stmt->execute();
+        while($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+            if($row["Id_Colonia"] == $idColonia) {
+                $stmt->closeCursor();
+                return $row["Nombre"];
+            }
+        }
+        $stmt->closeCursor();
+        return "";
+    }
+
 }

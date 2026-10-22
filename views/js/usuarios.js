@@ -164,8 +164,7 @@ $(document).on("click", ".btnEditarUsuario", function(){
  			$("#editarCodigoPostal").val(respuesta["Codigo_Postal"]);
  			$("#editarUsuario").val(respuesta["usuario"]);
 
-			var idUserReal = respuesta["id_usuario"] ?? respuesta["Id_Usuario"];
- 			$("#btnDescargarGafete").attr("href", "extensiones/tcpdf/Reportes/GafeteUsuario.php?id=" + idUserReal);
+			$("#btnDescargarGafete").attr("href", "extensions/tcpdf/Reportes/GafeteUsuario.php?id=" + respuesta["usuario"]);
 
  			if(respuesta["foto"]){
  				$("#editarFotoPreview").attr("src", respuesta["foto"]).show();
