@@ -65,7 +65,7 @@ $pdf->Cell(50, 5, limpiarTexto(strtoupper($razonSocial)), 0, 1, 'C');
 
 // --- CÓDIGO QR EN LA PARTE SUPERIOR CON FONDO BLANCO Y BORDE ---
 $pdf->SetFillColor(255, 255, 255);
-$pdf->Rect(17, 10, 20, 20, 'F');
+$pdf->Rect(17, 8.5, 20, 20, 'F');
 
 $styleQR = array(
     'border' => true, // Borde para garantizar la lectura correcta del lector
@@ -78,7 +78,7 @@ $styleQR = array(
 );
 
 $idUsuarioQR = isset($usuario["id_usuario"]) ? $usuario["id_usuario"] : "0";
-$pdf->write2DBarcode($idUsuarioQR, 'QRCODE,L', 17, 10, 20, 20, $styleQR, 'N');
+$pdf->write2DBarcode($idUsuarioQR, 'QRCODE,L', 17, 8.5, 20, 20, $styleQR, 'N');
 
 // --- FOTO DEL USUARIO ---
 $fotoPath = isset($usuario["foto"]) ? $usuario["foto"] : "";
