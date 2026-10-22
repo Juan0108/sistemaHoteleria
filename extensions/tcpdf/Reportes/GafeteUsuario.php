@@ -51,7 +51,6 @@ $pdf->SetXY(2, 3, 50);
 $pdf->Cell(50, 5, strtoupper($usuario["Razon_Social"] ? $usuario["Razon_Social"] : "SISTEMA POSDIT"), 0, 1, 'C');
 
 // --- CÓDIGO QR EN LA PARTE SUPERIOR ---
-// Codifica estrictamente el Id_Usuario como se solicitó
 $styleQR = array(
     'border' => 0,
     'vpadding' => 0,
@@ -64,14 +63,14 @@ $styleQR = array(
 $pdf->write2DBarcode($usuario["id_usuario"], 'QRCODE,L', 19, 9, 16, 16, $styleQR, 'N');
 
 // --- FOTO DEL USUARIO ---
-$rutaFoto = "../../../" . $usuario["foto"];
+/* $rutaFoto = "../../../" . $usuario["foto"];
 if (!file_exists($rutaFoto) || empty($usuario["foto"])) {
     $rutaFoto = "../../../views/img/Users/default.png";
 }
 
 if (file_exists($rutaFoto)) {
     $pdf->Image($rutaFoto, 17, 28, 20, 20, '', '', '', true, 300, '', false, false, 0, 'CM', false, false);
-}
+} */
 
 // --- DATOS DEL USUARIO ---
 // Nombre completo
@@ -103,6 +102,6 @@ $pdf->SetXY(2, 78, 50);
 $pdf->Cell(50, 3, "Expedicion: " . date('d/m/Y') . " | ID: " . $usuario["id_usuario"], 0, 1, 'C');
 
 // Salida del PDF para descarga / visualización directa en navegador
-$pdf->Output('Gafete_' . $usuario["Usuario"] . '.pdf', 'I');
+$pdf->Output('Gafete_' . $usuario["Nombre"] . " " . $usuario["Apaterno"] . " " . '.pdf', 'I');
 exit;
 ?>
