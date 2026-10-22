@@ -88,7 +88,7 @@ if (!file_exists($rutaFoto) || empty($fotoPath)) {
 }
 
 if (file_exists($rutaFoto)) {
-    $pdf->Image($rutaFoto, 17, 29, 20, 20, '', '', '', true, 300, '', false, false, 0, 'CM', false, false);
+    $pdf->Image($rutaFoto, 17, 31, 20, 20, '', '', '', true, 300, '', false, false, 0, 'CM', false, false);
 }
 
 // --- DATOS DEL USUARIO ---
